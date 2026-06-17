@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import 'login_screen_view.dart';
@@ -68,11 +69,7 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
               children: [
                 const SizedBox(height: 16),
                 GestureDetector(
-                  onTap: () => Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreenView()),
-                    (route) => false,
-                  ),
+                  onTap: () => Get.offAll(() => const LoginScreenView()),
                   child: Container(
                     width: 40,
                     height: 40,
@@ -104,11 +101,7 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                 const Spacer(),
                 AppButton(
                   label: 'Back to Login',
-                  onPressed: () => Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreenView()),
-                    (route) => false,
-                  ),
+                  onPressed: () => Get.offAll(() => const LoginScreenView()),
                 ),
                 const SizedBox(height: 32),
               ],

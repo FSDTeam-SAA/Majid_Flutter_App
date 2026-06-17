@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../controller/auth_controller.dart';
 import '../widgets/_auth_widgets.dart';
 import 'password_changed_screen_view.dart';
 
@@ -10,6 +13,8 @@ class CreateNewPasswordScreenView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthController>();
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.pageGradient),
@@ -22,27 +27,29 @@ class CreateNewPasswordScreenView extends StatelessWidget {
                 const SizedBox(height: 16),
                 const AuthBackButton(),
                 const SizedBox(height: 48),
-                const Text(
-                  'Create New Password',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold),
-                ),
+                const Text('Create New Password', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 const Text(
                   'Your new password must be unique from those previously used.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6),
                 ),
                 const SizedBox(height: 36),
-                const AppTextField(hint: 'New Password', isPassword: true),
+                AppTextField(hint: 'New Password', controller: auth.newPasswordController, isPassword: true),
                 const SizedBox(height: 14),
-                const AppTextField(hint: 'Confirm Password', isPassword: true),
+                AppTextField(hint: 'Confirm Password', controller: auth.confirmPasswordController, isPassword: true),
                 const SizedBox(height: 28),
-                AppButton(
+                Obx(() => AppButton(
                   label: 'Reset Password',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PasswordChangedScreenView()),
-                  ),
-                ),
+                  isLoading: auth.isLoading.value,
+                  onPressed: () async {
+                    final success = await auth.resetPassword();
+                    if (success) {
+                      Get.to(() => const PasswordChangedScreenView());
+                    } else if (auth.errorMessage.isNotEmpty) {
+                      showErrorSnackbar(auth.errorMessage.value);
+                    }
+                  },
+                )),
               ],
             ),
           ),
