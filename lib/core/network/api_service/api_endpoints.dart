@@ -1,90 +1,151 @@
-// api_endpoints.dart
-
-// Base configuration
-// const String baseUrl = "http://localhost:8001";
-const String baseUrl = "https://backend-mattressmatt.onrender.com";
-const String musicBaseUrl = "http://72.62.128.141:8001";
-//const String baseUrl = "https://qfw86jj6-8001.inc1.devtunnels.ms";//zafor
-//const String baseUrl = "http://10.10.5.119:8001";//zafor
+const String baseUrl = "http://187.77.187.56:4896";
 const String apiVersion = "api/v1";
 String get baseApiUrl => "$baseUrl/$apiVersion";
-String get musicApiUrl => "$musicBaseUrl/$apiVersion";
 
-// Auth Endpoints
 class AuthEndpoints {
-  static String register = "$baseApiUrl/auth/register";
   static String login = "$baseApiUrl/auth/login";
   static String refreshToken = "$baseApiUrl/auth/refresh-token";
-  static String forgotPassword = "$baseApiUrl/auth/forget";
+  static String forgotPassword = "$baseApiUrl/auth/forgot-password";
+  static String resendForgotOtp = "$baseApiUrl/auth/resend-forgot-otp";
+  static String verifyOtp = "$baseApiUrl/auth/verify-otp";
   static String resetPassword = "$baseApiUrl/auth/reset-password";
-  static String logout = "$baseApiUrl/auth/logout";
-  static String deleteAccount = "$baseApiUrl/user/delete-account";
+  static String changePassword = "$baseApiUrl/auth/change-password";
 }
 
-// Profile Endpoints
-class ProfileEndpoints {
-  static String getProfile = "$baseApiUrl/user/profile";
+class UserEndpoints {
+  static String register = "$baseApiUrl/user/register";
+  static String verifyEmail = "$baseApiUrl/user/verify-email";
+  static String resendOtp = "$baseApiUrl/user/resend-otp";
+  static String allUsers = "$baseApiUrl/user/all-users";
+  static String myProfile = "$baseApiUrl/user/my-profile";
   static String updateProfile = "$baseApiUrl/user/update-profile";
-  static String changePassword = "$baseApiUrl/user/change-password";
+  static String balanceHistory = "$baseApiUrl/user/balance-history";
 }
 
-// Settings Endpoints
-class SettingsEndpoints {
-  static String savePrivacy = "$baseApiUrl/settings/privacy-policy";
-  static String saveTerms = "$baseApiUrl/settings/terms-condition";
-  static String getPrivacy = "$baseApiUrl/settings/privacy-policy";
-  static String getTerms = "$baseApiUrl/settings/terms-condition";
+class ImeiEndpoints {
+  static String checkV2 = "$baseApiUrl/imei/check-v2";
+  static String services = "$baseApiUrl/imei/services";
+  static String servicesSync = "$baseApiUrl/imei/services/sync";
+  static String riskAnalysis = "$baseApiUrl/imei/risk-analysis";
+  static String deviceAnalysis = "$baseApiUrl/imei/device-analysis";
+  static String checkBatch = "$baseApiUrl/imei/check-batch";
+  static String history = "$baseApiUrl/imei/history";
 }
 
-// Category Endpoints
+class InventoryEndpoints {
+  static String create = "$baseApiUrl/inventory/create";
+  static String all = "$baseApiUrl/inventory";
+  static String myInventory = "$baseApiUrl/inventory/my-inventory";
+  static String soldItems = "$baseApiUrl/inventory/sold-items";
+  static String grouped = "$baseApiUrl/inventory/grouped";
+  static String createFromBarcode = "$baseApiUrl/inventory/create-from-barcode";
+  static String createFromBarcodeBulk = "$baseApiUrl/inventory/create-from-barcode/bulk";
+  static String importCsv = "$baseApiUrl/inventory/import-csv";
+  static String importCsvTemplate = "$baseApiUrl/inventory/import-csv/template";
+  static String byId(String id) => "$baseApiUrl/inventory/$id";
+  static String byUserId(String userId) => "$baseApiUrl/inventory/user/$userId";
+  static String byStatus(String status) => "$baseApiUrl/inventory/status/$status";
+}
+
 class CategoryEndpoints {
   static String create = "$baseApiUrl/category";
-  static String all = "$baseApiUrl/category/";
+  static String all = "$baseApiUrl/category";
+  static String withCount = "$baseApiUrl/category/with-count";
+  static String bulkUpdateCount = "$baseApiUrl/category/bulk-update-count";
   static String byId(String id) => "$baseApiUrl/category/$id";
-  static String update(String id) => "$baseApiUrl/category/$id";
-  static String delete(String id) => "$baseApiUrl/category/$id";
 }
 
-// Music Endpoints
-class MusicEndpoints {
-  static String upload = "$musicApiUrl/music";
-  static String all = "$musicApiUrl/music";
-  static String mostPlayed = "$musicApiUrl/music/mostPlayed";
-  static String categoryWise(String categoryId) => "$musicApiUrl/music/categoryWiseMusic/$categoryId";
-  static String byId(String id) => "$musicApiUrl/music/$id";
-  static String delete(String id) => "$musicApiUrl/music/$id";
+class RepairRequestEndpoints {
+  static String add = "$baseApiUrl/repair-requests/add";
+  static String myHistory = "$baseApiUrl/repair-requests/my-history";
+  static String shopkeepersHistory = "$baseApiUrl/repair-requests/shopkeepers-history";
+  static String byId(String id) => "$baseApiUrl/repair-requests/$id";
+  static String updateStatus(String id) => "$baseApiUrl/repair-requests/update-status/$id";
+  static String addNote(String id) => "$baseApiUrl/repair-requests/add-note/$id";
+  static String quoteStatus(String id) => "$baseApiUrl/repair-requests/quote-status/$id";
+  static String technicianFeedback(String id) => "$baseApiUrl/repair-requests/technician-feedback/$id";
+  static String userDescriptions(String userId) => "$baseApiUrl/repair-requests/user/$userId/descriptions";
 }
 
-// Alarm Endpoints
-class AlarmEndpoints {
-  static String create = "$baseApiUrl/alarm";
-  static String all = "$baseApiUrl/alarm";
-  static String byId(String id) => "$baseApiUrl/alarm/$id";
-  static String update(String id) => "$baseApiUrl/alarm/$id";
-  static String delete(String id) => "$baseApiUrl/alarm/$id";
-  static String toggle(String id) => "$baseApiUrl/alarm/$id/toggle";
-  static String updateWakeUpPhase(String id) => "$baseApiUrl/alarm/$id/wakeUpPhase";
+class InvoiceEndpoints {
+  static String create = "$baseApiUrl/invoice/create";
+  static String all = "$baseApiUrl/invoice/all";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/invoice/shopkeeper/$shopkeeperId";
+  static String byId(String id) => "$baseApiUrl/invoice/$id";
 }
 
-// Sleep Goal Endpoints
-class SleepGoalEndpoints {
-  static String create = "$baseApiUrl/sleep";
-  static String active = "$baseApiUrl/sleep/active";
-  static String byId(String id) => "$baseApiUrl/sleep/$id";
-  static String update(String id) => "$baseApiUrl/sleep/$id";
-  static String delete(String id) => "$baseApiUrl/sleep/$id";
+class CustomerEndpoints {
+  static String create = "$baseApiUrl/customer/create";
+  static String all = "$baseApiUrl/customer/all";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/customer/shopkeeper/$shopkeeperId";
+  static String update(String id) => "$baseApiUrl/customer/update/$id";
+  static String delete(String id) => "$baseApiUrl/customer/delete/$id";
 }
 
-// Sleep Note Endpoints
-class SleepNoteEndpoints {
-  static String create = "$baseApiUrl/sleep-note";
-  static String all = "$baseApiUrl/sleep-note";
-  static String byId(String id) => "$baseApiUrl/sleep-note/$id";
-  static String update(String id) => "$baseApiUrl/sleep-note/$id";
-  static String delete(String id) => "$baseApiUrl/sleep-note/$id";
+class SoldProductEndpoints {
+  static String create = "$baseApiUrl/sold-products/create";
+  static String myProducts = "$baseApiUrl/sold-products/my-products";
+  static String nextDueDates = "$baseApiUrl/sold-products/next-due-dates";
+  static String update(String id) => "$baseApiUrl/sold-products/update/$id";
+  static String delete(String id) => "$baseApiUrl/sold-products/delete/$id";
 }
 
-// Photo Analysis Endpoints
-class PhotoAnalysisEndpoints {
-  static String analyze = "$baseApiUrl/photo-analyze";
+class PaymentEndpoints {
+  static String createPayment = "$baseApiUrl/payment/create-payment";
+  static String myPayments = "$baseApiUrl/payment/my-payments";
+  static String allPayments = "$baseApiUrl/payment/all-payments";
+  static String webhook = "$baseApiUrl/payment/webhook";
+}
+
+class SubscriptionEndpoints {
+  static String create = "$baseApiUrl/subscription/create";
+  static String all = "$baseApiUrl/subscription/all";
+  static String update(String id) => "$baseApiUrl/subscription/update/$id";
+}
+
+class DashboardEndpoints {
+  static String chart = "$baseApiUrl/dashboard/chart";
+}
+
+class ReviewEndpoints {
+  static String create = "$baseApiUrl/review/shopkeeper/create";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/review/shopkeeper/$shopkeeperId";
+  static String delete(String reviewId) => "$baseApiUrl/review/$reviewId";
+}
+
+class BarcodeEndpoints {
+  static String search(String code) => "$baseApiUrl/barcode/$code";
+}
+
+class BankDetailsEndpoints {
+  static String create = "$baseApiUrl/bank-details/create";
+  static String byInvoice(String invoiceId) => "$baseApiUrl/bank-details/invoice/$invoiceId";
+  static String byAddedBy(String addedBy) => "$baseApiUrl/bank-details/added-by/$addedBy";
+  static String update(String id) => "$baseApiUrl/bank-details/update/$id";
+  static String delete(String id) => "$baseApiUrl/bank-details/delete/$id";
+}
+
+class CartEndpoints {
+  static String create = "$baseApiUrl/add-to-cart/create";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/add-to-cart/shopkeeper/$shopkeeperId";
+  static String update(String cartId) => "$baseApiUrl/add-to-cart/update/$cartId";
+  static String delete(String cartId) => "$baseApiUrl/add-to-cart/delete/$cartId";
+  static String deleteAll(String shopkeeperId) => "$baseApiUrl/add-to-cart/delete-all/shopkeeper/$shopkeeperId";
+}
+
+class OcrEndpoints {
+  static String extractImei = "$baseApiUrl/ocr/extract-imei";
+  static String extractNid = "$baseApiUrl/ocr/extract-nid";
+}
+
+class LocationEndpoints {
+  static String get = "$baseApiUrl/location/";
+}
+
+class LowStockAlertEndpoints {
+  static String create = "$baseApiUrl/low-stock-alert/create";
+  static String myAlert = "$baseApiUrl/low-stock-alert/my-alert";
+  static String byId(String id) => "$baseApiUrl/low-stock-alert/$id";
+  static String update(String id) => "$baseApiUrl/low-stock-alert/update/$id";
+  static String delete(String id) => "$baseApiUrl/low-stock-alert/delete/$id";
 }
