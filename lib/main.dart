@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/route_manager.dart';
+import 'package:get/get.dart';
 
+import 'features/auth/presentation/controller/auth_controller.dart';
 import 'features/onboarding/presentation/pages/onboarding_screen_view.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  Get.put(AuthController());
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light),
   );
