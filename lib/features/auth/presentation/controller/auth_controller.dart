@@ -6,7 +6,8 @@ import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/network/api_service/token_meneger.dart';
 import '../../data/models/user_model.dart';
-import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/auth_repository_impl.dart';
+import '../../domain/repositories/auth_repository.dart';
 
 class AuthController extends GetxController {
   late final AuthRepository _repo;
@@ -29,7 +30,7 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _repo = AuthRepository(ApiClient(baseUrl));
+    _repo = AuthRepositoryImpl(ApiClient(baseUrl));
   }
 
   @override
