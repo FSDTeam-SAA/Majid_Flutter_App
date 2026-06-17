@@ -1,38 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../controller/auth_controller.dart';
 import '../widgets/_auth_widgets.dart';
 import 'create_new_password_screen_view.dart';
+import 'login_screen_view.dart';
 
-class OtpVerificationScreenView extends StatefulWidget {
+class OtpVerificationScreenView extends StatelessWidget {
   const OtpVerificationScreenView({super.key});
 
   @override
-  State<OtpVerificationScreenView> createState() => _OtpVerificationScreenViewState();
-}
-
-class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
-  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
-
-  @override
-  void dispose() {
-    for (final c in _controllers) { c.dispose(); }
-    for (final f in _focusNodes) { f.dispose(); }
-    super.dispose();
-  }
-
-  void _onChanged(String value, int index) {
-    if (value.isNotEmpty && index < 3) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthController>();
+    final focusNodes = List.generate(6, (_) => FocusNode());
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.pageGradient),
@@ -45,10 +29,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
                 const SizedBox(height: 16),
                 const AuthBackButton(),
                 const SizedBox(height: 48),
-                const Text(
-                  'OTP Verification',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold),
-                ),
+                const Text('OTP Verification', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 const Text(
                   'Enter the verification code we just sent to your email address.',
@@ -57,29 +38,47 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
                 const SizedBox(height: 40),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(4, (i) => _OtpBox(
-                    controller: _controllers[i],
-                    focusNode: _focusNodes[i],
-                    onChanged: (v) => _onChanged(v, i),
+                  children: List.generate(6, (i) => _OtpBox(
+                    controller: auth.otpControllers[i],
+                    focusNode: focusNodes[i],
+                    onChanged: (v) {
+                      if (v.isNotEmpty && i < 5) focusNodes[i + 1].requestFocus();
+                      if (v.isEmpty && i > 0) focusNodes[i - 1].requestFocus();
+                    },
                   )),
                 ),
                 const SizedBox(height: 32),
-                AppButton(
+                Obx(() => AppButton(
                   label: 'Verify',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CreateNewPasswordScreenView()),
-                  ),
-                ),
+                  isLoading: auth.isLoading.value,
+                  onPressed: () async {
+                    bool success;
+                    if (auth.isEmailVerification.value) {
+                      success = await auth.verifyEmail();
+                      if (success) {
+                        showSuccessSnackbar('Email verified successfully!');
+                        Get.offAll(() => const LoginScreenView());
+                      }
+                    } else {
+                      success = await auth.verifyForgotOtp();
+                      if (success) {
+                        Get.to(() => const CreateNewPasswordScreenView());
+                      }
+                    }
+                    if (!success && auth.errorMessage.isNotEmpty) {
+                      showErrorSnackbar(auth.errorMessage.value);
+                    }
+                  },
+                )),
                 const SizedBox(height: 24),
                 Center(
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: const Text(
-                      'Resend Code',
-                      style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500),
-                    ),
-                  ),
+                  child: Obx(() => GestureDetector(
+                    onTap: auth.isLoading.value ? null : () async {
+                      final success = await auth.resendOtp();
+                      if (success) showSuccessSnackbar('OTP resent successfully');
+                    },
+                    child: const Text('Resend Code', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500)),
+                  )),
                 ),
               ],
             ),
@@ -100,8 +99,8 @@ class _OtpBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 70,
-      height: 60,
+      width: 50,
+      height: 56,
       child: TextField(
         controller: controller,
         focusNode: focusNode,
@@ -115,18 +114,9 @@ class _OtpBox extends StatelessWidget {
           counterText: '',
           filled: true,
           fillColor: AppColors.fieldBackground,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.fieldBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.fieldBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.fieldBorder)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.fieldBorder)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
         ),
       ),
     );
