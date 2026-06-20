@@ -6,14 +6,14 @@ class PaymentHistoryPage extends StatelessWidget {
   const PaymentHistoryPage({super.key});
 
   static const _transactions = [
-    _Transaction(id: '#4B0082E0', amount: 75.50,  date: '10.02.2024'),
+    _Transaction(id: '#4B0082E0', amount: 75.50, date: '10.02.2024'),
     _Transaction(id: '#FF5733E0', amount: 220.00, date: '05.03.2024'),
     _Transaction(id: '#28B463E0', amount: 150.75, date: '15.04.2024'),
-    _Transaction(id: '#3498DBE0', amount: 99.99,  date: '22.05.2024'),
-    _Transaction(id: '#FFC300E0', amount: 40.00,  date: '30.06.2024'),
+    _Transaction(id: '#3498DBE0', amount: 99.99, date: '22.05.2024'),
+    _Transaction(id: '#FFC300E0', amount: 40.00, date: '30.06.2024'),
     _Transaction(id: '#C70039E0', amount: 130.25, date: '18.07.2024'),
     _Transaction(id: '#C70039E0', amount: 130.25, date: '18.07.2024'),
-    _Transaction(id: '#900C3FE0', amount: 60.80,  date: '25.08.2024'),
+    _Transaction(id: '#900C3FE0', amount: 60.80, date: '25.08.2024'),
     _Transaction(id: '#581845E0', amount: 200.10, date: '12.09.2024'),
   ];
 
@@ -22,14 +22,7 @@ class PaymentHistoryPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D1F2D), Color(0xFF060E0B)],
-            stops: [0.0, 0.6],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -39,7 +32,8 @@ class PaymentHistoryPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
                   itemCount: _transactions.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) => _TransactionCard(tx: _transactions[i]),
+                  itemBuilder: (context, i) =>
+                      _TransactionCard(tx: _transactions[i]),
                 ),
               ),
             ],
@@ -64,14 +58,22 @@ class PaymentHistoryPage extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: AppColors.textPrimary,
+                size: 16,
+              ),
             ),
           ),
           const Expanded(
             child: Text(
               'My Transactions',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 40),
@@ -104,12 +106,19 @@ class _TransactionCard extends StatelessWidget {
               children: [
                 Text(
                   tx.id,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 const Text(
                   'MasterCard **** 9918',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -128,7 +137,10 @@ class _TransactionCard extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 tx.date,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -146,7 +158,10 @@ class _MastercardLogo extends StatelessWidget {
     return Container(
       width: 52,
       height: 52,
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
       child: CustomPaint(painter: _MastercardPainter()),
     );
   }
@@ -184,5 +199,9 @@ class _Transaction {
   final String id;
   final double amount;
   final String date;
-  const _Transaction({required this.id, required this.amount, required this.date});
+  const _Transaction({
+    required this.id,
+    required this.amount,
+    required this.date,
+  });
 }

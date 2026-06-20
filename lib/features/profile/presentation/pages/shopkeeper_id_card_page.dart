@@ -32,17 +32,35 @@ class ShopkeeperIdCardPage extends StatelessWidget {
                     const SizedBox(height: 20),
                     _buildIdBox(context),
                     const SizedBox(height: 20),
-                    const InfoField(label: 'EMAIL:', value: 'shopkeeper2@gmail.com'),
+                    const InfoField(
+                      label: 'EMAIL:',
+                      value: 'shopkeeper2@gmail.com',
+                    ),
                     const SizedBox(height: 14),
                     const InfoField(label: 'PHONE:', value: '07777787771'),
                     const SizedBox(height: 14),
-                    const InfoField(label: 'SHOP NAME:', value: 'Mobile Kit Distribution'),
+                    const InfoField(
+                      label: 'SHOP NAME:',
+                      value: 'Mobile Kit Distribution',
+                    ),
                     const SizedBox(height: 14),
-                    const InfoField(label: 'ADDRESS:', value: 'Unit 22 MKD the liberty shopping centre'),
+                    const InfoField(
+                      label: 'ADDRESS:',
+                      value: 'Unit 22 MKD the liberty shopping centre',
+                    ),
                     const SizedBox(height: 24),
                     _buildQrBox(),
                     const SizedBox(height: 14),
-                    AppButton(label: 'Download QR', onPressed: () {}),
+                    AppButton(
+                      label: 'Download QR',
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('QR download is coming soon.'),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -63,16 +81,30 @@ class ShopkeeperIdCardPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(child: InfoField(label: 'SHOPKEEPER ID', value: _shopkeeperId)),
+          const Expanded(
+            child: InfoField(label: 'SHOPKEEPER ID', value: _shopkeeperId),
+          ),
           GestureDetector(
             onTap: () {
               Clipboard.setData(const ClipboardData(text: _shopkeeperId));
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID copied!'), duration: Duration(seconds: 1)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('ID copied!'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
             },
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF1A2840), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.copy_outlined, color: AppColors.textPrimary, size: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A2840),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.copy_outlined,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -83,7 +115,10 @@ class ShopkeeperIdCardPage extends StatelessWidget {
   Widget _buildQrBox() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.asset('assets/images/qrcode.jpg', fit: BoxFit.contain),

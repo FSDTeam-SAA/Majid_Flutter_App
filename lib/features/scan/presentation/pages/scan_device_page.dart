@@ -43,7 +43,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
                   const SizedBox(height: 12),
                   CarrierDropdown(
                     isOpen: _dropdownOpen,
-                    onToggle: () => setState(() => _dropdownOpen = !_dropdownOpen),
+                    onToggle: () =>
+                        setState(() => _dropdownOpen = !_dropdownOpen),
                   ),
                   const SizedBox(height: 24),
                   _buildScanNowButton(),
@@ -52,7 +53,11 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
                   const SizedBox(height: 32),
                   const Text(
                     'Recent Scans',
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   ...recentScans.map((item) => ScanItemCard(item: item)),
@@ -70,15 +75,23 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceReportPage())),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DeviceReportPage()),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 17),
           elevation: 0,
         ),
-        child: const Text('Scan Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        child: const Text(
+          'Scan Now',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -87,14 +100,27 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Image upload will be connected when file picking is added.',
+              ),
+            ),
+          );
+        },
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
           side: const BorderSide(color: AppColors.primary, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 17),
         ),
-        child: const Text('Upload Image', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        child: const Text(
+          'Upload Image',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

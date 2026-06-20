@@ -5,7 +5,11 @@ class AppOutlinedButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
 
-  const AppOutlinedButton({super.key, required this.label, required this.onPressed});
+  const AppOutlinedButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +20,15 @@ class AppOutlinedButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
           side: const BorderSide(color: AppColors.primary, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

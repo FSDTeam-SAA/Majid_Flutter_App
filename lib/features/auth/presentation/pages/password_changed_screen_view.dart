@@ -8,7 +8,8 @@ class PasswordChangedScreenView extends StatefulWidget {
   const PasswordChangedScreenView({super.key});
 
   @override
-  State<PasswordChangedScreenView> createState() => _PasswordChangedScreenViewState();
+  State<PasswordChangedScreenView> createState() =>
+      _PasswordChangedScreenViewState();
 }
 
 class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
@@ -26,24 +27,49 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
   void initState() {
     super.initState();
 
-    _badgeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _checkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat();
+    _badgeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _checkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
 
     _badgeScale = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.15).chain(CurveTween(curve: Curves.easeOut)), weight: 70),
-      TweenSequenceItem(tween: Tween(begin: 1.15, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 30),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: 1.15,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 70,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.15,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 30,
+      ),
     ]).animate(_badgeController);
 
-    _checkProgress = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _checkController, curve: Curves.easeInOut));
+    _checkProgress = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _checkController, curve: Curves.easeInOut),
+    );
 
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.5)
-        .animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeOut));
+    _pulseScale = Tween<double>(
+      begin: 1.0,
+      end: 1.5,
+    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeOut));
 
-    _pulseOpacity = Tween<double>(begin: 0.5, end: 0.0)
-        .animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeOut));
+    _pulseOpacity = Tween<double>(
+      begin: 0.5,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeOut));
 
     _badgeController.forward().then((_) => _checkController.forward());
   }
@@ -78,7 +104,11 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                       borderRadius: BorderRadius.circular(10),
                       color: AppColors.fieldBackground,
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: AppColors.textPrimary,
+                      size: 16,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -87,7 +117,11 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                 const Center(
                   child: Text(
                     'Password Changed!',
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -95,7 +129,11 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                   child: Text(
                     'Your password has been changed\nsuccessfully.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
                   ),
                 ),
                 const Spacer(),

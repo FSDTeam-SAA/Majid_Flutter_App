@@ -11,19 +11,19 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _firstNameCtrl = TextEditingController(text: 'Sarah');
-  final _lastNameCtrl  = TextEditingController(text: 'Jenkins');
-  final _emailCtrl     = TextEditingController(text: 'Sarah.J@Imoscan.App');
-  final _phoneCtrl     = TextEditingController();
-  final _whatsappCtrl  = TextEditingController();
-  final _shopNameCtrl  = TextEditingController();
-  final _addressCtrl   = TextEditingController();
+  final _lastNameCtrl = TextEditingController(text: 'Jenkins');
+  final _emailCtrl = TextEditingController(text: 'Sarah.J@Imoscan.App');
+  final _phoneCtrl = TextEditingController();
+  final _whatsappCtrl = TextEditingController();
+  final _shopNameCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
 
   final _currentPassCtrl = TextEditingController();
-  final _newPassCtrl     = TextEditingController();
+  final _newPassCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
 
   bool _hideCurrentPass = true;
-  bool _hideNewPass     = true;
+  bool _hideNewPass = true;
   bool _hideConfirmPass = true;
 
   @override
@@ -46,14 +46,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D1F2D), Color(0xFF060E0B)],
-            stops: [0.0, 0.6],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -95,14 +88,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: AppColors.textPrimary,
+                size: 16,
+              ),
             ),
           ),
           const Expanded(
             child: Text(
               'Edit Profile',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 40),
@@ -117,14 +118,30 @@ class _EditProfilePageState extends State<EditProfilePage> {
       children: [
         Row(
           children: [
-            Expanded(child: _AppField(controller: _firstNameCtrl, hint: 'First Name')),
+            Expanded(
+              child: _AppField(controller: _firstNameCtrl, hint: 'First Name'),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _AppField(controller: _lastNameCtrl, hint: 'Last Name')),
+            Expanded(
+              child: _AppField(controller: _lastNameCtrl, hint: 'Last Name'),
+            ),
           ],
         ),
-        _AppField(controller: _emailCtrl, hint: 'Email', keyboardType: TextInputType.emailAddress),
-        _AppField(controller: _phoneCtrl, hint: 'Phone Number', keyboardType: TextInputType.phone),
-        _AppField(controller: _whatsappCtrl, hint: 'Whatsapp Number', keyboardType: TextInputType.phone),
+        _AppField(
+          controller: _emailCtrl,
+          hint: 'Email',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        _AppField(
+          controller: _phoneCtrl,
+          hint: 'Phone Number',
+          keyboardType: TextInputType.phone,
+        ),
+        _AppField(
+          controller: _whatsappCtrl,
+          hint: 'Whatsapp Number',
+          keyboardType: TextInputType.phone,
+        ),
         _AppField(controller: _shopNameCtrl, hint: 'Shop Name'),
         _AppField(controller: _addressCtrl, hint: 'Shop Address'),
       ],
@@ -141,9 +158,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
           hint: 'Current Password',
           obscure: _hideCurrentPass,
           suffix: IconButton(
-            icon: Icon(_hideCurrentPass ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: AppColors.textSecondary, size: 20),
-            onPressed: () => setState(() => _hideCurrentPass = !_hideCurrentPass),
+            icon: Icon(
+              _hideCurrentPass
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+            onPressed: () =>
+                setState(() => _hideCurrentPass = !_hideCurrentPass),
           ),
         ),
         _AppField(
@@ -151,8 +174,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
           hint: 'New Password',
           obscure: _hideNewPass,
           suffix: IconButton(
-            icon: Icon(_hideNewPass ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: AppColors.textSecondary, size: 20),
+            icon: Icon(
+              _hideNewPass
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
             onPressed: () => setState(() => _hideNewPass = !_hideNewPass),
           ),
         ),
@@ -161,9 +189,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
           hint: 'Confirm New Password',
           obscure: _hideConfirmPass,
           suffix: IconButton(
-            icon: Icon(_hideConfirmPass ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: AppColors.textSecondary, size: 20),
-            onPressed: () => setState(() => _hideConfirmPass = !_hideConfirmPass),
+            icon: Icon(
+              _hideConfirmPass
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+            onPressed: () =>
+                setState(() => _hideConfirmPass = !_hideConfirmPass),
           ),
         ),
       ],
@@ -174,11 +208,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile changes saved.')),
+          );
+          Navigator.maybePop(context);
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         child: const Text(
@@ -195,7 +236,11 @@ class _SectionCard extends StatelessWidget {
   final String? subtitle;
   final List<Widget> children;
 
-  const _SectionCard({required this.title, this.subtitle, required this.children});
+  const _SectionCard({
+    required this.title,
+    this.subtitle,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -212,17 +257,29 @@ class _SectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(subtitle!, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            Text(
+              subtitle!,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
           ],
           const SizedBox(height: 16),
-          ...children.map((child) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: child,
-          )),
+          ...children.map(
+            (child) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: child,
+            ),
+          ),
         ],
       ),
     );
@@ -253,11 +310,17 @@ class _AppField extends StatelessWidget {
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
+        hintStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 15,
+        ),
         filled: true,
         fillColor: AppColors.fieldBackground,
         suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),

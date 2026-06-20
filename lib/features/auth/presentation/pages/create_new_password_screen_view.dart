@@ -27,29 +27,50 @@ class CreateNewPasswordScreenView extends StatelessWidget {
                 const SizedBox(height: 16),
                 const AuthBackButton(),
                 const SizedBox(height: 48),
-                const Text('Create New Password', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Create New Password',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 const Text(
                   'Your new password must be unique from those previously used.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
                 ),
                 const SizedBox(height: 36),
-                AppTextField(hint: 'New Password', controller: auth.newPasswordController, isPassword: true),
+                AppTextField(
+                  hint: 'New Password',
+                  controller: auth.newPasswordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 14),
-                AppTextField(hint: 'Confirm Password', controller: auth.confirmPasswordController, isPassword: true),
+                AppTextField(
+                  hint: 'Confirm Password',
+                  controller: auth.confirmPasswordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 28),
-                Obx(() => AppButton(
-                  label: 'Reset Password',
-                  isLoading: auth.isLoading.value,
-                  onPressed: () async {
-                    final success = await auth.resetPassword();
-                    if (success) {
-                      Get.to(() => const PasswordChangedScreenView());
-                    } else if (auth.errorMessage.isNotEmpty) {
-                      showErrorSnackbar(auth.errorMessage.value);
-                    }
-                  },
-                )),
+                Obx(
+                  () => AppButton(
+                    label: 'Reset Password',
+                    isLoading: auth.isLoading.value,
+                    onPressed: () async {
+                      final success = await auth.resetPassword();
+                      if (success) {
+                        Get.to(() => const PasswordChangedScreenView());
+                      } else if (auth.errorMessage.isNotEmpty) {
+                        showErrorSnackbar(auth.errorMessage.value);
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
           ),

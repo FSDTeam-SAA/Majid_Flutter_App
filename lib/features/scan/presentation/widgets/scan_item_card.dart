@@ -26,10 +26,20 @@ class ScanItemCard extends StatelessWidget {
               children: [
                 Text(
                   item.name,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(item.imei, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                Text(
+                  item.imei,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),

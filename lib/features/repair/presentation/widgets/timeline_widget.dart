@@ -15,9 +15,18 @@ class TimelineWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Timeline', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
+          const Text(
+            'Timeline',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 16),
-          ...steps.asMap().entries.map((e) => _buildStep(e.value, e.key == steps.length - 1)),
+          ...steps.asMap().entries.map(
+            (e) => _buildStep(e.value, e.key == steps.length - 1),
+          ),
         ],
       ),
     );
@@ -27,21 +36,48 @@ class TimelineWidget extends StatelessWidget {
     Widget icon;
     if (step.status == TimelineStatus.done) {
       icon = Container(
-        width: 36, height: 36,
-        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+        width: 36,
+        height: 36,
+        decoration: const BoxDecoration(
+          color: AppColors.primary,
+          shape: BoxShape.circle,
+        ),
         child: const Icon(Icons.check, color: Colors.black, size: 18),
       );
     } else if (step.status == TimelineStatus.inProgress) {
       icon = Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF4DB8FF), width: 3), color: const Color(0xFF0D1F2D)),
-        child: const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF4DB8FF)))),
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFF4DB8FF), width: 3),
+          color: const Color(0xFF0D1F2D),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: Color(0xFF4DB8FF),
+            ),
+          ),
+        ),
       );
     } else {
       icon = Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF2A3A4A)), color: const Color(0xFF0B1520)),
-        child: const Icon(Icons.access_time_rounded, color: Color(0xFF3A4A5A), size: 18),
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFF2A3A4A)),
+          color: const Color(0xFF0B1520),
+        ),
+        child: const Icon(
+          Icons.access_time_rounded,
+          color: Color(0xFF3A4A5A),
+          size: 18,
+        ),
       );
     }
 
@@ -56,7 +92,9 @@ class TimelineWidget extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: step.status == TimelineStatus.done ? AppColors.primary.withValues(alpha: 0.4) : const Color(0xFF1A2840),
+                    color: step.status == TimelineStatus.done
+                        ? AppColors.primary.withValues(alpha: 0.4)
+                        : const Color(0xFF1A2840),
                   ),
                 ),
             ],
@@ -72,13 +110,32 @@ class TimelineWidget extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(step.title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text(
+                        step.title,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 3),
-                      Text(step.subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      Text(
+                        step.subtitle,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                   if (step.status == TimelineStatus.pending)
-                    const Text('Pending', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    const Text(
+                      'Pending',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                 ],
               ),
             ),
