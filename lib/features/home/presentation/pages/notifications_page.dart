@@ -8,11 +8,41 @@ class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
 
   static const _notifications = [
-    _NotifItem(title: 'New inquiry from Sarah Jenkins', desc: '"Hello, I\'m interested in the premium bulk package. Do you offer seasonal discounts fo......"', time: 'Today', hasView: true),
-    _NotifItem(title: 'Flash Sale Campaign Active', desc: '"Your \'Summer Breeze\' campaign has reached 500+ impressions in the last hour. Conversion..."', time: 'Today', hasView: true),
-    _NotifItem(title: 'Invoice #88293 Paid', desc: 'Payment for \$1,240.00 from Global Logistics Co. has been processed and added to your balance.', time: 'Yesterday', hasView: false),
-    _NotifItem(title: 'Feedback Received', desc: 'A customer left a 5-star review on \'Ergonomic Desk Chair\': "Fast shipping and amazing quality!"', time: 'Yesterday', hasView: false),
-    _NotifItem(title: 'New inquiry from Sarah Jenkins', desc: '"Hello, I\'m interested in the premium bulk package. Do you offer seasonal discounts for long-term partners?"', time: 'Today', hasView: true),
+    _NotifItem(
+      title: 'New inquiry from Sarah Jenkins',
+      desc:
+          '"Hello, I\'m interested in the premium bulk package. Do you offer seasonal discounts fo......"',
+      time: 'Today',
+      hasView: true,
+    ),
+    _NotifItem(
+      title: 'Flash Sale Campaign Active',
+      desc:
+          '"Your \'Summer Breeze\' campaign has reached 500+ impressions in the last hour. Conversion..."',
+      time: 'Today',
+      hasView: true,
+    ),
+    _NotifItem(
+      title: 'Invoice #88293 Paid',
+      desc:
+          'Payment for \$1,240.00 from Global Logistics Co. has been processed and added to your balance.',
+      time: 'Yesterday',
+      hasView: false,
+    ),
+    _NotifItem(
+      title: 'Feedback Received',
+      desc:
+          'A customer left a 5-star review on \'Ergonomic Desk Chair\': "Fast shipping and amazing quality!"',
+      time: 'Yesterday',
+      hasView: false,
+    ),
+    _NotifItem(
+      title: 'New inquiry from Sarah Jenkins',
+      desc:
+          '"Hello, I\'m interested in the premium bulk package. Do you offer seasonal discounts for long-term partners?"',
+      time: 'Today',
+      hasView: true,
+    ),
   ];
 
   @override
@@ -24,8 +54,13 @@ class NotificationsPage extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: _notifications.length,
-              separatorBuilder: (_, _) => const Divider(color: Color(0xFF1A2840), height: 1, thickness: 1),
-              itemBuilder: (_, index) => _buildNotifItem(_notifications[index]),
+              separatorBuilder: (_, _) => const Divider(
+                color: Color(0xFF1A2840),
+                height: 1,
+                thickness: 1,
+              ),
+              itemBuilder: (context, index) =>
+                  _buildNotifItem(context, _notifications[index]),
             ),
           ),
         ],
@@ -33,7 +68,7 @@ class NotificationsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNotifItem(_NotifItem item) {
+  Widget _buildNotifItem(BuildContext context, _NotifItem item) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Row(
@@ -43,9 +78,23 @@ class NotificationsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text(item.desc, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+                Text(
+                  item.desc,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
               ],
             ),
           ),
@@ -53,20 +102,41 @@ class NotificationsPage extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(item.time, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(
+                item.time,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
               if (item.hasView) ...[
                 const SizedBox(height: 8),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(item.title)));
+                  },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary, width: 1.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                    side: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('View', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'View',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ],
@@ -82,5 +152,10 @@ class _NotifItem {
   final String desc;
   final String time;
   final bool hasView;
-  const _NotifItem({required this.title, required this.desc, required this.time, required this.hasView});
+  const _NotifItem({
+    required this.title,
+    required this.desc,
+    required this.time,
+    required this.hasView,
+  });
 }

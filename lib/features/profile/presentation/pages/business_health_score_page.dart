@@ -9,16 +9,9 @@ class BusinessHealthScorePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF060E0B),
+      backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D2030), Color(0xFF060E0B)],
-            stops: [0.0, 0.55],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -146,7 +139,11 @@ class BusinessHealthScorePage extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stack) => Container(
                 color: const Color(0xFF1E2E2A),
-                child: const Icon(Icons.person, color: AppColors.textPrimary, size: 24),
+                child: const Icon(
+                  Icons.person,
+                  color: AppColors.textPrimary,
+                  size: 24,
+                ),
               ),
             ),
           ),
@@ -177,9 +174,7 @@ class BusinessHealthScorePage extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(
-                        painter: _GaugePainter(value: 0.82),
-                      ),
+                      child: CustomPaint(painter: _GaugePainter(value: 0.82)),
                     ),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 10),
@@ -244,7 +239,11 @@ class BusinessHealthScorePage extends StatelessWidget {
               color: Color(0xFF0D2318),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.trending_up, color: AppColors.primary, size: 22),
+            child: const Icon(
+              Icons.trending_up,
+              color: AppColors.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 14),
           const Column(
@@ -261,10 +260,7 @@ class BusinessHealthScorePage extends StatelessWidget {
               SizedBox(height: 3),
               Text(
                 'vs last month',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ),
@@ -399,7 +395,9 @@ class _MetricCard extends StatelessWidget {
           Text(
             change,
             style: TextStyle(
-              color: changePositive ? AppColors.primary : const Color(0xFFE85050),
+              color: changePositive
+                  ? AppColors.primary
+                  : const Color(0xFFE85050),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -409,7 +407,10 @@ class _MetricCard extends StatelessWidget {
             height: 44,
             child: CustomPaint(
               size: const Size(double.infinity, 44),
-              painter: _TrendLinePainter(color: lineColor, positive: changePositive),
+              painter: _TrendLinePainter(
+                color: lineColor,
+                positive: changePositive,
+              ),
             ),
           ),
         ],
@@ -447,10 +448,7 @@ class _TrendLinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.30),
-            color.withValues(alpha: 0.0),
-          ],
+          colors: [color.withValues(alpha: 0.30), color.withValues(alpha: 0.0)],
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 

@@ -7,7 +7,12 @@ class InvoiceProductItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const InvoiceProductItem({super.key, required this.product, required this.isSelected, required this.onTap});
+  const InvoiceProductItem({
+    super.key,
+    required this.product,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,19 +29,28 @@ class InvoiceProductItem extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 22, height: 22,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primary : Colors.transparent,
-                border: Border.all(color: isSelected ? AppColors.primary : AppColors.textSecondary, width: 1.5),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  width: 1.5,
+                ),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: isSelected ? const Icon(Icons.check, color: Colors.black, size: 15) : null,
+              child: isSelected
+                  ? const Icon(Icons.check, color: Colors.black, size: 15)
+                  : null,
             ),
             const SizedBox(width: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                width: 52, height: 52,
+                width: 52,
+                height: 52,
                 color: product.color.withValues(alpha: 0.3),
                 child: Icon(Icons.smartphone, color: product.color, size: 28),
               ),
@@ -46,15 +60,32 @@ class InvoiceProductItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(product.code, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text(
+                    product.code,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
             Text(
               '£${product.price.toStringAsFixed(2)}',
-              style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

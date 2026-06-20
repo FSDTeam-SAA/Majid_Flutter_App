@@ -28,44 +28,101 @@ class SignupScreenView extends StatelessWidget {
                 const AuthBackButton(),
                 const SizedBox(height: 36),
                 RichText(
-                  text: const TextSpan(children: [
-                    TextSpan(text: 'Create Your ', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
-                    TextSpan(text: 'Imo', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
-                    TextSpan(text: 'scan', style: TextStyle(color: AppColors.primary, fontSize: 26, fontWeight: FontWeight.bold)),
-                    TextSpan(text: '\nAccount', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
-                  ]),
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Create Your ',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Imo',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'scan',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '\nAccount',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 32),
-                AppTextField(hint: 'First Name', controller: auth.firstNameController),
+                AppTextField(
+                  hint: 'First Name',
+                  controller: auth.firstNameController,
+                ),
                 const SizedBox(height: 14),
-                AppTextField(hint: 'Last Name', controller: auth.lastNameController),
+                AppTextField(
+                  hint: 'Last Name',
+                  controller: auth.lastNameController,
+                ),
                 const SizedBox(height: 14),
-                AppTextField(hint: 'Enter your email', controller: auth.emailController, keyboardType: TextInputType.emailAddress),
+                AppTextField(
+                  hint: 'Enter your email',
+                  controller: auth.emailController,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 14),
-                AppTextField(hint: 'Password', controller: auth.passwordController, isPassword: true),
+                AppTextField(
+                  hint: 'Password',
+                  controller: auth.passwordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 14),
-                AppTextField(hint: 'Confirm Password', controller: auth.confirmPasswordController, isPassword: true),
+                AppTextField(
+                  hint: 'Confirm Password',
+                  controller: auth.confirmPasswordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 28),
-                Obx(() => AppButton(
-                  label: 'Create Account',
-                  isLoading: auth.isLoading.value,
-                  onPressed: () async {
-                    if (auth.passwordController.text != auth.confirmPasswordController.text) {
-                      showErrorSnackbar('Passwords do not match');
-                      return;
-                    }
-                    final success = await auth.register();
-                    if (success) {
-                      showSuccessSnackbar('Account created! Please verify your email.');
-                      Get.to(() => const OtpVerificationScreenView());
-                    } else if (auth.errorMessage.isNotEmpty) {
-                      showErrorSnackbar(auth.errorMessage.value);
-                    }
-                  },
-                )),
+                Obx(
+                  () => AppButton(
+                    label: 'Create Account',
+                    isLoading: auth.isLoading.value,
+                    onPressed: () async {
+                      if (auth.passwordController.text !=
+                          auth.confirmPasswordController.text) {
+                        showErrorSnackbar('Passwords do not match');
+                        return;
+                      }
+                      final success = await auth.register();
+                      if (success) {
+                        showSuccessSnackbar(
+                          'Account created! Please verify your email.',
+                        );
+                        Get.to(() => const OtpVerificationScreenView());
+                      } else if (auth.errorMessage.isNotEmpty) {
+                        showErrorSnackbar(auth.errorMessage.value);
+                      }
+                    },
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Center(
-                  child: AuthLink(text: 'Already have an account? ', linkText: 'Log in now', onTap: () => Get.back()),
+                  child: AuthLink(
+                    text: 'Already have an account? ',
+                    linkText: 'Log in now',
+                    onTap: () => Get.back(),
+                  ),
                 ),
                 const SizedBox(height: 24),
               ],

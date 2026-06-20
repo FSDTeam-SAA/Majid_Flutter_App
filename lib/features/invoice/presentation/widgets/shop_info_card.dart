@@ -14,7 +14,8 @@ class ShopInfoCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              width: 60, height: 60,
+              width: 60,
+              height: 60,
               color: const Color(0xFFD4A853),
               child: const Icon(Icons.store, color: Colors.white, size: 30),
             ),
@@ -23,7 +24,14 @@ class ShopInfoCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Mobile kit Distribution', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
+              const Text(
+                'Mobile kit Distribution',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 4),
               _info(Icons.email_outlined, 'shopkeeper2@gmail.com'),
               _info(Icons.phone_outlined, '07777787771'),
@@ -42,7 +50,13 @@ class ShopInfoCard extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.textSecondary, size: 13),
           const SizedBox(width: 5),
-          Text(text, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );

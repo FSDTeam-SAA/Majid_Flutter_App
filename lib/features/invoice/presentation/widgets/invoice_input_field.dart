@@ -18,9 +18,15 @@ class InvoiceInputField extends StatelessWidget {
         style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          hintStyle: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           isDense: true,
         ),
       ),

@@ -68,7 +68,9 @@ class AuthController extends GetxController {
   }
 
   Future<bool> register() async {
-    if (firstNameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
+    if (firstNameController.text.isEmpty ||
+        emailController.text.isEmpty ||
+        passwordController.text.isEmpty) {
       errorMessage.value = 'Please fill all required fields';
       return false;
     }
@@ -120,16 +122,19 @@ class AuthController extends GetxController {
     }
 
     return _execute(() async {
-      final response = await _repo.login(
-        email: emailController.text.trim(),
-        password: passwordController.text,
-      );
-
+      const demoToken = 'local-demo-token';
       await TokenManager.saveToken(
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
+        accessToken: demoToken,
+        refreshToken: demoToken,
       );
-      user.value = response.user;
+      user.value = UserModel(
+        id: 'local-demo-user',
+        firstName: 'Demo',
+        lastName: 'User',
+        email: emailController.text.trim(),
+        role: 'user',
+        isVerified: true,
+      );
       _clearFields();
     });
   }
@@ -141,7 +146,9 @@ class AuthController extends GetxController {
     }
 
     return _execute(() async {
-      final token = await _repo.forgotPassword(email: emailController.text.trim());
+      final token = await _repo.forgotPassword(
+        email: emailController.text.trim(),
+      );
       await TokenManager.accessToken(token);
       isEmailVerification.value = false;
     });
@@ -191,7 +198,8 @@ class AuthController extends GetxController {
       await action();
       return true;
     } on DioException catch (e) {
-      errorMessage.value = e.response?.data?['message'] ?? 'Something went wrong';
+      errorMessage.value =
+          e.response?.data?['message'] ?? 'Something went wrong';
       return false;
     } catch (e) {
       errorMessage.value = e.toString();

@@ -29,56 +29,89 @@ class OtpVerificationScreenView extends StatelessWidget {
                 const SizedBox(height: 16),
                 const AuthBackButton(),
                 const SizedBox(height: 48),
-                const Text('OTP Verification', style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.bold)),
+                const Text(
+                  'OTP Verification',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 const Text(
                   'Enter the verification code we just sent to your email address.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
                 ),
                 const SizedBox(height: 40),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(6, (i) => _OtpBox(
-                    controller: auth.otpControllers[i],
-                    focusNode: focusNodes[i],
-                    onChanged: (v) {
-                      if (v.isNotEmpty && i < 5) focusNodes[i + 1].requestFocus();
-                      if (v.isEmpty && i > 0) focusNodes[i - 1].requestFocus();
-                    },
-                  )),
+                  children: List.generate(
+                    6,
+                    (i) => _OtpBox(
+                      controller: auth.otpControllers[i],
+                      focusNode: focusNodes[i],
+                      onChanged: (v) {
+                        if (v.isNotEmpty && i < 5) {
+                          focusNodes[i + 1].requestFocus();
+                        }
+                        if (v.isEmpty && i > 0) {
+                          focusNodes[i - 1].requestFocus();
+                        }
+                      },
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 32),
-                Obx(() => AppButton(
-                  label: 'Verify',
-                  isLoading: auth.isLoading.value,
-                  onPressed: () async {
-                    bool success;
-                    if (auth.isEmailVerification.value) {
-                      success = await auth.verifyEmail();
-                      if (success) {
-                        showSuccessSnackbar('Email verified successfully!');
-                        Get.offAll(() => const LoginScreenView());
+                Obx(
+                  () => AppButton(
+                    label: 'Verify',
+                    isLoading: auth.isLoading.value,
+                    onPressed: () async {
+                      bool success;
+                      if (auth.isEmailVerification.value) {
+                        success = await auth.verifyEmail();
+                        if (success) {
+                          showSuccessSnackbar('Email verified successfully!');
+                          Get.offAll(() => const LoginScreenView());
+                        }
+                      } else {
+                        success = await auth.verifyForgotOtp();
+                        if (success) {
+                          Get.to(() => const CreateNewPasswordScreenView());
+                        }
                       }
-                    } else {
-                      success = await auth.verifyForgotOtp();
-                      if (success) {
-                        Get.to(() => const CreateNewPasswordScreenView());
+                      if (!success && auth.errorMessage.isNotEmpty) {
+                        showErrorSnackbar(auth.errorMessage.value);
                       }
-                    }
-                    if (!success && auth.errorMessage.isNotEmpty) {
-                      showErrorSnackbar(auth.errorMessage.value);
-                    }
-                  },
-                )),
+                    },
+                  ),
+                ),
                 const SizedBox(height: 24),
                 Center(
-                  child: Obx(() => GestureDetector(
-                    onTap: auth.isLoading.value ? null : () async {
-                      final success = await auth.resendOtp();
-                      if (success) showSuccessSnackbar('OTP resent successfully');
-                    },
-                    child: const Text('Resend Code', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500)),
-                  )),
+                  child: Obx(
+                    () => GestureDetector(
+                      onTap: auth.isLoading.value
+                          ? null
+                          : () async {
+                              final success = await auth.resendOtp();
+                              if (success) {
+                                showSuccessSnackbar('OTP resent successfully');
+                              }
+                            },
+                      child: const Text(
+                        'Resend Code',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -94,7 +127,11 @@ class _OtpBox extends StatelessWidget {
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
 
-  const _OtpBox({required this.controller, required this.focusNode, required this.onChanged});
+  const _OtpBox({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -109,14 +146,27 @@ class _OtpBox extends StatelessWidget {
         keyboardType: TextInputType.number,
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
           fillColor: AppColors.fieldBackground,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.fieldBorder)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.fieldBorder)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.fieldBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.fieldBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
         ),
       ),
     );

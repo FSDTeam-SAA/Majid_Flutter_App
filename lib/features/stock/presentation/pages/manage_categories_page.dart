@@ -11,12 +11,36 @@ class ManageCategoriesPage extends StatefulWidget {
 
 class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   final List<_ManagedCategory> _categories = [
-    _ManagedCategory(name: 'Phones', icon: Icons.smartphone, colorHex: 0xFFD4A853),
-    _ManagedCategory(name: 'Tablets', icon: Icons.tablet_mac, colorHex: 0xFF9B8EC4),
-    _ManagedCategory(name: 'Laptops', icon: Icons.laptop_mac, colorHex: 0xFF5B8DEF),
-    _ManagedCategory(name: 'Gaming', icon: Icons.sports_esports_outlined, colorHex: 0xFFE0E0E0),
-    _ManagedCategory(name: 'Accessories', icon: Icons.headphones, colorHex: 0xFF4DB8FF),
-    _ManagedCategory(name: 'Repairing', icon: Icons.build_outlined, colorHex: 0xFF888888),
+    _ManagedCategory(
+      name: 'Phones',
+      icon: Icons.smartphone,
+      colorHex: 0xFFD4A853,
+    ),
+    _ManagedCategory(
+      name: 'Tablets',
+      icon: Icons.tablet_mac,
+      colorHex: 0xFF9B8EC4,
+    ),
+    _ManagedCategory(
+      name: 'Laptops',
+      icon: Icons.laptop_mac,
+      colorHex: 0xFF5B8DEF,
+    ),
+    _ManagedCategory(
+      name: 'Gaming',
+      icon: Icons.sports_esports_outlined,
+      colorHex: 0xFFE0E0E0,
+    ),
+    _ManagedCategory(
+      name: 'Accessories',
+      icon: Icons.headphones,
+      colorHex: 0xFF4DB8FF,
+    ),
+    _ManagedCategory(
+      name: 'Repairing',
+      icon: Icons.build_outlined,
+      colorHex: 0xFF888888,
+    ),
   ];
 
   @override
@@ -24,14 +48,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D1F2D), Color(0xFF060E0B)],
-            stops: [0.0, 0.6],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +58,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
                 child: Text(
                   '${_categories.length} Categories Available',
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Expanded(
@@ -54,7 +75,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     childAspectRatio: 0.82,
                   ),
                   itemCount: _categories.length,
-                  itemBuilder: (context, i) => _buildCategoryCard(_categories[i], i),
+                  itemBuilder: (context, i) =>
+                      _buildCategoryCard(_categories[i], i),
                 ),
               ),
             ],
@@ -79,14 +101,22 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: AppColors.textPrimary,
+                size: 16,
+              ),
             ),
           ),
           const Expanded(
             child: Text(
               'Manage Categories',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Container(
@@ -97,7 +127,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.fieldBorder),
             ),
-            child: const Icon(Icons.menu, color: AppColors.textPrimary, size: 18),
+            child: const Icon(
+              Icons.menu,
+              color: AppColors.textPrimary,
+              size: 18,
+            ),
           ),
         ],
       ),
@@ -116,7 +150,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: Container(
                 width: double.infinity,
                 color: Color(cat.colorHex).withValues(alpha: 0.12),
@@ -131,13 +167,18 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 Expanded(
                   child: Text(
                     cat.name,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 _buildIconBtn(
                   icon: Icons.edit_outlined,
                   color: Colors.white,
-                  onTap: () => showAddCategorySheet(context, existingName: cat.name),
+                  onTap: () =>
+                      showAddCategorySheet(context, existingName: cat.name),
                 ),
                 const SizedBox(width: 6),
                 _buildIconBtn(
@@ -153,13 +194,20 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     );
   }
 
-  Widget _buildIconBtn({required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildIconBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 34,
         height: 34,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.08)),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
         child: Icon(icon, color: color, size: 17),
       ),
     );
@@ -171,19 +219,28 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF111A24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Category', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Delete Category',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Are you sure you want to delete "${_categories[index].name}"?',
           style: const TextStyle(color: Color(0xFF7A8A85)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.white))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+          ),
           TextButton(
             onPressed: () {
               setState(() => _categories.removeAt(index));
               Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFFF4444))),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Color(0xFFFF4444)),
+            ),
           ),
         ],
       ),
@@ -195,5 +252,9 @@ class _ManagedCategory {
   final String name;
   final IconData icon;
   final int colorHex;
-  const _ManagedCategory({required this.name, required this.icon, required this.colorHex});
+  const _ManagedCategory({
+    required this.name,
+    required this.icon,
+    required this.colorHex,
+  });
 }

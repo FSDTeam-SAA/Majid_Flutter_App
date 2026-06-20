@@ -9,12 +9,42 @@ class StockPage extends StatelessWidget {
   const StockPage({super.key});
 
   static const _categories = [
-    CategoryEntity(name: 'Phones',      itemCount: 128, icon: Icons.smartphone,             bgColor: Color(0xFF0D1E2E)),
-    CategoryEntity(name: 'Tablets',     itemCount: 84,  icon: Icons.tablet_mac,              bgColor: Color(0xFF0D1A2A)),
-    CategoryEntity(name: 'Laptops',     itemCount: 96,  icon: Icons.laptop_mac,              bgColor: Color(0xFF0E1C1A)),
-    CategoryEntity(name: 'Gaming',      itemCount: 67,  icon: Icons.sports_esports_outlined, bgColor: Color(0xFF1A1020)),
-    CategoryEntity(name: 'Accessories', itemCount: 210, icon: Icons.headphones,              bgColor: Color(0xFF0F1A1A)),
-    CategoryEntity(name: 'Repairing',   itemCount: 59,  icon: Icons.build_outlined,          bgColor: Color(0xFF141414)),
+    CategoryEntity(
+      name: 'Phones',
+      itemCount: 128,
+      icon: Icons.smartphone,
+      bgColor: Color(0xFF0D1E2E),
+    ),
+    CategoryEntity(
+      name: 'Tablets',
+      itemCount: 84,
+      icon: Icons.tablet_mac,
+      bgColor: Color(0xFF0D1A2A),
+    ),
+    CategoryEntity(
+      name: 'Laptops',
+      itemCount: 96,
+      icon: Icons.laptop_mac,
+      bgColor: Color(0xFF0E1C1A),
+    ),
+    CategoryEntity(
+      name: 'Gaming',
+      itemCount: 67,
+      icon: Icons.sports_esports_outlined,
+      bgColor: Color(0xFF1A1020),
+    ),
+    CategoryEntity(
+      name: 'Accessories',
+      itemCount: 210,
+      icon: Icons.headphones,
+      bgColor: Color(0xFF0F1A1A),
+    ),
+    CategoryEntity(
+      name: 'Repairing',
+      itemCount: 59,
+      icon: Icons.build_outlined,
+      bgColor: Color(0xFF141414),
+    ),
   ];
 
   @override
@@ -97,17 +127,28 @@ class StockPage extends StatelessWidget {
                           height: 40,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF2A3A2A), width: 1.5),
+                            border: Border.all(
+                              color: const Color(0xFF2A3A2A),
+                              width: 1.5,
+                            ),
                             color: const Color(0xFF111A14),
                           ),
-                          child: const Icon(Icons.close, color: AppColors.primary, size: 20),
+                          child: const Icon(
+                            Icons.close,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
                     const Text(
                       'Category',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildMenuOption(context, 'Add New Category', () {
@@ -117,7 +158,12 @@ class StockPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     _buildMenuOption(context, 'Manage Categories', () {
                       Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageCategoriesPage()));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ManageCategoriesPage(),
+                        ),
+                      );
                     }),
                   ],
                 ),
@@ -129,7 +175,11 @@ class StockPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuOption(BuildContext context, String label, VoidCallback onTap) {
+  Widget _buildMenuOption(
+    BuildContext context,
+    String label,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -142,8 +192,19 @@ class StockPage extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
-            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
           ],
         ),
       ),

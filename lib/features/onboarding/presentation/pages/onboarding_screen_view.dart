@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/colors.dart';
+import '../../../auth/presentation/pages/login_screen_view.dart';
 import 'ai_home_preview_screen.dart';
 
 class OnboardingScreenView extends StatefulWidget {
@@ -16,17 +18,20 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
     _OnboardingData(
       image: 'assets/images/Rectangle 13.png',
       title: 'Scan Any Device Instantly',
-      subtitle: 'Scan IMEI or barcode using your camera and get instant device details.',
+      subtitle:
+          'Scan IMEI or barcode using your camera and get instant device details.',
     ),
     _OnboardingData(
       image: 'assets/images/Rectangle 13 (1).png',
       title: 'AI-Powered Device Insights',
-      subtitle: 'Get smart analysis, risk detection, and detailed reports before you buy or sell.',
+      subtitle:
+          'Get smart analysis, risk detection, and detailed reports before you buy or sell.',
     ),
     _OnboardingData(
       image: 'assets/images/Rectangle 13 (2).png',
       title: 'Buy & Sell with Confidence',
-      subtitle: 'Avoid scams, verify devices, manage inventory, and generate invoices easily.',
+      subtitle:
+          'Avoid scams, verify devices, manage inventory, and generate invoices easily.',
     ),
   ];
 
@@ -44,6 +49,13 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
     }
   }
 
+  void _openLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreenView()),
+    );
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -56,7 +68,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
     final isLast = _currentPage == _pages.length - 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F14),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           // Image section — not swipeable
@@ -140,7 +152,40 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                       ),
                       child: Text(
                         isLast ? 'Get Started' : 'Next',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: _openLogin,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Already have an account? ',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.35),
+                                fontSize: 12,
+                              ),
+                            ),
+                            const TextSpan(
+                              text: 'Login',
+                              style: TextStyle(
+                                color: Color(0xFF8EFC7C),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

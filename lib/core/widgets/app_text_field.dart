@@ -36,17 +36,29 @@ class _AppTextFieldState extends State<AppTextField> {
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         hintText: widget.hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        hintStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 14,
+        ),
         filled: true,
         fillColor: AppColors.fieldBackground,
         prefixIcon: widget.prefixIcon,
         suffixIcon: widget.isPassword
             ? IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppColors.textSecondary, size: 20),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               )
             : null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
           borderSide: const BorderSide(color: AppColors.primary),
