@@ -8,16 +8,46 @@ class RepairStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _buildCard(Icons.build_rounded, const Color(0xFF1A2A6C), const Color(0xFF5B8DEF), '27', 'In Progress')),
+        Expanded(
+          child: _buildCard(
+            Icons.build_rounded,
+            const Color(0xFF1A2A6C),
+            const Color(0xFF5B8DEF),
+            '27',
+            'In Progress',
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildCard(Icons.check_circle_outline_rounded, const Color(0xFF0D2A1A), AppColors.primary, '10', 'Completed')),
+        Expanded(
+          child: _buildCard(
+            Icons.check_circle_outline_rounded,
+            const Color(0xFF0D2A1A),
+            AppColors.primary,
+            '10',
+            'Completed',
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildCard(Icons.bar_chart_rounded, const Color(0xFF0D2A1A), AppColors.primary, '£14,650', 'Total Sales')),
+        Expanded(
+          child: _buildCard(
+            Icons.bar_chart_rounded,
+            const Color(0xFF0D2A1A),
+            AppColors.primary,
+            '£14,650',
+            'Total Sales',
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildCard(IconData icon, Color iconBg, Color iconColor, String value, String label) {
+  Widget _buildCard(
+    IconData icon,
+    Color iconBg,
+    Color iconColor,
+    String value,
+    String label,
+  ) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -31,13 +61,29 @@ class RepairStatsRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(icon, color: iconColor, size: 22),
           ),
           const SizedBox(height: 12),
-          Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );

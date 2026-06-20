@@ -24,9 +24,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
           AppHeader(
             title: 'Check Out',
             trailing: Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: AppColors.cardBackground, shape: BoxShape.circle, border: Border.all(color: AppColors.fieldBorder)),
-              child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 20),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.fieldBorder),
+              ),
+              child: const Icon(
+                Icons.notifications_outlined,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
             ),
           ),
           Expanded(
@@ -38,9 +47,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   const SizedBox(height: 14),
                   _buildOrdersDropdown(),
                   const SizedBox(height: 20),
-                  const Text('Products', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Products',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  ...checkoutProducts.map((p) => CheckoutProductItem(product: p)),
+                  ...checkoutProducts.map(
+                    (p) => CheckoutProductItem(product: p),
+                  ),
                   const SizedBox(height: 24),
                   _buildSummary(),
                   const SizedBox(height: 20),
@@ -50,7 +68,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-            child: AppButton(label: 'Send Invoice', onPressed: () {}),
+            child: AppButton(
+              label: 'Send Invoice',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Repair invoice sent successfully.'),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -75,26 +102,60 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Orders Ready for Collection', style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Orders Ready for Collection',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     SizedBox(height: 3),
-                    Text('8 orders are ready.', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    Text(
+                      '8 orders are ready.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
-                Icon(_ordersExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+                Icon(
+                  _ordersExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: AppColors.textSecondary,
+                ),
               ],
             ),
             if (_ordersExpanded) ...[
               const Divider(color: Color(0xFF1A2840), height: 20),
-              ...List.generate(3, (i) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Order #00${i + 1}', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                    const Text('Ready', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
-                  ],
+              ...List.generate(
+                3,
+                (i) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Order #00${i + 1}',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Text(
+                        'Ready',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ],
           ],
         ),
@@ -112,8 +173,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Total Cost', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
-            Text('£2,000.00', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+            Text(
+              'Total Cost',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '£2,000.00',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ],
@@ -129,8 +204,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-              Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ),

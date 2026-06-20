@@ -22,7 +22,14 @@ class ReceiptPage extends StatelessWidget {
                   const SizedBox(height: 30),
                   _buildVerifiedIcon(),
                   const SizedBox(height: 16),
-                  const Text('Receipt Verified', style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Receipt Verified',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildDetails(),
                   const SizedBox(height: 20),
@@ -34,7 +41,16 @@ class ReceiptPage extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-            child: AppOutlinedButton(label: 'Get PDF Receipt', onPressed: () {}),
+            child: AppOutlinedButton(
+              label: 'Get PDF Receipt',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('PDF receipt export is coming soon.'),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -43,13 +59,21 @@ class ReceiptPage extends StatelessWidget {
 
   Widget _buildVerifiedIcon() {
     return Container(
-      width: 70, height: 70,
+      width: 70,
+      height: 70,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.primary.withValues(alpha: 0.15),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+          width: 2,
+        ),
       ),
-      child: const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 42),
+      child: const Icon(
+        Icons.check_circle_rounded,
+        color: AppColors.primary,
+        size: 42,
+      ),
     );
   }
 
@@ -68,25 +92,38 @@ class ReceiptPage extends StatelessWidget {
         final isLast = e.key == rows.length - 1;
         return Column(
           children: [
-            if (isFirst) const Divider(color: Color(0xFF1E2E2A), height: 1, thickness: 1),
+            if (isFirst)
+              const Divider(color: Color(0xFF1E2E2A), height: 1, thickness: 1),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(e.value.$1, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  Text(
+                    e.value.$1,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
                   Text(
                     e.value.$2,
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 14,
-                      fontWeight: e.value.$1 == 'Shop Name' || e.value.$1 == 'Price' ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight:
+                          e.value.$1 == 'Shop Name' || e.value.$1 == 'Price'
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                     ),
                   ),
                 ],
               ),
             ),
-            if (!isLast) const DashedDivider() else const Divider(color: Color(0xFF1E2E2A), height: 1, thickness: 1),
+            if (!isLast)
+              const DashedDivider()
+            else
+              const Divider(color: Color(0xFF1E2E2A), height: 1, thickness: 1),
           ],
         );
       }).toList(),
@@ -99,7 +136,11 @@ class ReceiptPage extends StatelessWidget {
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.asset('assets/images/qrcode.jpg', width: double.infinity, fit: BoxFit.contain),
+        child: Image.asset(
+          'assets/images/qrcode.jpg',
+          width: double.infinity,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }

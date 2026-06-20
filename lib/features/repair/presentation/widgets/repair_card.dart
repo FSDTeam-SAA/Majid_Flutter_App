@@ -28,9 +28,22 @@ class RepairCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(item.brand, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    item.brand,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
               StatusBadge(label: item.status),
@@ -48,9 +61,22 @@ class RepairCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.issueLabel, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
+                Text(
+                  item.issueLabel,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(item.issueDesc, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13.5)),
+                Text(
+                  item.issueDesc,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5,
+                  ),
+                ),
               ],
             ),
           ),
@@ -60,9 +86,19 @@ class RepairCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary, size: 14),
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    color: AppColors.textSecondary,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
-                  Text(item.date, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    item.date,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
               OutlinedButton(
@@ -70,12 +106,20 @@ class RepairCard extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary, width: 1.2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('View Report', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'View Report',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),

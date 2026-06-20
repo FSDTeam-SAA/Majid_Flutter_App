@@ -6,12 +6,7 @@ class AppHeader extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onBack;
 
-  const AppHeader({
-    super.key,
-    required this.title,
-    this.trailing,
-    this.onBack,
-  });
+  const AppHeader({super.key, required this.title, this.trailing, this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -29,14 +24,22 @@ class AppHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: AppColors.textPrimary,
+                size: 16,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           trailing ?? const SizedBox(width: 40),

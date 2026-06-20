@@ -24,8 +24,20 @@ class ProfileMenuItem extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Expanded(child: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15))),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
             ],
           ),
         ),

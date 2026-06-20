@@ -1,50 +1,80 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../../../app_ground_view.dart';
+import '../../../../core/network/api_service/token_meneger.dart';
+import '../../../../core/utils/colors.dart';
+import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
 import '../../../auth/presentation/pages/signup_screen_view.dart';
 
-class AiHomePreviewScreen extends StatelessWidget {
+class AiHomePreviewScreen extends StatefulWidget {
   const AiHomePreviewScreen({super.key});
 
   @override
+  State<AiHomePreviewScreen> createState() => _AiHomePreviewScreenState();
+}
+
+class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
+  final AuthController _auth = Get.find<AuthController>();
+  bool _hasStoredLogin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLoginState();
+  }
+
+  Future<void> _loadLoginState() async {
+    final isLoggedIn = await TokenManager.isLoggedIn();
+    if (!mounted) return;
+    setState(() => _hasStoredLogin = isLoggedIn);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B1612),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                _buildHeader(),
-                const SizedBox(height: 24),
-                _buildHeroSection(),
-                const SizedBox(height: 16),
-                _buildSearchBar(),
-                const SizedBox(height: 10),
-                _buildCarrierChip(),
-                const SizedBox(height: 14),
-                _buildScanNowButton(),
-                const SizedBox(height: 20),
-                _buildIconRow(),
-                const SizedBox(height: 24),
-                _buildLiveDevicePreview(),
-                const SizedBox(height: 24),
-                _buildAiInsightsSection(),
-                const SizedBox(height: 24),
-                _buildBuiltForBusiness(),
-                const SizedBox(height: 24),
-                _buildCtaSection(context),
-                const SizedBox(height: 32),
-              ],
+    return Obx(() {
+      final isLoggedIn = _hasStoredLogin || _auth.user.value != null;
+
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppColors.pageGradient),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildHeader(),
+                    const SizedBox(height: 24),
+                    _buildHeroSection(),
+                    const SizedBox(height: 16),
+                    _buildSearchBar(),
+                    const SizedBox(height: 10),
+                    _buildCarrierChip(),
+                    const SizedBox(height: 14),
+                    _buildScanNowButton(),
+                    const SizedBox(height: 20),
+                    _buildIconRow(),
+                    const SizedBox(height: 24),
+                    _buildLiveDevicePreview(),
+                    const SizedBox(height: 24),
+                    _buildAiInsightsSection(),
+                    const SizedBox(height: 24),
+                    _buildBuiltForBusiness(),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
-    );
+        bottomNavigationBar: isLoggedIn ? null : _buildFixedCtaSection(context),
+      );
+    });
   }
 
   Widget _buildHeader() {
@@ -52,36 +82,52 @@ class AiHomePreviewScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'imoscan',
-              style: TextStyle(
-                color: Color(0xFF8EFC7C),
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
-              ),
+            Image.asset(
+              'assets/images/imoscan_logo.png',
+              width: 132,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 10),
             Container(
-              width: 18,
-              height: 18,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A73E8),
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF35A7FF), Color(0xFF126DDE)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1A73E8).withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.check, color: Colors.white, size: 12),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ],
         ),
         Container(
-          width: 38,
-          height: 38,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: const Color(0xFF111D1A),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(Icons.notifications_outlined, color: Colors.white70, size: 20),
+          child: const Icon(
+            Icons.notifications_outlined,
+            color: Colors.white70,
+            size: 26,
+          ),
         ),
       ],
     );
@@ -124,12 +170,19 @@ class AiHomePreviewScreen extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 14),
-          Icon(Icons.search, color: Colors.white.withValues(alpha: 0.4), size: 20),
+          Icon(
+            Icons.search,
+            color: Colors.white.withValues(alpha: 0.4),
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'Enter IMEI / Serial Number',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 14,
+              ),
             ),
           ),
           Container(
@@ -140,7 +193,11 @@ class AiHomePreviewScreen extends StatelessWidget {
               color: const Color(0xFF8EFC7C),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.qr_code_scanner, color: Colors.black, size: 20),
+            child: const Icon(
+              Icons.qr_code_scanner,
+              color: Colors.black,
+              size: 20,
+            ),
           ),
         ],
       ),
@@ -163,19 +220,43 @@ class AiHomePreviewScreen extends StatelessWidget {
               color: const Color(0xFF8EFC7C),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Text('FREE', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'FREE',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('iPhone Carrier Check', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                Text('8 verification types available', style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11)),
+                const Text(
+                  'iPhone Carrier Check',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '8 verification types available',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
-          Icon(Icons.keyboard_arrow_down, color: Colors.white.withValues(alpha: 0.5), size: 20),
+          Icon(
+            Icons.keyboard_arrow_down,
+            color: Colors.white.withValues(alpha: 0.5),
+            size: 20,
+          ),
         ],
       ),
     );
@@ -186,16 +267,24 @@ class AiHomePreviewScreen extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: null,
+        onPressed: () => Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AppGroundView(initialIndex: 2),
+          ),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF8EFC7C),
-          disabledBackgroundColor: const Color(0xFF8EFC7C),
           shape: const StadiumBorder(),
           elevation: 0,
         ),
         child: const Text(
           'Scan Now',
-          style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -213,7 +302,9 @@ class AiHomePreviewScreen extends StatelessWidget {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: icons.map((item) => _IconChip(assetPath: item.$1, label: item.$2)).toList(),
+      children: icons
+          .map((item) => _IconChip(assetPath: item.$1, label: item.$2))
+          .toList(),
     );
   }
 
@@ -221,7 +312,14 @@ class AiHomePreviewScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Live Device Preview', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+        const Text(
+          'Live Device Preview',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(14),
@@ -241,37 +339,85 @@ class AiHomePreviewScreen extends StatelessWidget {
                       color: const Color(0xFF192820),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.smartphone, color: Color(0xFF8EFC7C), size: 30),
+                    child: const Icon(
+                      Icons.smartphone,
+                      color: Color(0xFF8EFC7C),
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('iPhone 15 Pro Max', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'iPhone 15 Pro Max',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text('256GB · Natural Titanium', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                        Text(
+                          '256GB · Natural Titanium',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF8EFC7C), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFF8EFC7C),
+                        width: 1,
+                      ),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Verified', style: TextStyle(color: Color(0xFF8EFC7C), fontSize: 11, fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'Verified',
+                      style: TextStyle(
+                        color: Color(0xFF8EFC7C),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(child: _StatChip(label: 'AI Trust Score', value: '94/100', valueColor: Colors.white)),
+                  Expanded(
+                    child: _StatChip(
+                      label: 'AI Trust Score',
+                      value: '94/100',
+                      valueColor: Colors.white,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _StatChip(label: 'Warranty', value: 'Active', valueColor: Colors.white)),
+                  Expanded(
+                    child: _StatChip(
+                      label: 'Warranty',
+                      value: 'Active',
+                      valueColor: Colors.white,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _StatChip(label: 'Blacklist', value: 'Clean', valueColor: const Color(0xFF8EFC7C))),
+                  Expanded(
+                    child: _StatChip(
+                      label: 'Blacklist',
+                      value: 'Clean',
+                      valueColor: const Color(0xFF8EFC7C),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -285,7 +431,14 @@ class AiHomePreviewScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('AI Insights', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+        const Text(
+          'AI Insights',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
@@ -305,8 +458,23 @@ class AiHomePreviewScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('94', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text('Trust\nScore', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 8, height: 1.2)),
+                        Text(
+                          '94',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Trust\nScore',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 8,
+                            height: 1.2,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -316,11 +484,24 @@ class AiHomePreviewScreen extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: const [
-                    _ProgressBar(label: 'Device Health', value: 0.85, displayValue: '85%'),
+                    _ProgressBar(
+                      label: 'Device Health',
+                      value: 0.85,
+                      displayValue: '85%',
+                    ),
                     SizedBox(height: 10),
-                    _ProgressBar(label: 'Fraud Risk', value: 0.06, displayValue: '6%', barColor: Color(0xFF8EFC7C)),
+                    _ProgressBar(
+                      label: 'Fraud Risk',
+                      value: 0.06,
+                      displayValue: '6%',
+                      barColor: Color(0xFF8EFC7C),
+                    ),
                     SizedBox(height: 10),
-                    _ProgressBar(label: 'Resale Pred.', value: 0.92, displayValue: '92%'),
+                    _ProgressBar(
+                      label: 'Resale Pred.',
+                      value: 0.92,
+                      displayValue: '92%',
+                    ),
                   ],
                 ),
               ),
@@ -340,7 +521,13 @@ class AiHomePreviewScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Text('Risk Meter', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                    Text(
+                      'Risk Meter',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: 70,
@@ -348,7 +535,14 @@ class AiHomePreviewScreen extends StatelessWidget {
                       child: CustomPaint(painter: _GaugePainter(0.1)),
                     ),
                     const SizedBox(height: 4),
-                    const Text('Low', style: TextStyle(color: Color(0xFF8EFC7C), fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Low',
+                      style: TextStyle(
+                        color: Color(0xFF8EFC7C),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -364,7 +558,13 @@ class AiHomePreviewScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Text('Fraud Detection', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                    Text(
+                      'Fraud Detection',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: 70,
@@ -372,12 +572,22 @@ class AiHomePreviewScreen extends StatelessWidget {
                       child: CustomPaint(
                         painter: _DonutPainter(0.06),
                         child: const Center(
-                          child: Text('6%', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            '6%',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text('Very Safe', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    const Text(
+                      'Very Safe',
+                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
                   ],
                 ),
               ),
@@ -390,16 +600,51 @@ class AiHomePreviewScreen extends StatelessWidget {
 
   Widget _buildBuiltForBusiness() {
     final cards = [
-      _BizCard(asset: 'assets/built/inventorydark.png', title: 'Inventory', subtitle: 'Track stock in real time', gradient: const LinearGradient(colors: [Color(0xFF0D2A1A), Color(0xFF143520)])),
-      _BizCard(asset: 'assets/built/repairdark.png', title: 'Repair Track', subtitle: 'Smart job pipeline', gradient: const LinearGradient(colors: [Color(0xFF2A1A00), Color(0xFF3D2800)])),
-      _BizCard(asset: 'assets/built/invoicedark.png', title: 'Invoice & CRM', subtitle: 'Send pro invoices', gradient: const LinearGradient(colors: [Color(0xFF0A1A2A), Color(0xFF0F2236)])),
-      _BizCard(asset: 'assets/built/aireportdark.png', title: 'AI Reports', subtitle: 'Deep device insights', gradient: const LinearGradient(colors: [Color(0xFF1A0A2A), Color(0xFF260F3A)])),
+      _BizCard(
+        asset: 'assets/built/inventorydark.png',
+        title: 'Inventory',
+        subtitle: 'Track stock in real time',
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D2A1A), Color(0xFF143520)],
+        ),
+      ),
+      _BizCard(
+        asset: 'assets/built/repairdark.png',
+        title: 'Repair Track',
+        subtitle: 'Smart job pipeline',
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2A1A00), Color(0xFF3D2800)],
+        ),
+      ),
+      _BizCard(
+        asset: 'assets/built/invoicedark.png',
+        title: 'Invoice & CRM',
+        subtitle: 'Send pro invoices',
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0A1A2A), Color(0xFF0F2236)],
+        ),
+      ),
+      _BizCard(
+        asset: 'assets/built/aireportdark.png',
+        title: 'AI Reports',
+        subtitle: 'Deep device insights',
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A0A2A), Color(0xFF260F3A)],
+        ),
+      ),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Built for Business', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+        const Text(
+          'Built for Business',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 12),
         GridView.count(
           shrinkWrap: true,
@@ -414,64 +659,98 @@ class AiHomePreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCtaSection(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1D1A),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF1E3028), width: 1),
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'Ready to scan smarter?',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+  Widget _buildFixedCtaSection(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.background.withValues(alpha: 0),
+              AppColors.background.withValues(alpha: 0.96),
+              AppColors.background,
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Join 50,000+ businesses using imoscan AI',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1D1A),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF1E3028), width: 1),
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreenView()),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Ready to scan smarter?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8EFC7C),
-                foregroundColor: Colors.black,
-                shape: const StadiumBorder(),
-                elevation: 0,
+              const SizedBox(height: 4),
+              Text(
+                'Join 50,000+ businesses using imoscan AI',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 10,
+                ),
               ),
-              child: const Text('Login', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreenView()),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8EFC7C),
+                    foregroundColor: Colors.black,
+                    shape: const StadiumBorder(),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Login',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SignupScreenView()),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(
+                      color: Color(0xFF8EFC7C),
+                      width: 1.5,
+                    ),
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text(
+                    'Create Free Account',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: OutlinedButton(
-              onPressed: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const SignupScreenView()),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Color(0xFF8EFC7C), width: 1.5),
-                shape: const StadiumBorder(),
-              ),
-              child: const Text('Create Free Account', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -491,7 +770,10 @@ class _IconChip extends StatelessWidget {
       children: [
         Image.asset(assetPath, width: 44, height: 44, fit: BoxFit.contain),
         const SizedBox(height: 5),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white60, fontSize: 10),
+        ),
       ],
     );
   }
@@ -502,21 +784,36 @@ class _StatChip extends StatelessWidget {
   final String value;
   final Color valueColor;
 
-  const _StatChip({required this.label, required this.value, required this.valueColor});
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B1612),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 9), textAlign: TextAlign.center),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white38, fontSize: 9),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 3),
-          Text(value, style: TextStyle(color: valueColor, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -544,8 +841,14 @@ class _ProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-            Text(displayValue, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+            Text(
+              displayValue,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -569,7 +872,12 @@ class _BizCard {
   final String subtitle;
   final LinearGradient gradient;
 
-  const _BizCard({required this.asset, required this.title, required this.subtitle, required this.gradient});
+  const _BizCard({
+    required this.asset,
+    required this.title,
+    required this.subtitle,
+    required this.gradient,
+  });
 }
 
 class _BizCardWidget extends StatelessWidget {
@@ -592,8 +900,21 @@ class _BizCardWidget extends StatelessWidget {
         children: [
           Image.asset(card.asset, width: 28, height: 28, fit: BoxFit.contain),
           const SizedBox(height: 6),
-          Text(card.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-          Text(card.subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
+          Text(
+            card.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            card.subtitle,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 10,
+            ),
+          ),
         ],
       ),
     );

@@ -30,7 +30,13 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildInfoCard(),
                   const SizedBox(height: 14),
-                  AppOutlinedButton(label: 'Make a Receipt', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReceiptPage()))),
+                  AppOutlinedButton(
+                    label: 'Make a Receipt',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ReceiptPage()),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   const TimelineWidget(steps: repairTimeline),
                   const SizedBox(height: 20),
@@ -59,13 +65,29 @@ class RepairRequestDetailsPage extends StatelessWidget {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InfoField(label: 'DEVICE INFORMATION', value: 'iPhone 14 Pro'),
+                  InfoField(
+                    label: 'DEVICE INFORMATION',
+                    value: 'iPhone 14 Pro',
+                  ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(border: Border.all(color: AppColors.primary), borderRadius: BorderRadius.circular(20)),
-                child: const Text('In Progress', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.primary),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'In Progress',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -73,8 +95,18 @@ class RepairRequestDetailsPage extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(color: const Color(0xFF0B1520), borderRadius: BorderRadius.circular(8)),
-            child: const Text('BROKEN SCREEN, PLUS BACK NEEDS TO CHANGE...', style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B1520),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'BROKEN SCREEN, PLUS BACK NEEDS TO CHANGE...',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -103,30 +135,80 @@ class RepairRequestDetailsPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Actions', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: _actionBtn('Order Assigned', const Color(0xFF8B1A1A), const Color(0xFFFF6B6B))),
-            const SizedBox(width: 10),
-            Expanded(child: _actionBtn('Diagnosing Device', const Color(0xFF0D2A1A), AppColors.primary)),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _actionBtn('Repairing Device', const Color(0xFF2A1A00), const Color(0xFFFFA500))),
-            const SizedBox(width: 10),
-            Expanded(child: _actionBtn('Waiting for Parts', const Color(0xFF0D1A2E), const Color(0xFF4DB8FF))),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _actionBtn('Completed', const Color(0xFF0D2A1A), AppColors.primary)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutPage())),
-                child: _actionBtn('Check Out', const Color(0xFF0D2A1A), AppColors.primary),
-              ),
+          const Text(
+            'Actions',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
             ),
-          ]),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _actionBtn(
+                  'Order Assigned',
+                  const Color(0xFF8B1A1A),
+                  const Color(0xFFFF6B6B),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _actionBtn(
+                  'Diagnosing Device',
+                  const Color(0xFF0D2A1A),
+                  AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _actionBtn(
+                  'Repairing Device',
+                  const Color(0xFF2A1A00),
+                  const Color(0xFFFFA500),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _actionBtn(
+                  'Waiting for Parts',
+                  const Color(0xFF0D1A2E),
+                  const Color(0xFF4DB8FF),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _actionBtn(
+                  'Completed',
+                  const Color(0xFF0D2A1A),
+                  AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CheckoutPage()),
+                  ),
+                  child: _actionBtn(
+                    'Check Out',
+                    const Color(0xFF0D2A1A),
+                    AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -135,8 +217,20 @@ class RepairRequestDetailsPage extends StatelessWidget {
   Widget _actionBtn(String label, Color bg, Color textColor) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 13),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(50)),
-      child: Center(child: Text(label, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600))),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 

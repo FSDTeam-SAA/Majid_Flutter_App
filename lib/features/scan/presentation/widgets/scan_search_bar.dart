@@ -22,10 +22,16 @@ class ScanSearchBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+              ),
               decoration: const InputDecoration(
                 hintText: 'Enter IMEI / Serial Number',
-                hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                ),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 16),
@@ -36,8 +42,15 @@ class ScanSearchBar extends StatelessWidget {
             margin: const EdgeInsets.all(6),
             width: 42,
             height: 42,
-            decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-            child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.black, size: 22),
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.qr_code_scanner_rounded,
+              color: Colors.black,
+              size: 22,
+            ),
           ),
         ],
       ),

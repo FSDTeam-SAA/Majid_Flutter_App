@@ -14,12 +14,20 @@ class TopProductsList extends StatelessWidget {
           children: [
             const Text(
               'Top Selling Products',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const Spacer(),
             Text(
               'View All',
-              style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -35,15 +43,26 @@ class TopProductsList extends StatelessWidget {
                   width: 20,
                   child: Text(
                     '${i + 1}',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: BoxDecoration(color: AppColors.fieldBackground, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.phone_iphone, color: AppColors.textSecondary, size: 22),
+                  decoration: BoxDecoration(
+                    color: AppColors.fieldBackground,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.phone_iphone,
+                    color: AppColors.textSecondary,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -52,7 +71,11 @@ class TopProductsList extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       ClipRRect(
@@ -60,7 +83,9 @@ class TopProductsList extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: progress,
                           backgroundColor: AppColors.fieldBackground,
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
                           minHeight: 5,
                         ),
                       ),
@@ -73,9 +98,19 @@ class TopProductsList extends StatelessWidget {
                   children: [
                     Text(
                       '$sold',
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const Text('Sold', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                    const Text(
+                      'Sold',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
               ],

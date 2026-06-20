@@ -27,30 +27,54 @@ class LoginScreenView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 64),
-                const Text('Welcome Back to', style: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Welcome Back to',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const ImoscanTitle(),
                 const SizedBox(height: 40),
-                AppTextField(hint: 'Enter your email', controller: auth.emailController, keyboardType: TextInputType.emailAddress),
+                AppTextField(
+                  hint: 'Enter your email',
+                  controller: auth.emailController,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 16),
-                AppTextField(hint: 'Enter your password', controller: auth.passwordController, isPassword: true),
+                AppTextField(
+                  hint: 'Enter your password',
+                  controller: auth.passwordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 24),
-                Obx(() => AppButton(
-                  label: 'Sign In',
-                  isLoading: auth.isLoading.value,
-                  onPressed: () async {
-                    final success = await auth.login();
-                    if (success) {
-                      Get.offAll(() => const AppGroundView());
-                    } else if (auth.errorMessage.isNotEmpty) {
-                      showErrorSnackbar(auth.errorMessage.value);
-                    }
-                  },
-                )),
+                Obx(
+                  () => AppButton(
+                    label: 'Sign In',
+                    isLoading: auth.isLoading.value,
+                    onPressed: () async {
+                      final success = await auth.login();
+                      if (success) {
+                        Get.offAll(() => const AppGroundView());
+                      } else if (auth.errorMessage.isNotEmpty) {
+                        showErrorSnackbar(auth.errorMessage.value);
+                      }
+                    },
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Center(
                   child: GestureDetector(
                     onTap: () => Get.to(() => const ForgotPasswordScreenView()),
-                    child: const Text('Forgot Password?', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500)),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 48),

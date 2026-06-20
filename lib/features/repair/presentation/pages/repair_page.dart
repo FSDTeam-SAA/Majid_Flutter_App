@@ -34,14 +34,30 @@ class _RepairPageState extends State<RepairPage> {
                   const SizedBox(height: 16),
                   const RepairStatsRow(),
                   const SizedBox(height: 20),
-                  AppButton(label: 'Create Repair Request', onPressed: () {}),
+                  AppButton(
+                    label: 'Create Repair Request',
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Repair request form is coming soon.'),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 24),
                   _buildSectionHeader(),
                   const SizedBox(height: 14),
-                  ...sampleRepairs.map((item) => RepairCard(
-                    item: item,
-                    onViewReport: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RepairRequestDetailsPage())),
-                  )),
+                  ...sampleRepairs.map(
+                    (item) => RepairCard(
+                      item: item,
+                      onViewReport: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RepairRequestDetailsPage(),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _buildPagination(),
                   const SizedBox(height: 20),
@@ -58,8 +74,18 @@ class _RepairPageState extends State<RepairPage> {
     return const Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Repair Requests', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
-        Text('10 Records', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        Text(
+          'Repair Requests',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          '10 Records',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
       ],
     );
   }
@@ -70,23 +96,64 @@ class _RepairPageState extends State<RepairPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: () { if (_currentPage > 1) setState(() => _currentPage--); },
-          child: Row(children: [
-            Icon(Icons.chevron_left, color: _currentPage > 1 ? AppColors.textPrimary : AppColors.textSecondary, size: 18),
-            Text('PREVIOUS', style: TextStyle(color: _currentPage > 1 ? AppColors.textPrimary : AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
-          ]),
+          onTap: () {
+            if (_currentPage > 1) setState(() => _currentPage--);
+          },
+          child: Row(
+            children: [
+              Icon(
+                Icons.chevron_left,
+                color: _currentPage > 1
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                size: 18,
+              ),
+              Text(
+                'PREVIOUS',
+                style: TextStyle(
+                  color: _currentPage > 1
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: 12),
         ...[1, 2, 3].map(_buildPageNumber),
-        const Text('  ...  ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        const Text(
+          '  ...  ',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
         _buildPageNumber(totalPages),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: () { if (_currentPage < totalPages) setState(() => _currentPage++); },
-          child: Row(children: [
-            Text('NEXT', style: TextStyle(color: _currentPage < totalPages ? AppColors.textPrimary : AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
-            Icon(Icons.chevron_right, color: _currentPage < totalPages ? AppColors.textPrimary : AppColors.textSecondary, size: 18),
-          ]),
+          onTap: () {
+            if (_currentPage < totalPages) setState(() => _currentPage++);
+          },
+          child: Row(
+            children: [
+              Text(
+                'NEXT',
+                style: TextStyle(
+                  color: _currentPage < totalPages
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: _currentPage < totalPages
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                size: 18,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -98,10 +165,21 @@ class _RepairPageState extends State<RepairPage> {
       onTap: () => setState(() => _currentPage = page),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 3),
-        width: 32, height: 32,
-        decoration: BoxDecoration(color: isActive ? AppColors.primary : Colors.transparent, shape: BoxShape.circle),
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary : Colors.transparent,
+          shape: BoxShape.circle,
+        ),
         child: Center(
-          child: Text('$page', style: TextStyle(color: isActive ? Colors.black : AppColors.textSecondary, fontSize: 13, fontWeight: isActive ? FontWeight.bold : FontWeight.w400)),
+          child: Text(
+            '$page',
+            style: TextStyle(
+              color: isActive ? Colors.black : AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w400,
+            ),
+          ),
         ),
       ),
     );

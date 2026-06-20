@@ -32,18 +32,38 @@ class CheckoutProductItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(
+                  product.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(product.code, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                Text(
+                  product.code,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(color: const Color(0xFF0D2A1A), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D2A1A),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Text(
               '£${product.price.toStringAsFixed(2)}',
-              style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

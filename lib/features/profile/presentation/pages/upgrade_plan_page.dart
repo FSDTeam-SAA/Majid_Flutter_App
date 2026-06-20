@@ -10,14 +10,7 @@ class UpgradePlanPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D1F2D), Color(0xFF060E0B)],
-            stops: [0.0, 0.6],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -58,14 +51,22 @@ class UpgradePlanPage extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: AppColors.textPrimary,
+                size: 16,
+              ),
             ),
           ),
           const Expanded(
             child: Text(
               'Pricing Plan',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 40),
@@ -120,12 +121,22 @@ class _PlanCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
-                        style: const TextStyle(
-                            color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -133,12 +144,22 @@ class _PlanCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(price,
-                      style: const TextStyle(
-                          color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold)),
+                  Text(
+                    price,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   if (priceUnit.isNotEmpty)
-                    Text(priceUnit,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    Text(
+                      priceUnit,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -171,7 +192,10 @@ class _PlanCard extends StatelessWidget {
               child: Text(
                 badge!,
                 style: const TextStyle(
-                    color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -217,8 +241,10 @@ class _FeatureItem extends StatelessWidget {
         const Icon(Icons.check, color: Color(0xFF4DD9AC), size: 16),
         const SizedBox(width: 6),
         Flexible(
-          child: Text(label,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          ),
         ),
       ],
     );
@@ -236,29 +262,53 @@ class _ActionBtn extends StatelessWidget {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: () {},
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$label selected. Payment setup is coming soon.'),
+              ),
+            );
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
         ),
       );
     }
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$label selected. Payment setup is coming soon.'),
+            ),
+          );
+        },
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
           padding: const EdgeInsets.symmetric(vertical: 14),
         ),
-        child: Text(label,
-            style: const TextStyle(
-                color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
@@ -271,14 +321,21 @@ class _IconBox extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
 
-  const _IconBox({required this.bgColor, required this.icon, required this.iconColor});
+  const _IconBox({
+    required this.bgColor,
+    required this.icon,
+    required this.iconColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 52,
       height: 52,
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Icon(icon, color: iconColor, size: 28),
     );
   }
@@ -292,7 +349,11 @@ class _StarterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _PlanCard(
-      icon: _IconBox(bgColor: Color(0xFF0E1E35), icon: Icons.rocket_launch_outlined, iconColor: Color(0xFF5B8DEF)),
+      icon: _IconBox(
+        bgColor: Color(0xFF0E1E35),
+        icon: Icons.rocket_launch_outlined,
+        iconColor: Color(0xFF5B8DEF),
+      ),
       name: 'Starter',
       subtitle: 'Basic free plan for beginners',
       price: '\$0',
@@ -308,12 +369,21 @@ class _PayAsYouGoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _PlanCard(
-      icon: _IconBox(bgColor: Color(0xFF0E2318), icon: Icons.bolt, iconColor: AppColors.primary),
+      icon: _IconBox(
+        bgColor: Color(0xFF0E2318),
+        icon: Icons.bolt,
+        iconColor: AppColors.primary,
+      ),
       name: 'Pay As You Go',
       subtitle: 'Flexible usage based pricing',
       price: '\$3-\$30',
       priceUnit: '',
-      features: ['AI Risk Analysis', 'Market Value', 'Full Report', 'Auto Invoicing'],
+      features: [
+        'AI Risk Analysis',
+        'Market Value',
+        'Full Report',
+        'Auto Invoicing',
+      ],
       buttonLabel: 'Top Up & Start',
     );
   }
@@ -326,7 +396,11 @@ class _DiamondCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _PlanCard(
       badge: '10% Off',
-      icon: _IconBox(bgColor: Color(0xFF2A1800), icon: Icons.diamond_outlined, iconColor: Color(0xFFE8920A)),
+      icon: _IconBox(
+        bgColor: Color(0xFF2A1800),
+        icon: Icons.diamond_outlined,
+        iconColor: Color(0xFFE8920A),
+      ),
       name: 'Diamond Plan',
       subtitle: 'Best for growing businesses',
       price: '\$100',
@@ -343,7 +417,11 @@ class _EnterpriseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _PlanCard(
-      icon: _IconBox(bgColor: Color(0xFF1A0F2E), icon: Icons.business_outlined, iconColor: Color(0xFF9B6EE8)),
+      icon: _IconBox(
+        bgColor: Color(0xFF1A0F2E),
+        icon: Icons.business_outlined,
+        iconColor: Color(0xFF9B6EE8),
+      ),
       name: 'Enterprise',
       subtitle: 'Custom solution for large companies',
       price: 'Custom',

@@ -16,7 +16,11 @@ class AuthBackButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           color: AppColors.fieldBackground,
         ),
-        child: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 16),
+        child: const Icon(
+          Icons.arrow_back_ios_new,
+          color: AppColors.textPrimary,
+          size: 16,
+        ),
       ),
     );
   }
@@ -32,11 +36,19 @@ class ImoscanTitle extends StatelessWidget {
         children: [
           TextSpan(
             text: 'Imo',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           TextSpan(
             text: 'scan',
-            style: TextStyle(color: AppColors.primary, fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -49,7 +61,12 @@ class AuthLink extends StatelessWidget {
   final String linkText;
   final VoidCallback onTap;
 
-  const AuthLink({super.key, required this.text, required this.linkText, required this.onTap});
+  const AuthLink({
+    super.key,
+    required this.text,
+    required this.linkText,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -60,11 +77,18 @@ class AuthLink extends StatelessWidget {
           children: [
             TextSpan(
               text: text,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
             ),
             TextSpan(
               text: linkText,
-              style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),

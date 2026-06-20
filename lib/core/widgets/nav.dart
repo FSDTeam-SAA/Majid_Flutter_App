@@ -11,11 +11,11 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   int _selectedIndex = 1; // Stock is selected by default
 
   final List<IconData> _icons = [
-    Icons.grid_view_rounded,     // Dashboard
-    Icons.inventory_2_rounded,   // Stock
+    Icons.grid_view_rounded, // Dashboard
+    Icons.inventory_2_rounded, // Stock
     Icons.qr_code_scanner_rounded, // Scan
-    Icons.build_rounded,         // Repair
-    Icons.description_rounded,   // Invoice
+    Icons.build_rounded, // Repair
+    Icons.description_rounded, // Invoice
   ];
 
   final List<String> _labels = [

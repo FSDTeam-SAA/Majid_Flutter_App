@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import 'app_ground_view.dart';
+import 'core/network/api_service/token_meneger.dart';
+import 'core/utils/colors.dart';
 import 'features/auth/presentation/controller/auth_controller.dart';
 import 'features/onboarding/presentation/pages/onboarding_screen_view.dart';
 
@@ -9,7 +12,10 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Get.put(AuthController());
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light),
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
   );
   runApp(const MyApp());
 }
@@ -23,10 +29,27 @@ class MyApp extends StatelessWidget {
       title: 'iMoScan',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFF0B0F14),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF39FF14), brightness: Brightness.dark),
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF39FF14),
+          brightness: Brightness.dark,
+        ),
       ),
-      home: const OnboardingScreenView(),
+      home: FutureBuilder<bool>(
+        future: TokenManager.isLoggedIn(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Scaffold(
+              backgroundColor: AppColors.background,
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          return snapshot.data == true
+              ? const AppGroundView()
+              : const OnboardingScreenView();
+        },
+      ),
     );
   }
 }
