@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/route_manager.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../profile/presentation/pages/profile_page_view.dart';
 import 'notifications_page.dart';
+import '../controller/home_controller.dart';
 import '../controller/home_data.dart';
 import '../widgets/ai_insights_card.dart';
 import '../widgets/quick_actions.dart';
@@ -22,42 +23,62 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedPeriod = 2;
+  late final HomeController homeCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    homeCtrl = Get.find<HomeController>();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              _buildHeader(),
-              const SizedBox(height: 20),
-              _buildPeriodTabs(),
-              const SizedBox(height: 16),
-              const StatsGrid(),
-              const SizedBox(height: 20),
-              QuickActions(
-                onAddRepair: () => widget.onOpenTab?.call(3),
-                onCreateInvoice: () => widget.onOpenTab?.call(4),
-                onAddItem: () => widget.onOpenTab?.call(1),
+        child: Obx(() {
+          if (homeCtrl.isLoading.value) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+          return RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: AppColors.cardBackground,
+            onRefresh: homeCtrl.fetchAllData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildPeriodTabs(),
+                  const SizedBox(height: 16),
+                  const StatsGrid(),
+                  const SizedBox(height: 20),
+                  QuickActions(
+                    onAddRepair: () => widget.onOpenTab?.call(3),
+                    onCreateInvoice: () => widget.onOpenTab?.call(4),
+                    onAddItem: () => widget.onOpenTab?.call(1),
+                  ),
+                  const SizedBox(height: 20),
+                  const SalesTrendChart(
+                    thisMonth: thisMonthData,
+                    lastMonth: lastMonthData,
+                  ),
+                  const SizedBox(height: 20),
+                  const TopProductsList(),
+                  const SizedBox(height: 20),
+                  const AiInsightsCard(),
+                  const SizedBox(height: 100),
+                ],
               ),
-              const SizedBox(height: 20),
-              const SalesTrendChart(
-                thisMonth: thisMonthData,
-                lastMonth: lastMonthData,
-              ),
-              const SizedBox(height: 20),
-              const TopProductsList(products: topProducts),
-              const SizedBox(height: 20),
-              const AiInsightsCard(),
-              const SizedBox(height: 100),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -103,18 +124,30 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(width: 10),
         GestureDetector(
           onTap: () => Get.to(() => const ProfilePageView()),
-          child: CircleAvatar(
-            radius: 19,
-            backgroundColor: AppColors.cardBackground,
-            child: ClipOval(
-              child: Image.network(
-                'https://i.pravatar.cc/100',
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    const Icon(Icons.person, color: AppColors.textPrimary),
+          child: Obx(() {
+            final imageUrl = homeCtrl.userImage.value;
+            return CircleAvatar(
+              radius: 19,
+              backgroundColor: AppColors.cardBackground,
+              child: ClipOval(
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        width: 38,
+                        height: 38,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.person,
+                          color: AppColors.textPrimary,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: AppColors.textPrimary,
+                      ),
               ),
-            ),
-          ),
+            );
+          }),
         ),
       ],
     );

@@ -6,11 +6,17 @@ import 'app_ground_view.dart';
 import 'core/network/api_service/token_meneger.dart';
 import 'core/utils/colors.dart';
 import 'features/auth/presentation/controller/auth_controller.dart';
+import 'features/home/presentation/controller/home_controller.dart';
 import 'features/onboarding/presentation/pages/onboarding_screen_view.dart';
+import 'features/profile/presentation/controller/profile_controller.dart';
+import 'features/stock/presentation/controller/stock_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Get.put(AuthController());
+  Get.put(HomeController());
+  Get.put(ProfileController());
+  Get.put(StockController());
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

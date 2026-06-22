@@ -6,6 +6,7 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../onboarding/presentation/pages/onboarding_screen_view.dart';
+import '../controller/profile_controller.dart';
 import '../widgets/profile_menu_item.dart';
 import 'shopkeeper_id_card_page.dart';
 import 'edit_profile_page.dart';
@@ -18,158 +19,185 @@ class ProfilePageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profileCtrl = Get.find<ProfileController>();
+
     return GradientScaffold(
       child: Column(
         children: [
           const AppHeader(title: 'Profile'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  _buildAvatar(),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Sarah Jenkins',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'sarah.j@imoscan.app',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildCreditsRow(),
-                  const SizedBox(height: 32),
-                  _buildSection('Account', [
-                    (
-                      'Shopkeeper Id Card',
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ShopkeeperIdCardPage(),
-                        ),
+            child: Obx(() {
+              if (profileCtrl.isLoading.value) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
+              }
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    _buildAvatar(profileCtrl),
+                    const SizedBox(height: 14),
+                    Obx(() => Text(
+                          profileCtrl.fullName.isNotEmpty
+                              ? profileCtrl.fullName
+                              : 'User',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )),
+                    const SizedBox(height: 4),
+                    Obx(() => Text(
+                          profileCtrl.email,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        )),
+                    const SizedBox(height: 14),
+                    _buildCreditsRow(profileCtrl, context),
+                    const SizedBox(height: 32),
+                    _buildSection('Account', [
+                      (
+                        'Shopkeeper Id Card',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ShopkeeperIdCardPage(),
+                              ),
+                            ),
                       ),
-                    ),
-                    (
-                      'Account Information',
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EditProfilePage(),
-                        ),
+                      (
+                        'Account Information',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EditProfilePage(),
+                              ),
+                            ),
                       ),
-                    ),
-                    (
-                      'Business Health Score',
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BusinessHealthScorePage(),
-                        ),
+                      (
+                        'Business Health Score',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const BusinessHealthScorePage(),
+                              ),
+                            ),
                       ),
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-                  _buildSection('Subscription', [
-                    (
-                      'Upgrade Plan',
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const UpgradePlanPage(),
-                        ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _buildSection('Subscription', [
+                      (
+                        'Upgrade Plan',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const UpgradePlanPage(),
+                              ),
+                            ),
                       ),
-                    ),
-                    (
-                      'Payment History',
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PaymentHistoryPage(),
-                        ),
+                      (
+                        'Payment History',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PaymentHistoryPage(),
+                              ),
+                            ),
                       ),
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-                  _buildSection('Support', [
-                    (
-                      'Help Center',
-                      () => _showInfo(context, 'Help Center is coming soon.'),
-                    ),
-                    (
-                      'About App',
-                      () => _showInfo(
-                        context,
-                        'iMoScan helps verify devices, manage stock, repairs, and invoices.',
+                    ]),
+                    const SizedBox(height: 24),
+                    _buildSection('Support', [
+                      (
+                        'Help Center',
+                        () =>
+                            _showInfo(context, 'Help Center is coming soon.'),
                       ),
-                    ),
-                  ]),
-                  const SizedBox(height: 32),
-                  _buildLogoutBtn(),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
+                      (
+                        'About App',
+                        () => _showInfo(
+                              context,
+                              'iMoScan helps verify devices, manage stock, repairs, and invoices.',
+                            ),
+                      ),
+                    ]),
+                    const SizedBox(height: 32),
+                    _buildLogoutBtn(),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAvatar() {
-    return Container(
-      width: 96,
-      height: 96,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.fieldBorder, width: 2),
-      ),
-      child: ClipOval(
-        child: Image.network(
-          'https://i.pravatar.cc/200',
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) =>
-              const Icon(Icons.person, color: AppColors.textPrimary, size: 50),
+  Widget _buildAvatar(ProfileController ctrl) {
+    return Obx(() {
+      final url = ctrl.imageUrl;
+      return Container(
+        width: 96,
+        height: 96,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.fieldBorder, width: 2),
         ),
-      ),
-    );
+        child: ClipOval(
+          child: url.isNotEmpty
+              ? Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const Icon(Icons.person,
+                      color: AppColors.textPrimary, size: 50),
+                )
+              : const Icon(Icons.person,
+                  color: AppColors.textPrimary, size: 50),
+        ),
+      );
+    });
   }
 
-  Widget _buildCreditsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'Your credits: 1,250',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.primary),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Text(
-            'Upgrade',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+  Widget _buildCreditsRow(ProfileController ctrl, BuildContext context) {
+    return Obx(() => Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Your credits: ${ctrl.balance.toStringAsFixed(0)}',
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 14),
             ),
-          ),
-        ),
-      ],
-    );
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UpgradePlanPage()),
+              ),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.primary),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Upgrade',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ));
   }
 
   Widget _buildSection(String title, List<(String, VoidCallback)> items) {
@@ -196,9 +224,8 @@ class ProfilePageView extends StatelessWidget {
   }
 
   void _showInfo(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildLogoutBtn() {

@@ -1,9 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../controller/stock_controller.dart';
 
-void showAddCategorySheet(BuildContext context, {String? existingName}) {
+void showAddCategorySheet(
+  BuildContext context, {
+  String? existingId,
+  String? existingName,
+  String? existingImageUrl,
+}) {
   final controller = TextEditingController(text: existingName);
-  bool hasImage = existingName != null;
+  String? pickedImagePath;
+  final isEdit = existingId != null;
 
   showDialog(
     context: context,
@@ -23,7 +34,7 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                existingName != null ? 'Edit Category' : 'Add New Category',
+                isEdit ? 'Edit Category' : 'Add New Category',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 20,
@@ -31,7 +42,6 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
                 ),
               ),
               const SizedBox(height: 18),
-              // Name field
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF0B1520),
@@ -60,9 +70,15 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
                 ),
               ),
               const SizedBox(height: 14),
-              // Image upload area
               GestureDetector(
-                onTap: () => setDialogState(() => hasImage = !hasImage),
+                onTap: () async {
+                  final picker = ImagePicker();
+                  final picked =
+                      await picker.pickImage(source: ImageSource.gallery);
+                  if (picked != null) {
+                    setDialogState(() => pickedImagePath = picked.path);
+                  }
+                },
                 child: Container(
                   width: double.infinity,
                   height: 200,
@@ -74,58 +90,10 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
                       width: 1.5,
                     ),
                   ),
-                  child: hasImage
-                      ? Center(
-                          child: const Icon(
-                            Icons.smartphone,
-                            color: Color(0xFFD4A853),
-                            size: 110,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.primary,
-                                  width: 1.5,
-                                ),
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                              ),
-                              child: const Icon(
-                                Icons.upload_rounded,
-                                color: AppColors.primary,
-                                size: 26,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Upload Category Image',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24),
-                              child: Text(
-                                'Upload a transparent PNG image for a cleaner and more professional appearance.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11.5,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  child: _buildImageContent(
+                    pickedImagePath,
+                    existingImageUrl,
+                  ),
                 ),
               ),
               const SizedBox(height: 18),
@@ -157,7 +125,41 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () async {
+                        final name = controller.text.trim();
+                        if (name.isEmpty) {
+                          showErrorSnackbar('Please enter a category name');
+                          return;
+                        }
+
+                        final stockCtrl = Get.find<StockController>();
+                        bool success;
+
+                        if (isEdit) {
+                          success = await stockCtrl.updateCategory(
+                            id: existingId,
+                            name: name,
+                            imagePath: pickedImagePath,
+                          );
+                        } else {
+                          success = await stockCtrl.createCategory(
+                            name: name,
+                            imagePath: pickedImagePath,
+                          );
+                        }
+
+                        if (!context.mounted) return;
+                        if (success) {
+                          Navigator.pop(context);
+                          showSuccessSnackbar(
+                            isEdit
+                                ? 'Category updated'
+                                : 'Category created',
+                          );
+                        } else {
+                          showErrorSnackbar(stockCtrl.errorMessage.value);
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.black,
@@ -168,9 +170,7 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
                         elevation: 0,
                       ),
                       child: Text(
-                        existingName != null
-                            ? 'Save Changes'
-                            : 'Create Category',
+                        isEdit ? 'Save Changes' : 'Create Category',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -186,4 +186,75 @@ void showAddCategorySheet(BuildContext context, {String? existingName}) {
       ),
     ),
   );
+}
+
+Widget _buildImageContent(String? pickedPath, String? existingUrl) {
+  if (pickedPath != null) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.file(File(pickedPath), fit: BoxFit.cover),
+    );
+  }
+
+  if (existingUrl != null && existingUrl.isNotEmpty) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.network(
+        existingUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const _UploadPlaceholder(),
+      ),
+    );
+  }
+
+  return const _UploadPlaceholder();
+}
+
+class _UploadPlaceholder extends StatelessWidget {
+  const _UploadPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.primary, width: 1.5),
+            color: AppColors.primary.withValues(alpha: 0.1),
+          ),
+          child: const Icon(
+            Icons.upload_rounded,
+            color: AppColors.primary,
+            size: 26,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Upload Category Image',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Upload a transparent PNG image for a cleaner and more professional appearance.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11.5,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

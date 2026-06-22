@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../controller/stock_controller.dart';
 import '../widgets/category_card.dart';
 import 'add_category_sheet.dart';
 import 'manage_categories_page.dart';
@@ -8,47 +10,10 @@ import 'manage_categories_page.dart';
 class StockPage extends StatelessWidget {
   const StockPage({super.key});
 
-  static const _categories = [
-    CategoryEntity(
-      name: 'Phones',
-      itemCount: 128,
-      icon: Icons.smartphone,
-      bgColor: Color(0xFF0D1E2E),
-    ),
-    CategoryEntity(
-      name: 'Tablets',
-      itemCount: 84,
-      icon: Icons.tablet_mac,
-      bgColor: Color(0xFF0D1A2A),
-    ),
-    CategoryEntity(
-      name: 'Laptops',
-      itemCount: 96,
-      icon: Icons.laptop_mac,
-      bgColor: Color(0xFF0E1C1A),
-    ),
-    CategoryEntity(
-      name: 'Gaming',
-      itemCount: 67,
-      icon: Icons.sports_esports_outlined,
-      bgColor: Color(0xFF1A1020),
-    ),
-    CategoryEntity(
-      name: 'Accessories',
-      itemCount: 210,
-      icon: Icons.headphones,
-      bgColor: Color(0xFF0F1A1A),
-    ),
-    CategoryEntity(
-      name: 'Repairing',
-      itemCount: 59,
-      icon: Icons.build_outlined,
-      bgColor: Color(0xFF141414),
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final stockCtrl = Get.find<StockController>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -58,32 +23,65 @@ class StockPage extends StatelessWidget {
             _buildHeader(context),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Text(
-                '${_categories.length} Categories Available',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: Obx(() => Text(
+                    '${stockCtrl.categories.length} Categories Available',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )),
             ),
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.78,
-                ),
-                itemCount: _categories.length,
-                itemBuilder: (context, i) => CategoryCard(
-                  category: _categories[i],
-                  onTap: () {
-                    // Navigate to category detail
-                  },
-                ),
-              ),
+              child: Obx(() {
+                if (stockCtrl.isLoading.value) {
+                  return const Center(
+                    child:
+                        CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
+
+                if (stockCtrl.categories.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.category_outlined,
+                            color: AppColors.textSecondary, size: 48),
+                        SizedBox(height: 12),
+                        Text(
+                          'No categories yet',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.cardBackground,
+                  onRefresh: stockCtrl.fetchCategories,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.78,
+                    ),
+                    itemCount: stockCtrl.categories.length,
+                    itemBuilder: (context, i) => CategoryCard(
+                      category: stockCtrl.categories[i],
+                      onTap: () {},
+                    ),
+                  ),
+                );
+              }),
             ),
           ],
         ),
@@ -231,7 +229,8 @@ class StockPage extends StatelessWidget {
               ),
             ),
           ),
-          _CircleBtn(icon: Icons.menu, onTap: () => _showCategoryMenu(context)),
+          _CircleBtn(
+              icon: Icons.menu, onTap: () => _showCategoryMenu(context)),
         ],
       ),
     );

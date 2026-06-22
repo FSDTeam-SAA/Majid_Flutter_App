@@ -83,6 +83,10 @@ class AuthController extends GetxController {
         password: passwordController.text,
       );
 
+      await TokenManager.saveToken(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
       user.value = response.user;
       isEmailVerification.value = true;
     });
@@ -111,13 +115,18 @@ class AuthController extends GetxController {
     });
   }
 
+  final isEmailNotVerified = false.obs;
+
   Future<bool> login() async {
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
       errorMessage.value = 'Please enter email and password';
       return false;
     }
 
-    return _execute(() async {
+    isEmailNotVerified.value = false;
+    errorMessage.value = '';
+    isLoading.value = true;
+    try {
       final response = await _repo.login(
         email: emailController.text.trim(),
         password: passwordController.text,
@@ -129,7 +138,29 @@ class AuthController extends GetxController {
       );
       user.value = response.user;
       _clearFields();
-    });
+      return true;
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? 'Something went wrong';
+      errorMessage.value = message;
+
+      if (message.toString().toLowerCase().contains('verify your email')) {
+        isEmailNotVerified.value = true;
+        isEmailVerification.value = true;
+        final data = e.response?.data?['data'];
+        if (data != null && data['accessToken'] != null) {
+          await TokenManager.saveToken(
+            accessToken: data['accessToken'],
+            refreshToken: data['refreshToken'] ?? '',
+          );
+        }
+      }
+      return false;
+    } catch (e) {
+      errorMessage.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future<bool> forgotPassword() async {

@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../controller/profile_controller.dart';
 
-class UpgradePlanPage extends StatelessWidget {
+class UpgradePlanPage extends StatefulWidget {
   const UpgradePlanPage({super.key});
+
+  @override
+  State<UpgradePlanPage> createState() => _UpgradePlanPageState();
+}
+
+class _UpgradePlanPageState extends State<UpgradePlanPage> {
+  late final ProfileController _profileCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileCtrl = Get.find<ProfileController>();
+    _profileCtrl.fetchSubscriptions();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,24 +32,103 @@ class UpgradePlanPage extends StatelessWidget {
             children: [
               _buildHeader(context),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-                  children: const [
-                    _StarterCard(),
-                    SizedBox(height: 12),
-                    _PayAsYouGoCard(),
-                    SizedBox(height: 20),
-                    _DiamondCard(),
-                    SizedBox(height: 12),
-                    _EnterpriseCard(),
-                  ],
-                ),
+                child: Obx(() {
+                  if (_profileCtrl.isSubscriptionsLoading.value) {
+                    return const Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary),
+                    );
+                  }
+
+                  final subs = _profileCtrl.subscriptions;
+
+                  if (subs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No plans available',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 15,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                    itemCount: subs.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, i) {
+                      final plan = subs[i];
+                      final isPopular = plan['isPopular'] == true;
+                      final discount = plan['discount'];
+                      final badge = discount != null ? '$discount% Off' : null;
+
+                      return _PlanCard(
+                        icon: _getIconForPlan(plan['type'] ?? ''),
+                        name: plan['name'] ?? '',
+                        subtitle: plan['description'] ?? '',
+                        price: plan['priceLabel'] ?? '\$${plan['price'] ?? 0}',
+                        priceUnit:
+                            plan['customPricing'] == true ? '' : '/month',
+                        features: _extractFeatures(plan['features']),
+                        buttonLabel: plan['ctaText'] ?? 'Select',
+                        buttonFilled: isPopular,
+                        badge: badge,
+                      );
+                    },
+                  );
+                }),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  List<String> _extractFeatures(dynamic features) {
+    if (features is! List) return [];
+    return features
+        .where((f) => f is Map && f['included'] == true)
+        .map<String>((f) => f['name']?.toString() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList();
+  }
+
+  Widget _getIconForPlan(String type) {
+    switch (type.toUpperCase()) {
+      case 'STARTER':
+        return const _IconBox(
+          bgColor: Color(0xFF0E1E35),
+          icon: Icons.rocket_launch_outlined,
+          iconColor: Color(0xFF5B8DEF),
+        );
+      case 'PAY AS YOU GO':
+        return const _IconBox(
+          bgColor: Color(0xFF0E2318),
+          icon: Icons.bolt,
+          iconColor: AppColors.primary,
+        );
+      case 'DIAMOND':
+        return const _IconBox(
+          bgColor: Color(0xFF2A1800),
+          icon: Icons.diamond_outlined,
+          iconColor: Color(0xFFE8920A),
+        );
+      case 'ENTERPRISE':
+        return const _IconBox(
+          bgColor: Color(0xFF1A0F2E),
+          icon: Icons.business_outlined,
+          iconColor: Color(0xFF9B6EE8),
+        );
+      default:
+        return const _IconBox(
+          bgColor: Color(0xFF0E1E35),
+          icon: Icons.star_outline,
+          iconColor: Color(0xFF5B8DEF),
+        );
+    }
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -75,8 +170,6 @@ class UpgradePlanPage extends StatelessWidget {
     );
   }
 }
-
-// ── Shared widgets ────────────────────────────────────────────────────────────
 
 class _PlanCard extends StatelessWidget {
   final Widget icon;
@@ -314,8 +407,6 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-// ── Plan icon boxes ────────────────────────────────────────────────────────────
-
 class _IconBox extends StatelessWidget {
   final Color bgColor;
   final IconData icon;
@@ -337,98 +428,6 @@ class _IconBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: iconColor, size: 28),
-    );
-  }
-}
-
-// ── Individual plan cards ──────────────────────────────────────────────────────
-
-class _StarterCard extends StatelessWidget {
-  const _StarterCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlanCard(
-      icon: _IconBox(
-        bgColor: Color(0xFF0E1E35),
-        icon: Icons.rocket_launch_outlined,
-        iconColor: Color(0xFF5B8DEF),
-      ),
-      name: 'Starter',
-      subtitle: 'Basic free plan for beginners',
-      price: '\$0',
-      features: ['2 Free Checks', 'Risk Analysis'],
-      buttonLabel: 'Start Free',
-    );
-  }
-}
-
-class _PayAsYouGoCard extends StatelessWidget {
-  const _PayAsYouGoCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlanCard(
-      icon: _IconBox(
-        bgColor: Color(0xFF0E2318),
-        icon: Icons.bolt,
-        iconColor: AppColors.primary,
-      ),
-      name: 'Pay As You Go',
-      subtitle: 'Flexible usage based pricing',
-      price: '\$3-\$30',
-      priceUnit: '',
-      features: [
-        'AI Risk Analysis',
-        'Market Value',
-        'Full Report',
-        'Auto Invoicing',
-      ],
-      buttonLabel: 'Top Up & Start',
-    );
-  }
-}
-
-class _DiamondCard extends StatelessWidget {
-  const _DiamondCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlanCard(
-      badge: '10% Off',
-      icon: _IconBox(
-        bgColor: Color(0xFF2A1800),
-        icon: Icons.diamond_outlined,
-        iconColor: Color(0xFFE8920A),
-      ),
-      name: 'Diamond Plan',
-      subtitle: 'Best for growing businesses',
-      price: '\$100',
-      features: ['10% Discount', 'API Access', 'Reports', 'Auto Invoicing'],
-      buttonLabel: 'Upgrade to Diamond',
-      buttonFilled: true,
-    );
-  }
-}
-
-class _EnterpriseCard extends StatelessWidget {
-  const _EnterpriseCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlanCard(
-      icon: _IconBox(
-        bgColor: Color(0xFF1A0F2E),
-        icon: Icons.business_outlined,
-        iconColor: Color(0xFF9B6EE8),
-      ),
-      name: 'Enterprise',
-      subtitle: 'Custom solution for large companies',
-      price: 'Custom',
-      priceUnit: '',
-      features: ['Custom Pricing', 'Full API Access', 'Dedicated Support'],
-      buttonLabel: 'Contact Us',
-      buttonFilled: true,
     );
   }
 }

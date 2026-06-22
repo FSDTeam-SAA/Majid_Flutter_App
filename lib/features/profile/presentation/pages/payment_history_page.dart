@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../controller/profile_controller.dart';
 
-class PaymentHistoryPage extends StatelessWidget {
+class PaymentHistoryPage extends StatefulWidget {
   const PaymentHistoryPage({super.key});
 
-  static const _transactions = [
-    _Transaction(id: '#4B0082E0', amount: 75.50, date: '10.02.2024'),
-    _Transaction(id: '#FF5733E0', amount: 220.00, date: '05.03.2024'),
-    _Transaction(id: '#28B463E0', amount: 150.75, date: '15.04.2024'),
-    _Transaction(id: '#3498DBE0', amount: 99.99, date: '22.05.2024'),
-    _Transaction(id: '#FFC300E0', amount: 40.00, date: '30.06.2024'),
-    _Transaction(id: '#C70039E0', amount: 130.25, date: '18.07.2024'),
-    _Transaction(id: '#C70039E0', amount: 130.25, date: '18.07.2024'),
-    _Transaction(id: '#900C3FE0', amount: 60.80, date: '25.08.2024'),
-    _Transaction(id: '#581845E0', amount: 200.10, date: '12.09.2024'),
-  ];
+  @override
+  State<PaymentHistoryPage> createState() => _PaymentHistoryPageState();
+}
+
+class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
+  late final ProfileController _profileCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileCtrl = Get.find<ProfileController>();
+    _profileCtrl.fetchPayments();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +32,44 @@ class PaymentHistoryPage extends StatelessWidget {
             children: [
               _buildHeader(context),
               Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-                  itemCount: _transactions.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) =>
-                      _TransactionCard(tx: _transactions[i]),
-                ),
+                child: Obx(() {
+                  if (_profileCtrl.isPaymentsLoading.value) {
+                    return const Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary),
+                    );
+                  }
+
+                  final payments = _profileCtrl.payments;
+
+                  if (payments.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.receipt_long_outlined,
+                              color: AppColors.textSecondary, size: 48),
+                          SizedBox(height: 12),
+                          Text(
+                            'No transactions yet',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                    itemCount: payments.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, i) =>
+                        _TransactionCard(tx: payments[i]),
+                  );
+                }),
               ),
             ],
           ),
@@ -84,11 +119,21 @@ class PaymentHistoryPage extends StatelessWidget {
 }
 
 class _TransactionCard extends StatelessWidget {
-  final _Transaction tx;
+  final Map<String, dynamic> tx;
   const _TransactionCard({required this.tx});
 
   @override
   Widget build(BuildContext context) {
+    final id = tx['_id'] ?? tx['transactionId'] ?? '';
+    final shortId =
+        id.length > 8 ? '#${id.substring(id.length - 8).toUpperCase()}' : id;
+    final amount = (tx['amount'] ?? 0).toDouble();
+    final status = tx['status'] ?? '';
+    final createdAt = tx['createdAt'] ?? '';
+    final date = createdAt.length >= 10
+        ? '${createdAt.substring(8, 10)}.${createdAt.substring(5, 7)}.${createdAt.substring(0, 4)}'
+        : '';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -98,14 +143,26 @@ class _TransactionCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const _MastercardLogo(),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: Color(0xFF0D2318),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.receipt_outlined,
+              color: AppColors.primary,
+              size: 24,
+            ),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tx.id,
+                  shortId,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
@@ -113,9 +170,9 @@ class _TransactionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                const Text(
-                  'MasterCard **** 9918',
-                  style: TextStyle(
+                Text(
+                  status.isNotEmpty ? status : 'Payment',
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
                   ),
@@ -127,7 +184,7 @@ class _TransactionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${tx.amount.toStringAsFixed(2)}',
+                '\$${amount.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 16,
@@ -136,7 +193,7 @@ class _TransactionCard extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                tx.date,
+                date,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
@@ -148,60 +205,4 @@ class _TransactionCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MastercardLogo extends StatelessWidget {
-  const _MastercardLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-      child: CustomPaint(painter: _MastercardPainter()),
-    );
-  }
-}
-
-class _MastercardPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width * 0.26;
-    final offset = r * 0.55;
-
-    // Red circle (left)
-    canvas.drawCircle(
-      Offset(cx - offset, cy),
-      r,
-      Paint()..color = const Color(0xFFEB001B),
-    );
-    // Orange circle (right, slightly transparent so overlap is visible)
-    canvas.drawCircle(
-      Offset(cx + offset, cy),
-      r,
-      Paint()
-        ..color = const Color(0xFFF79E1B)
-        ..blendMode = BlendMode.srcOver,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _Transaction {
-  final String id;
-  final double amount;
-  final String date;
-  const _Transaction({
-    required this.id,
-    required this.amount,
-    required this.date,
-  });
 }
