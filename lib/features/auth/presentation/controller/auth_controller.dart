@@ -83,10 +83,6 @@ class AuthController extends GetxController {
         password: passwordController.text,
       );
 
-      await TokenManager.saveToken(
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-      );
       user.value = response.user;
       isEmailVerification.value = true;
     });
