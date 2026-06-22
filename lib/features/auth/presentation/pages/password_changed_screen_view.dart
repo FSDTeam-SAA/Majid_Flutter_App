@@ -86,7 +86,7 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
+        decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),

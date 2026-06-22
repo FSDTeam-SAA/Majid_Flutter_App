@@ -48,7 +48,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
+        decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

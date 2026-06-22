@@ -83,10 +83,6 @@ class AuthController extends GetxController {
         password: passwordController.text,
       );
 
-      await TokenManager.saveToken(
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-      );
       user.value = response.user;
       isEmailVerification.value = true;
     });
@@ -94,8 +90,8 @@ class AuthController extends GetxController {
 
   Future<bool> verifyEmail() async {
     final otp = _otpValue;
-    if (otp.length < 4) {
-      errorMessage.value = 'Please enter the complete OTP';
+    if (otp.length < otpControllers.length) {
+      errorMessage.value = 'Please enter the full 6-digit OTP';
       return false;
     }
 
@@ -122,19 +118,16 @@ class AuthController extends GetxController {
     }
 
     return _execute(() async {
-      const demoToken = 'local-demo-token';
-      await TokenManager.saveToken(
-        accessToken: demoToken,
-        refreshToken: demoToken,
-      );
-      user.value = UserModel(
-        id: 'local-demo-user',
-        firstName: 'Demo',
-        lastName: 'User',
+      final response = await _repo.login(
         email: emailController.text.trim(),
-        role: 'user',
-        isVerified: true,
+        password: passwordController.text,
       );
+
+      await TokenManager.saveToken(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+      user.value = response.user;
       _clearFields();
     });
   }
@@ -156,8 +149,8 @@ class AuthController extends GetxController {
 
   Future<bool> verifyForgotOtp() async {
     final otp = _otpValue;
-    if (otp.length < 4) {
-      errorMessage.value = 'Please enter the complete OTP';
+    if (otp.length < otpControllers.length) {
+      errorMessage.value = 'Please enter the full 6-digit OTP';
       return false;
     }
 
