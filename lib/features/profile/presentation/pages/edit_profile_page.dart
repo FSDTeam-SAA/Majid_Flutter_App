@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../controller/profile_controller.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -10,9 +13,9 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final _firstNameCtrl = TextEditingController(text: 'Sarah');
-  final _lastNameCtrl = TextEditingController(text: 'Jenkins');
-  final _emailCtrl = TextEditingController(text: 'Sarah.J@Imoscan.App');
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
   final _shopNameCtrl = TextEditingController();
@@ -25,6 +28,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _hideCurrentPass = true;
   bool _hideNewPass = true;
   bool _hideConfirmPass = true;
+
+  late final ProfileController _profileCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileCtrl = Get.find<ProfileController>();
+    _loadProfileData();
+  }
+
+  void _loadProfileData() {
+    final data = _profileCtrl.profileData;
+    _firstNameCtrl.text = data['firstName'] ?? '';
+    _lastNameCtrl.text = data['lastName'] ?? '';
+    _emailCtrl.text = data['email'] ?? '';
+    _phoneCtrl.text = data['phone'] ?? '';
+    _whatsappCtrl.text = data['whatsappNumber'] ?? '';
+    _shopNameCtrl.text = data['shopName'] ?? '';
+    _addressCtrl.text = data['shopAddress'] ?? '';
+  }
 
   @override
   void dispose() {
@@ -39,6 +62,56 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    final success = await _profileCtrl.updateProfile(
+      firstName: _firstNameCtrl.text.trim(),
+      lastName: _lastNameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      whatsappNumber: _whatsappCtrl.text.trim(),
+      shopName: _shopNameCtrl.text.trim(),
+      shopAddress: _addressCtrl.text.trim(),
+    );
+
+    if (success) {
+      showSuccessSnackbar('Profile updated successfully');
+    } else {
+      showErrorSnackbar(_profileCtrl.errorMessage.value);
+    }
+  }
+
+  Future<void> _savePassword() async {
+    if (_currentPassCtrl.text.isEmpty || _newPassCtrl.text.isEmpty) {
+      showErrorSnackbar('Please fill all password fields');
+      return;
+    }
+    if (_newPassCtrl.text != _confirmPassCtrl.text) {
+      showErrorSnackbar('New passwords do not match');
+      return;
+    }
+
+    final success = await _profileCtrl.changePassword(
+      currentPassword: _currentPassCtrl.text,
+      newPassword: _newPassCtrl.text,
+    );
+
+    if (success) {
+      showSuccessSnackbar('Password changed successfully');
+      _currentPassCtrl.clear();
+      _newPassCtrl.clear();
+      _confirmPassCtrl.clear();
+    } else {
+      showErrorSnackbar(_profileCtrl.errorMessage.value);
+    }
+  }
+
+  Future<void> _handleSave() async {
+    if (_currentPassCtrl.text.isNotEmpty) {
+      await Future.wait([_saveProfile(), _savePassword()]);
+    } else {
+      await _saveProfile();
+    }
   }
 
   @override
@@ -131,6 +204,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           controller: _emailCtrl,
           hint: 'Email',
           keyboardType: TextInputType.emailAddress,
+          enabled: false,
         ),
         _AppField(
           controller: _phoneCtrl,
@@ -205,29 +279,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildSaveBtn() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile changes saved.')),
-          );
-          Navigator.maybePop(context);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(50),
+    return Obx(() => SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _profileCtrl.isSaving.value ? null : _handleSave,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(50),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: _profileCtrl.isSaving.value
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.black,
+                    ),
+                  )
+                : const Text(
+                    'Save Changes',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: const Text(
-          'Save Changes',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
+        ));
   }
 }
 
@@ -290,6 +370,7 @@ class _AppField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final bool obscure;
+  final bool enabled;
   final TextInputType? keyboardType;
   final Widget? suffix;
 
@@ -297,6 +378,7 @@ class _AppField extends StatelessWidget {
     required this.controller,
     required this.hint,
     this.obscure = false,
+    this.enabled = true,
     this.keyboardType,
     this.suffix,
   });
@@ -307,7 +389,11 @@ class _AppField extends StatelessWidget {
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+      enabled: enabled,
+      style: TextStyle(
+        color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
+        fontSize: 15,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(
@@ -328,6 +414,10 @@ class _AppField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(50),
+          borderSide: const BorderSide(color: AppColors.fieldBorder, width: 1),
         ),
       ),
     );

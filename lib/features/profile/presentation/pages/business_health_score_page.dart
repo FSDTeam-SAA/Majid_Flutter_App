@@ -1,10 +1,33 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../controller/profile_controller.dart';
 
-class BusinessHealthScorePage extends StatelessWidget {
+class BusinessHealthScorePage extends StatefulWidget {
   const BusinessHealthScorePage({super.key});
+
+  @override
+  State<BusinessHealthScorePage> createState() =>
+      _BusinessHealthScorePageState();
+}
+
+class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
+  late final ProfileController _profileCtrl;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileCtrl = Get.find<ProfileController>();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await _profileCtrl.fetchBusinessHealthData();
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,81 +40,93 @@ class BusinessHealthScorePage extends StatelessWidget {
             children: [
               _buildHeader(context),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-                  child: Column(
-                    children: [
-                      _buildGaugeCard(),
-                      const SizedBox(height: 12),
-                      _buildImprovementCard(),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _MetricCard(
-                              icon: Icons.shopping_cart_outlined,
-                              iconBgColor: const Color(0xFF0D2318),
-                              iconColor: AppColors.primary,
-                              label: 'Sales',
-                              value: '\$34,650',
-                              change: '+12% vs last month',
-                              changePositive: true,
-                              lineColor: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _MetricCard(
-                              icon: Icons.build_outlined,
-                              iconBgColor: const Color(0xFF2A1800),
-                              iconColor: const Color(0xFFE8920A),
-                              label: 'Repairs',
-                              value: '128',
-                              change: '+8% vs last month',
-                              changePositive: true,
-                              lineColor: const Color(0xFFE8920A),
-                            ),
-                          ),
-                        ],
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                        child: Obx(() => _buildContent()),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _MetricCard(
-                              icon: Icons.inventory_2_outlined,
-                              iconBgColor: const Color(0xFF0D2318),
-                              iconColor: AppColors.primary,
-                              label: 'Inventory',
-                              value: '\$18,240',
-                              change: '+4% vs last month',
-                              changePositive: true,
-                              lineColor: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _MetricCard(
-                              icon: Icons.replay_outlined,
-                              iconBgColor: const Color(0xFF2A0808),
-                              iconColor: const Color(0xFFE85050),
-                              label: 'Returns',
-                              value: '24',
-                              change: '-10% vs last month',
-                              changePositive: false,
-                              lineColor: const Color(0xFFE85050),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    final repairs = _profileCtrl.totalRepairs.value;
+    final inventory = _profileCtrl.totalInventoryItems.value;
+
+    return Column(
+      children: [
+        _buildGaugeCard(),
+        const SizedBox(height: 12),
+        _buildImprovementCard(),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.shopping_cart_outlined,
+                iconBgColor: const Color(0xFF0D2318),
+                iconColor: AppColors.primary,
+                label: 'Sales',
+                value: 'N/A',
+                change: 'API not available',
+                changePositive: true,
+                lineColor: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.build_outlined,
+                iconBgColor: const Color(0xFF2A1800),
+                iconColor: const Color(0xFFE8920A),
+                label: 'Repairs',
+                value: '$repairs',
+                change: 'Total requests',
+                changePositive: true,
+                lineColor: const Color(0xFFE8920A),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.inventory_2_outlined,
+                iconBgColor: const Color(0xFF0D2318),
+                iconColor: AppColors.primary,
+                label: 'Inventory',
+                value: '$inventory',
+                change: 'Total items',
+                changePositive: true,
+                lineColor: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.replay_outlined,
+                iconBgColor: const Color(0xFF2A0808),
+                iconColor: const Color(0xFFE85050),
+                label: 'Returns',
+                value: 'N/A',
+                change: 'API not available',
+                changePositive: false,
+                lineColor: const Color(0xFFE85050),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -129,24 +164,30 @@ class BusinessHealthScorePage extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(shape: BoxShape.circle),
-            clipBehavior: Clip.antiAlias,
-            child: Image.network(
-              'https://i.pravatar.cc/200',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stack) => Container(
-                color: const Color(0xFF1E2E2A),
-                child: const Icon(
-                  Icons.person,
-                  color: AppColors.textPrimary,
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
+          Obx(() {
+            final url = _profileCtrl.imageUrl;
+            return Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              clipBehavior: Clip.antiAlias,
+              child: url.isNotEmpty
+                  ? Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: const Color(0xFF1E2E2A),
+                        child: const Icon(Icons.person,
+                            color: AppColors.textPrimary, size: 24),
+                      ),
+                    )
+                  : Container(
+                      color: const Color(0xFF1E2E2A),
+                      child: const Icon(Icons.person,
+                          color: AppColors.textPrimary, size: 24),
+                    ),
+            );
+          }),
         ],
       ),
     );
@@ -170,19 +211,19 @@ class BusinessHealthScorePage extends StatelessWidget {
               return SizedBox(
                 width: w,
                 height: gaugeH,
-                child: Stack(
+                child: const Stack(
                   alignment: Alignment.bottomCenter,
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(painter: _GaugePainter(value: 0.82)),
+                      child: CustomPaint(painter: _GaugePainter(value: 0.0)),
                     ),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(bottom: 10),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '82%',
+                            'N/A',
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 40,
@@ -209,9 +250,9 @@ class BusinessHealthScorePage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Strong performance this month',
+            'Dashboard API needed for full score',
             style: TextStyle(
-              color: AppColors.primary,
+              color: AppColors.textSecondary,
               fontSize: 15,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.1,
@@ -230,39 +271,34 @@ class BusinessHealthScorePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFF17293A), width: 1),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              color: Color(0xFF0D2318),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.trending_up,
-              color: AppColors.primary,
-              size: 22,
-            ),
+          _CircleIcon(
+            bgColor: Color(0xFF0D2318),
+            icon: Icons.info_outline,
+            iconColor: AppColors.primary,
           ),
-          const SizedBox(width: 14),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Health improved +6%',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Health score requires dashboard API',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'vs last month',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-            ],
+                SizedBox(height: 3),
+                Text(
+                  'Sales & profit data not yet available',
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -270,7 +306,27 @@ class BusinessHealthScorePage extends StatelessWidget {
   }
 }
 
-// ── Gauge CustomPainter ────────────────────────────────────────────────────────
+class _CircleIcon extends StatelessWidget {
+  final Color bgColor;
+  final IconData icon;
+  final Color iconColor;
+
+  const _CircleIcon({
+    required this.bgColor,
+    required this.icon,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+      child: Icon(icon, color: iconColor, size: 22),
+    );
+  }
+}
 
 class _GaugePainter extends CustomPainter {
   final double value;
@@ -286,7 +342,6 @@ class _GaugePainter extends CustomPainter {
     const startAngle = pi;
     const sweepAll = pi;
 
-    // Background track
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
@@ -299,32 +354,31 @@ class _GaugePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round,
     );
 
-    // Filled arc with gradient
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final shader = const SweepGradient(
-      startAngle: pi,
-      endAngle: 2 * pi,
-      colors: [Color(0xFF4EE86A), Color(0xFFACFF7A)],
-    ).createShader(rect);
+    if (value > 0) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      final shader = const SweepGradient(
+        startAngle: pi,
+        endAngle: 2 * pi,
+        colors: [Color(0xFF4EE86A), Color(0xFFACFF7A)],
+      ).createShader(rect);
 
-    canvas.drawArc(
-      rect,
-      startAngle,
-      sweepAll * value,
-      false,
-      Paint()
-        ..shader = shader
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeW
-        ..strokeCap = StrokeCap.round,
-    );
+      canvas.drawArc(
+        rect,
+        startAngle,
+        sweepAll * value,
+        false,
+        Paint()
+          ..shader = shader
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeW
+          ..strokeCap = StrokeCap.round,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _GaugePainter old) => old.value != value;
 }
-
-// ── Metric card ────────────────────────────────────────────────────────────────
 
 class _MetricCard extends StatelessWidget {
   final IconData icon;
@@ -395,9 +449,8 @@ class _MetricCard extends StatelessWidget {
           Text(
             change,
             style: TextStyle(
-              color: changePositive
-                  ? AppColors.primary
-                  : const Color(0xFFE85050),
+              color:
+                  changePositive ? AppColors.primary : const Color(0xFFE85050),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -419,8 +472,6 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-// ── Trend line CustomPainter ───────────────────────────────────────────────────
-
 class _TrendLinePainter extends CustomPainter {
   final Color color;
   final bool positive;
@@ -434,7 +485,6 @@ class _TrendLinePainter extends CustomPainter {
     final start = Offset(0, h * 0.88);
     final end = Offset(w, h * 0.12);
 
-    // Gradient fill below the line
     final path = Path()
       ..moveTo(start.dx, start.dy)
       ..lineTo(end.dx, end.dy)
@@ -448,11 +498,13 @@ class _TrendLinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [color.withValues(alpha: 0.30), color.withValues(alpha: 0.0)],
+          colors: [
+            color.withValues(alpha: 0.30),
+            color.withValues(alpha: 0.0),
+          ],
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 
-    // Line
     canvas.drawLine(
       start,
       end,

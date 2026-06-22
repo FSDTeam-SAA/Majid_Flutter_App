@@ -1,49 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
+import '../controller/home_controller.dart';
 
 class StatsGrid extends StatelessWidget {
   const StatsGrid({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.3,
-      children: [
-        _StatCard(
-          title: 'Total Sales',
-          value: '£48,200',
-          icon: Icons.bar_chart,
-          iconBg: const Color(0xFF1A3020),
-          iconColor: const Color(0xFF2D5C38),
-        ),
-        _StatCard(
-          title: 'Total Profit',
-          value: '£14,650',
-          icon: Icons.account_balance_wallet_outlined,
-          iconBg: const Color(0xFF1F1A35),
-          iconColor: const Color(0xFF3D2F6E),
-        ),
-        _StatCard(
-          title: 'Total Orders',
-          value: '642',
-          icon: Icons.inventory_2_outlined,
-          iconBg: const Color(0xFF182232),
-          iconColor: const Color(0xFF1E4080),
-        ),
-        _StatCard(
-          title: 'Avg Order Value',
-          value: '£75.08',
-          icon: Icons.my_location_outlined,
-          iconBg: const Color(0xFF2A1E12),
-          iconColor: const Color(0xFF7A3B1E),
-        ),
-      ],
-    );
+    final homeCtrl = Get.find<HomeController>();
+
+    return Obx(() => GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.3,
+          children: [
+            _StatCard(
+              title: 'Total Items',
+              value: '${homeCtrl.totalInventoryItems.value}',
+              icon: Icons.inventory_2_outlined,
+              iconBg: const Color(0xFF1A3020),
+              iconColor: const Color(0xFF2D5C38),
+            ),
+            _StatCard(
+              title: 'Sold Products',
+              value: '${homeCtrl.totalSoldProducts.value}',
+              icon: Icons.shopping_cart_outlined,
+              iconBg: const Color(0xFF1F1A35),
+              iconColor: const Color(0xFF3D2F6E),
+            ),
+            _StatCard(
+              title: 'Repair Requests',
+              value: '${homeCtrl.totalRepairRequests.value}',
+              icon: Icons.build_outlined,
+              iconBg: const Color(0xFF182232),
+              iconColor: const Color(0xFF1E4080),
+            ),
+            _StatCard(
+              title: 'Categories',
+              value: '${homeCtrl.totalCategories.value}',
+              icon: Icons.category_outlined,
+              iconBg: const Color(0xFF2A1E12),
+              iconColor: const Color(0xFF7A3B1E),
+            ),
+          ],
+        ));
   }
 }
 

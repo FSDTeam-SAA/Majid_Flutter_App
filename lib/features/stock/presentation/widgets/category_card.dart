@@ -2,28 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/utils/colors.dart';
 
-class CategoryEntity {
-  final String name;
-  final int itemCount;
-  final IconData icon;
-  final Color bgColor;
-
-  const CategoryEntity({
-    required this.name,
-    required this.itemCount,
-    required this.icon,
-    required this.bgColor,
-  });
-}
-
 class CategoryCard extends StatelessWidget {
-  final CategoryEntity category;
+  final Map<String, dynamic> category;
   final VoidCallback? onTap;
 
   const CategoryCard({super.key, required this.category, this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final name = category['name'] ?? '';
+    final itemCount = category['itemCount'] ?? category['totalItems'] ?? 0;
+    final imageUrl =
+        category['image'] is Map ? category['image']['url'] : null;
+
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
@@ -31,13 +22,24 @@ class CategoryCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // background
             Container(
-              color: category.bgColor,
-              child: Icon(category.icon, size: 90, color: Colors.white10),
+              color: const Color(0xFF0D1E2E),
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.category_outlined,
+                        size: 90,
+                        color: Colors.white10,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.category_outlined,
+                      size: 90,
+                      color: Colors.white10,
+                    ),
             ),
-
-            // bottom gradient overlay
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -48,8 +50,6 @@ class CategoryCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // content at bottom
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -64,7 +64,7 @@ class CategoryCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              category.name,
+                              name,
                               style: const TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 16,
@@ -73,7 +73,7 @@ class CategoryCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${category.itemCount} Items',
+                              '$itemCount Items',
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 12,

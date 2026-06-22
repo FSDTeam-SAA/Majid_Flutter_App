@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -7,71 +8,91 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/info_field.dart';
+import '../controller/profile_controller.dart';
 
 class ShopkeeperIdCardPage extends StatelessWidget {
   const ShopkeeperIdCardPage({super.key});
 
-  static const _shopkeeperId = 'IMS-MM-F7244';
-
   @override
   Widget build(BuildContext context) {
+    final profileCtrl = Get.find<ProfileController>();
+
     return GradientScaffold(
       child: Column(
         children: [
           const AppHeader(title: 'Shopkeeper Id Card'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: AppCard(
-                padding: const EdgeInsets.all(20),
-                borderRadius: 20,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const InfoField(label: 'NAME', value: 'Muhammad Majid'),
-                    const SizedBox(height: 20),
-                    _buildIdBox(context),
-                    const SizedBox(height: 20),
-                    const InfoField(
-                      label: 'EMAIL:',
-                      value: 'shopkeeper2@gmail.com',
-                    ),
-                    const SizedBox(height: 14),
-                    const InfoField(label: 'PHONE:', value: '07777787771'),
-                    const SizedBox(height: 14),
-                    const InfoField(
-                      label: 'SHOP NAME:',
-                      value: 'Mobile Kit Distribution',
-                    ),
-                    const SizedBox(height: 14),
-                    const InfoField(
-                      label: 'ADDRESS:',
-                      value: 'Unit 22 MKD the liberty shopping centre',
-                    ),
-                    const SizedBox(height: 24),
-                    _buildQrBox(),
-                    const SizedBox(height: 14),
-                    AppButton(
-                      label: 'Download QR',
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('QR download is coming soon.'),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+            child: Obx(() {
+              final data = profileCtrl.profileData;
+              final name = profileCtrl.fullName;
+              final email = profileCtrl.email;
+              final phone = data['whatsappNumber'] ?? data['phone'] ?? '';
+              final shop = data['shopName'] ?? '';
+              final address = data['shopAddress'] ?? '';
+              final id = data['_id'] ?? '';
+              final shortId = id.length > 8
+                  ? 'IMS-${id.substring(id.length - 8).toUpperCase()}'
+                  : id;
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: AppCard(
+                  padding: const EdgeInsets.all(20),
+                  borderRadius: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      InfoField(
+                        label: 'NAME',
+                        value: name.isNotEmpty ? name : 'N/A',
+                      ),
+                      const SizedBox(height: 20),
+                      _buildIdBox(context, shortId),
+                      const SizedBox(height: 20),
+                      InfoField(
+                        label: 'EMAIL:',
+                        value: email.isNotEmpty ? email : 'N/A',
+                      ),
+                      const SizedBox(height: 14),
+                      InfoField(
+                        label: 'PHONE:',
+                        value: phone.isNotEmpty ? phone : 'N/A',
+                      ),
+                      const SizedBox(height: 14),
+                      InfoField(
+                        label: 'SHOP NAME:',
+                        value: shop.isNotEmpty ? shop : 'N/A',
+                      ),
+                      const SizedBox(height: 14),
+                      InfoField(
+                        label: 'ADDRESS:',
+                        value: address.isNotEmpty ? address : 'N/A',
+                      ),
+                      const SizedBox(height: 24),
+                      _buildQrBox(),
+                      const SizedBox(height: 14),
+                      AppButton(
+                        label: 'Download QR',
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('QR download is coming soon.'),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildIdBox(BuildContext context) {
+  Widget _buildIdBox(BuildContext context, String shopkeeperId) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -81,12 +102,12 @@ class ShopkeeperIdCardPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(
-            child: InfoField(label: 'SHOPKEEPER ID', value: _shopkeeperId),
+          Expanded(
+            child: InfoField(label: 'SHOPKEEPER ID', value: shopkeeperId),
           ),
           GestureDetector(
             onTap: () {
-              Clipboard.setData(const ClipboardData(text: _shopkeeperId));
+              Clipboard.setData(ClipboardData(text: shopkeeperId));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('ID copied!'),

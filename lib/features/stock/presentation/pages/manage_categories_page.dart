@@ -1,50 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../controller/stock_controller.dart';
 import 'add_category_sheet.dart';
 
-class ManageCategoriesPage extends StatefulWidget {
+class ManageCategoriesPage extends StatelessWidget {
   const ManageCategoriesPage({super.key});
 
   @override
-  State<ManageCategoriesPage> createState() => _ManageCategoriesPageState();
-}
-
-class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
-  final List<_ManagedCategory> _categories = [
-    _ManagedCategory(
-      name: 'Phones',
-      icon: Icons.smartphone,
-      colorHex: 0xFFD4A853,
-    ),
-    _ManagedCategory(
-      name: 'Tablets',
-      icon: Icons.tablet_mac,
-      colorHex: 0xFF9B8EC4,
-    ),
-    _ManagedCategory(
-      name: 'Laptops',
-      icon: Icons.laptop_mac,
-      colorHex: 0xFF5B8DEF,
-    ),
-    _ManagedCategory(
-      name: 'Gaming',
-      icon: Icons.sports_esports_outlined,
-      colorHex: 0xFFE0E0E0,
-    ),
-    _ManagedCategory(
-      name: 'Accessories',
-      icon: Icons.headphones,
-      colorHex: 0xFF4DB8FF,
-    ),
-    _ManagedCategory(
-      name: 'Repairing',
-      icon: Icons.build_outlined,
-      colorHex: 0xFF888888,
-    ),
-  ];
-
-  @override
   Widget build(BuildContext context) {
+    final stockCtrl = Get.find<StockController>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
@@ -56,28 +23,52 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               _buildHeader(context),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-                child: Text(
-                  '${_categories.length} Categories Available',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Obx(() => Text(
+                      '${stockCtrl.categories.length} Categories Available',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )),
               ),
               Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.82,
-                  ),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, i) =>
-                      _buildCategoryCard(_categories[i], i),
-                ),
+                child: Obx(() {
+                  if (stockCtrl.isLoading.value) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary),
+                    );
+                  }
+
+                  if (stockCtrl.categories.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No categories yet',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 15,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.82,
+                    ),
+                    itemCount: stockCtrl.categories.length,
+                    itemBuilder: (context, i) {
+                      final cat = stockCtrl.categories[i];
+                      return _buildCategoryCard(context, cat, stockCtrl);
+                    },
+                  );
+                }),
               ),
             ],
           ),
@@ -138,7 +129,15 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     );
   }
 
-  Widget _buildCategoryCard(_ManagedCategory cat, int index) {
+  Widget _buildCategoryCard(
+    BuildContext context,
+    Map<String, dynamic> cat,
+    StockController stockCtrl,
+  ) {
+    final name = cat['name'] ?? '';
+    final imageUrl = cat['image'] is Map ? cat['image']['url'] : null;
+    final id = cat['_id'] ?? '';
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF111A24),
@@ -150,13 +149,26 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
               child: Container(
                 width: double.infinity,
-                color: Color(cat.colorHex).withValues(alpha: 0.12),
-                child: Icon(cat.icon, color: Color(cat.colorHex), size: 64),
+                color: const Color(0xFF0D1E2E),
+                child: imageUrl != null
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.category_outlined,
+                          color: Colors.white24,
+                          size: 64,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.category_outlined,
+                        color: Colors.white24,
+                        size: 64,
+                      ),
               ),
             ),
           ),
@@ -166,7 +178,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               children: [
                 Expanded(
                   child: Text(
-                    cat.name,
+                    name,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15,
@@ -177,14 +189,19 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 _buildIconBtn(
                   icon: Icons.edit_outlined,
                   color: Colors.white,
-                  onTap: () =>
-                      showAddCategorySheet(context, existingName: cat.name),
+                  onTap: () => showAddCategorySheet(
+                    context,
+                    existingId: id,
+                    existingName: name,
+                    existingImageUrl: imageUrl,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 _buildIconBtn(
                   icon: Icons.delete_outline_rounded,
                   color: const Color(0xFFFF4444),
-                  onTap: () => _confirmDelete(context, index),
+                  onTap: () =>
+                      _confirmDelete(context, id, name, stockCtrl),
                 ),
               ],
             ),
@@ -213,7 +230,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     );
   }
 
-  void _confirmDelete(BuildContext context, int index) {
+  void _confirmDelete(
+    BuildContext context,
+    String id,
+    String name,
+    StockController stockCtrl,
+  ) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -224,7 +246,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Are you sure you want to delete "${_categories[index].name}"?',
+          'Are you sure you want to delete "$name"?',
           style: const TextStyle(color: Color(0xFF7A8A85)),
         ),
         actions: [
@@ -233,9 +255,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             child: const Text('Cancel', style: TextStyle(color: Colors.white)),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => _categories.removeAt(index));
+            onPressed: () async {
               Navigator.pop(context);
+              final success = await stockCtrl.deleteCategory(id);
+              if (success) {
+                showSuccessSnackbar('Category deleted');
+              } else {
+                showErrorSnackbar(stockCtrl.errorMessage.value);
+              }
             },
             child: const Text(
               'Delete',
@@ -246,15 +273,4 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       ),
     );
   }
-}
-
-class _ManagedCategory {
-  final String name;
-  final IconData icon;
-  final int colorHex;
-  const _ManagedCategory({
-    required this.name,
-    required this.icon,
-    required this.colorHex,
-  });
 }

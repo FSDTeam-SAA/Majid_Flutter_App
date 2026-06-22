@@ -9,6 +9,7 @@ import '../controller/auth_controller.dart';
 import '../widgets/_auth_widgets.dart';
 import 'signup_screen_view.dart';
 import 'forgot_password_screen_view.dart';
+import 'otp_verification_screen_view.dart';
 
 class LoginScreenView extends StatelessWidget {
   const LoginScreenView({super.key});
@@ -65,6 +66,13 @@ class LoginScreenView extends StatelessWidget {
                                 final success = await auth.login();
                                 if (success) {
                                   Get.offAll(() => const AppGroundView());
+                                } else if (auth.isEmailNotVerified.value) {
+                                  showErrorSnackbar(
+                                    'Email not verified. Check your inbox for the OTP or register again.',
+                                  );
+                                  Get.to(
+                                    () => const OtpVerificationScreenView(),
+                                  );
                                 } else if (auth.errorMessage.isNotEmpty) {
                                   showErrorSnackbar(auth.errorMessage.value);
                                 }
