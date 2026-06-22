@@ -18,76 +18,90 @@ class LoginScreenView extends StatelessWidget {
     final auth = Get.find<AuthController>();
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
+      backgroundColor: AppColors.background,
+      body: DecoratedBox(
+        decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 64),
-                const Text(
-                  'Welcome Back to',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const ImoscanTitle(),
-                const SizedBox(height: 40),
-                AppTextField(
-                  hint: 'Enter your email',
-                  controller: auth.emailController,
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  hint: 'Enter your password',
-                  controller: auth.passwordController,
-                  isPassword: true,
-                ),
-                const SizedBox(height: 24),
-                Obx(
-                  () => AppButton(
-                    label: 'Sign In',
-                    isLoading: auth.isLoading.value,
-                    onPressed: () async {
-                      final success = await auth.login();
-                      if (success) {
-                        Get.offAll(() => const AppGroundView());
-                      } else if (auth.errorMessage.isNotEmpty) {
-                        showErrorSnackbar(auth.errorMessage.value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: GestureDetector(
-                    onTap: () => Get.to(() => const ForgotPasswordScreenView()),
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.zero,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 64),
+                          const Text(
+                            'Welcome Back to',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const ImoscanTitle(),
+                          const SizedBox(height: 40),
+                          AppTextField(
+                            hint: 'Enter your email',
+                            controller: auth.emailController,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 16),
+                          AppTextField(
+                            hint: 'Enter your password',
+                            controller: auth.passwordController,
+                            isPassword: true,
+                          ),
+                          const SizedBox(height: 24),
+                          Obx(
+                            () => AppButton(
+                              label: 'Sign In',
+                              isLoading: auth.isLoading.value,
+                              onPressed: () async {
+                                final success = await auth.login();
+                                if (success) {
+                                  Get.offAll(() => const AppGroundView());
+                                } else if (auth.errorMessage.isNotEmpty) {
+                                  showErrorSnackbar(auth.errorMessage.value);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: GestureDetector(
+                              onTap: () =>
+                                  Get.to(() => const ForgotPasswordScreenView()),
+                              child: const Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Center(
+                            child: AuthLink(
+                              text: "Don't have an account? ",
+                              linkText: 'Register Now',
+                              onTap: () => Get.to(() => const SignupScreenView()),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 48),
-                Center(
-                  child: AuthLink(
-                    text: "Don't have an account? ",
-                    linkText: 'Register Now',
-                    onTap: () => Get.to(() => const SignupScreenView()),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

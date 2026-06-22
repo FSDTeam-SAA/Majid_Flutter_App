@@ -22,7 +22,7 @@ class PaymentHistoryPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
+        decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Column(
             children: [

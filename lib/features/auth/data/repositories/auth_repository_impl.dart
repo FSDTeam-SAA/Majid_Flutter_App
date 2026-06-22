@@ -22,6 +22,7 @@ class AuthRepositoryImpl implements AuthRepository {
         'lastName': lastName,
         'email': email,
         'password': password,
+        'role': 'user',
       },
     );
     return AuthResponseModel.fromJson(response.data['data']);

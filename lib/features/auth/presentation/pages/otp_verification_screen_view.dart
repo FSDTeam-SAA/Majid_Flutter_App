@@ -9,114 +9,130 @@ import '../widgets/_auth_widgets.dart';
 import 'create_new_password_screen_view.dart';
 import 'login_screen_view.dart';
 
-class OtpVerificationScreenView extends StatelessWidget {
+class OtpVerificationScreenView extends StatefulWidget {
   const OtpVerificationScreenView({super.key});
+
+  @override
+  State<OtpVerificationScreenView> createState() =>
+      _OtpVerificationScreenViewState();
+}
+
+class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
+  late final List<FocusNode> _focusNodes;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNodes = List.generate(6, (_) => FocusNode());
+  }
+
+  @override
+  void dispose() {
+    for (final focusNode in _focusNodes) {
+      focusNode.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
-    final focusNodes = List.generate(6, (_) => FocusNode());
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.pageGradient),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                const AuthBackButton(),
-                const SizedBox(height: 48),
-                const Text(
-                  'OTP Verification',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Enter the verification code we just sent to your email address.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    6,
-                    (i) => _OtpBox(
-                      controller: auth.otpControllers[i],
-                      focusNode: focusNodes[i],
-                      onChanged: (v) {
-                        if (v.isNotEmpty && i < 5) {
-                          focusNodes[i + 1].requestFocus();
-                        }
-                        if (v.isEmpty && i > 0) {
-                          focusNodes[i - 1].requestFocus();
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Obx(
-                  () => AppButton(
-                    label: 'Verify',
-                    isLoading: auth.isLoading.value,
-                    onPressed: () async {
-                      bool success;
-                      if (auth.isEmailVerification.value) {
-                        success = await auth.verifyEmail();
-                        if (success) {
-                          showSuccessSnackbar('Email verified successfully!');
-                          Get.offAll(() => const LoginScreenView());
-                        }
-                      } else {
-                        success = await auth.verifyForgotOtp();
-                        if (success) {
-                          Get.to(() => const CreateNewPasswordScreenView());
-                        }
-                      }
-                      if (!success && auth.errorMessage.isNotEmpty) {
-                        showErrorSnackbar(auth.errorMessage.value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Obx(
-                    () => GestureDetector(
-                      onTap: auth.isLoading.value
-                          ? null
-                          : () async {
-                              final success = await auth.resendOtp();
-                              if (success) {
-                                showSuccessSnackbar('OTP resent successfully');
-                              }
-                            },
-                      child: const Text(
-                        'Resend Code',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+    return AuthPageScaffold(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          const AuthBackButton(),
+          const SizedBox(height: 48),
+          const Text(
+            'OTP Verification',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
+          const SizedBox(height: 10),
+          const Text(
+            'Enter the verification code we just sent to your email address.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 40),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(
+              6,
+              (i) => _OtpBox(
+                controller: auth.otpControllers[i],
+                focusNode: _focusNodes[i],
+                onChanged: (v) {
+                  if (v.isNotEmpty && i < 5) {
+                    _focusNodes[i + 1].requestFocus();
+                  }
+                  if (v.isEmpty && i > 0) {
+                    _focusNodes[i - 1].requestFocus();
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Obx(
+            () => AppButton(
+              label: 'Verify',
+              isLoading: auth.isLoading.value,
+              onPressed: () async {
+                bool success;
+                if (auth.isEmailVerification.value) {
+                  success = await auth.verifyEmail();
+                  if (success) {
+                    showSuccessSnackbar('Email verified successfully!');
+                    Get.offAll(() => const LoginScreenView());
+                  }
+                } else {
+                  success = await auth.verifyForgotOtp();
+                  if (success) {
+                    Get.to(() => const CreateNewPasswordScreenView());
+                  }
+                }
+                if (!success && auth.errorMessage.isNotEmpty) {
+                  showErrorSnackbar(auth.errorMessage.value);
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Obx(
+              () => GestureDetector(
+                onTap: auth.isLoading.value
+                    ? null
+                    : () async {
+                        final success = await auth.resendOtp();
+                        if (success) {
+                          showSuccessSnackbar('OTP resent successfully');
+                        } else if (auth.errorMessage.isNotEmpty) {
+                          showErrorSnackbar(auth.errorMessage.value);
+                        }
+                      },
+                child: const Text(
+                  'Resend Code',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+        ],
       ),
     );
   }
