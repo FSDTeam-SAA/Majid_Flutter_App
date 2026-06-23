@@ -23,22 +23,17 @@ class StockPage extends StatelessWidget {
             _buildHeader(context),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Obx(() => Text(
-                    '${stockCtrl.categories.length} Categories Available',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )),
+              child: Obx(
+                () => Text(
+                  '${stockCtrl.categories.length} Categories Available',
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
             Expanded(
               child: Obx(() {
                 if (stockCtrl.isLoading.value) {
-                  return const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.primary),
-                  );
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
 
                 if (stockCtrl.categories.isEmpty) {
@@ -46,16 +41,9 @@ class StockPage extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.category_outlined,
-                            color: AppColors.textSecondary, size: 48),
+                        Icon(Icons.category_outlined, color: AppColors.textSecondary, size: 48),
                         SizedBox(height: 12),
-                        Text(
-                          'No categories yet',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 15,
-                          ),
-                        ),
+                        Text('No categories yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
                       ],
                     ),
                   );
@@ -67,18 +55,14 @@ class StockPage extends StatelessWidget {
                   onRefresh: stockCtrl.fetchCategories,
                   child: GridView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 0.78,
                     ),
                     itemCount: stockCtrl.categories.length,
-                    itemBuilder: (context, i) => CategoryCard(
-                      category: stockCtrl.categories[i],
-                      onTap: () {},
-                    ),
+                    itemBuilder: (context, i) => CategoryCard(category: stockCtrl.categories[i], onTap: () {}),
                   ),
                 );
               }),
@@ -125,28 +109,17 @@ class StockPage extends StatelessWidget {
                           height: 40,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF2A3A2A),
-                              width: 1.5,
-                            ),
+                            border: Border.all(color: const Color(0xFF2A3A2A), width: 1.5),
                             color: const Color(0xFF111A14),
                           ),
-                          child: const Icon(
-                            Icons.close,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
+                          child: const Icon(Icons.close, color: AppColors.primary, size: 20),
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
                     const Text(
                       'Category',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 12),
                     _buildMenuOption(context, 'Add New Category', () {
@@ -156,12 +129,7 @@ class StockPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     _buildMenuOption(context, 'Manage Categories', () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManageCategoriesPage(),
-                        ),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageCategoriesPage()));
                     }),
                   ],
                 ),
@@ -173,11 +141,7 @@ class StockPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuOption(
-    BuildContext context,
-    String label,
-    VoidCallback onTap,
-  ) {
+  Widget _buildMenuOption(BuildContext context, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -192,17 +156,9 @@ class StockPage extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -214,23 +170,15 @@ class StockPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          _CircleBtn(
-            icon: Icons.arrow_back_ios_new,
-            onTap: () => Navigator.maybePop(context),
-          ),
+          _CircleBtn(icon: Icons.arrow_back_ios_new, onTap: () => Navigator.maybePop(context)),
           const Expanded(
             child: Text(
               'Categories',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
-          _CircleBtn(
-              icon: Icons.menu, onTap: () => _showCategoryMenu(context)),
+          _CircleBtn(icon: Icons.menu, onTap: () => _showCategoryMenu(context)),
         ],
       ),
     );
