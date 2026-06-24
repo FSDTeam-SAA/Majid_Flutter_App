@@ -31,7 +31,11 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Scan Device', trailing: UserAvatar()),
+          AppHeader(
+            title: 'Scan Device',
+            trailing: UserAvatar(),
+            showBackButton: false,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 16),

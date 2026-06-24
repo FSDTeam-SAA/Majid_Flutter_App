@@ -89,27 +89,6 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
               width: 132,
               fit: BoxFit.contain,
             ),
-            SizedBox(width: 10),
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF35A7FF), Color(0xFF126DDE)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFF1A73E8).withValues(alpha: 0.35),
-                    blurRadius: 14,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
-            ),
           ],
         ),
         Container(

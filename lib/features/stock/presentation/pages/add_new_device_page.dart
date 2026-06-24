@@ -397,56 +397,66 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: AppColors.background,
-      bottomNavigationBar: AppBottomNavBar(
-        selectedIndex: 1,
-        onTap: (index) {
-          if (index == 1) {
-            Get.offAll(() => AppGroundView(initialIndex: 1));
-            return;
-          }
-          Get.offAll(() => AppGroundView(initialIndex: index));
-        },
-      ),
-      body: Container(
-        decoration: BoxDecoration(gradient: AppColors.pageGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(context),
-              _buildTabs(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(16, 12, 16, 112),
-                  child: Column(
-                    children: [
-                      if (_selectedTab == 0) ...[
-                        _buildDeviceIdentitySection(),
-                        SizedBox(height: 14),
-                        _buildTechnicalSpecsSection(),
-                        SizedBox(height: 14),
-                        _buildPricingSection(),
-                        SizedBox(height: 14),
-                        _buildManagementSection(),
-                        SizedBox(height: 14),
-                        _buildDetailsSection(),
-                        SizedBox(height: 14),
-                        _buildMediaSection(),
-                        SizedBox(height: 18),
-                        _buildBottomActions(),
-                      ] else if (_selectedTab == 1) ...[
-                        _buildBulkUploadContent(),
-                      ] else ...[
-                        _buildImportCsvContent(),
-                      ],
-                      SizedBox(height: 24),
-                    ],
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(gradient: AppColors.pageGradient),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildHeader(context),
+                  _buildTabs(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(16, 12, 16, 112),
+                      child: Column(
+                        children: [
+                          if (_selectedTab == 0) ...[
+                            _buildDeviceIdentitySection(),
+                            SizedBox(height: 14),
+                            _buildTechnicalSpecsSection(),
+                            SizedBox(height: 14),
+                            _buildPricingSection(),
+                            SizedBox(height: 14),
+                            _buildManagementSection(),
+                            SizedBox(height: 14),
+                            _buildDetailsSection(),
+                            SizedBox(height: 14),
+                            _buildMediaSection(),
+                            SizedBox(height: 18),
+                            _buildBottomActions(),
+                          ] else if (_selectedTab == 1) ...[
+                            _buildBulkUploadContent(),
+                          ] else ...[
+                            _buildImportCsvContent(),
+                          ],
+                          SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AppBottomNavBar(
+              selectedIndex: 1,
+              onTap: (index) {
+                if (index == 1) {
+                  Get.offAll(() => AppGroundView(initialIndex: 1));
+                  return;
+                }
+                Get.offAll(() => AppGroundView(initialIndex: index));
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

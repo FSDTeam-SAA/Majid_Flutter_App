@@ -19,97 +19,93 @@ class StockPage extends StatelessWidget {
     final stockCtrl = Get.find<StockController>();
     final themeCtrl = Get.find<ProfileThemeController>();
 
-    return Obx(
-      () {
-        themeCtrl.selectedTheme.value;
-        return GradientScaffold(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                child: Obx(
-                  () => Text(
-                    '${stockCtrl.categories.length} Categories Available',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+    return Obx(() {
+      themeCtrl.selectedTheme.value;
+      return GradientScaffold(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(context),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Obx(
+                () => Text(
+                  '${stockCtrl.categories.length} Categories Available',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              Expanded(
-                child: Obx(() {
-                  if (stockCtrl.isLoading.value) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    );
-                  }
+            ),
+            Expanded(
+              child: Obx(() {
+                if (stockCtrl.isLoading.value) {
+                  return Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
 
-                  if (stockCtrl.categories.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.category_outlined,
+                if (stockCtrl.categories.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.category_outlined,
+                          color: AppColors.textSecondary,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No categories yet',
+                          style: TextStyle(
                             color: AppColors.textSecondary,
-                            size: 48,
+                            fontSize: 15,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No categories yet',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-                  return RefreshIndicator(
-                    color: AppColors.primary,
-                    backgroundColor: AppColors.cardBackground,
-                    onRefresh: stockCtrl.fetchCategories,
-                    child: GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.78,
-                          ),
-                      itemCount: stockCtrl.categories.length,
-                      itemBuilder: (context, i) => CategoryCard(
-                        category: stockCtrl.categories[i],
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => InventoryScreen(
-                              initialCategoryId: stockCtrl.categories[i]['_id']
-                                  ?.toString(),
-                              initialCategoryName:
-                                  stockCtrl.categories[i]['name']?.toString(),
-                            ),
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.cardBackground,
+                  onRefresh: stockCtrl.fetchCategories,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.78,
+                        ),
+                    itemCount: stockCtrl.categories.length,
+                    itemBuilder: (context, i) => CategoryCard(
+                      category: stockCtrl.categories[i],
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => InventoryScreen(
+                            initialCategoryId: stockCtrl.categories[i]['_id']
+                                ?.toString(),
+                            initialCategoryName: stockCtrl.categories[i]['name']
+                                ?.toString(),
                           ),
                         ),
                       ),
                     ),
-                  );
-                }),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   void _showCategoryMenu(BuildContext context) {
@@ -249,10 +245,7 @@ class StockPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          _CircleBtn(
-            icon: Icons.arrow_back_ios_new,
-            onTap: () => Navigator.maybePop(context),
-          ),
+          SizedBox(width: 40),
           Expanded(
             child: Text(
               'Categories',

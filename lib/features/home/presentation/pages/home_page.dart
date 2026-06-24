@@ -38,78 +38,64 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final themeCtrl = Get.find<ProfileThemeController>();
 
-    return Obx(
-      () {
-        themeCtrl.selectedTheme.value;
-        return GradientScaffold(
-          child: Obx(() {
-            if (homeCtrl.isLoading.value) {
-              return Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              );
-            }
-            return RefreshIndicator(
-              color: AppColors.primary,
-              backgroundColor: AppColors.cardBackground,
-              onRefresh: homeCtrl.fetchAllData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildHeader(),
-                    const SizedBox(height: 20),
-                    _buildPeriodTabs(),
-                    const SizedBox(height: 16),
-                    const StatsGrid(),
-                    const SizedBox(height: 20),
-                    QuickActions(
-                      onAddRepair: () => widget.onOpenTab?.call(3),
-                      onCreateInvoice: () => widget.onOpenTab?.call(4),
-                      onAddItem: () => Get.to(() => const AddNewDevicePage()),
-                    ),
-                    const SizedBox(height: 20),
-                    SalesTrendChart(
-                      thisMonth: thisMonthData,
-                      lastMonth: lastMonthData,
-                    ),
-                    const SizedBox(height: 20),
-                    const TopProductsList(),
-                    const SizedBox(height: 20),
-                    const AiInsightsCard(),
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
+    return Obx(() {
+      themeCtrl.selectedTheme.value;
+      return GradientScaffold(
+        child: Obx(() {
+          if (homeCtrl.isLoading.value) {
+            return Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             );
-          }),
-        );
-      },
-    );
+          }
+          return RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: AppColors.cardBackground,
+            onRefresh: homeCtrl.fetchAllData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildPeriodTabs(),
+                  const SizedBox(height: 16),
+                  const StatsGrid(),
+                  const SizedBox(height: 20),
+                  QuickActions(
+                    onAddRepair: () => widget.onOpenTab?.call(3),
+                    onCreateInvoice: () => widget.onOpenTab?.call(4),
+                    onAddItem: () => Get.to(() => const AddNewDevicePage()),
+                  ),
+                  const SizedBox(height: 20),
+                  SalesTrendChart(
+                    thisMonth: thisMonthData,
+                    lastMonth: lastMonthData,
+                  ),
+                  const SizedBox(height: 20),
+                  const TopProductsList(),
+                  const SizedBox(height: 20),
+                  const AiInsightsCard(),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          );
+        }),
+      );
+    });
   }
 
   Widget _buildHeader() {
     return Row(
       children: [
-        RichText(
-          text: TextSpan(
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            children: [
-              TextSpan(
-                text: 'imo',
-                style: TextStyle(color: AppColors.primary),
-              ),
-              TextSpan(
-                text: 'scan',
-                style: TextStyle(color: AppColors.textPrimary),
-              ),
-            ],
-          ),
+        Image.asset(
+          'assets/images/imoscan_logo.png',
+          width: 132,
+          fit: BoxFit.contain,
         ),
-        const SizedBox(width: 4),
-        const Icon(Icons.verified, color: Color(0xFF1DA1F2), size: 18),
         const Spacer(),
         GestureDetector(
           onTap: () => Get.to(() => NotificationsPage()),

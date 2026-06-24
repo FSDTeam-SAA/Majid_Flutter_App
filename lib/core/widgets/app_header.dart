@@ -10,6 +10,7 @@ class AppHeader extends StatelessWidget {
   final Color? buttonBorderColor;
   final Color? iconColor;
   final Color? textColor;
+  final bool showBackButton;
 
   const AppHeader({
     super.key,
@@ -20,6 +21,7 @@ class AppHeader extends StatelessWidget {
     this.buttonBorderColor,
     this.iconColor,
     this.textColor,
+    this.showBackButton = true,
   });
 
   @override
@@ -28,25 +30,28 @@ class AppHeader extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onBack ?? () => Navigator.maybePop(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: buttonBackgroundColor ?? AppColors.cardBackground,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: buttonBorderColor ?? AppColors.fieldBorder,
+          if (showBackButton)
+            GestureDetector(
+              onTap: onBack ?? () => Navigator.maybePop(context),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: buttonBackgroundColor ?? AppColors.cardBackground,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: buttonBorderColor ?? AppColors.fieldBorder,
+                  ),
+                ),
+                child: Icon(
+                  Icons.arrow_back_ios_new,
+                  color: iconColor ?? AppColors.textPrimary,
+                  size: 16,
                 ),
               ),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                color: iconColor ?? AppColors.textPrimary,
-                size: 16,
-              ),
-            ),
-          ),
+            )
+          else
+            SizedBox(width: 40),
           Expanded(
             child: Text(
               title,

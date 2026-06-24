@@ -44,25 +44,34 @@ class _AppGroundViewState extends State<AppGroundView> {
       InvoicePage(),
     ];
 
-    return Obx(
-      () {
-        themeCtrl.selectedTheme.value;
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness:
-                AppColors.isDark ? Brightness.light : Brightness.dark,
+    return Obx(() {
+      themeCtrl.selectedTheme.value;
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: AppColors.isDark
+              ? Brightness.light
+              : Brightness.dark,
+        ),
+        child: Scaffold(
+          extendBody: true,
+          backgroundColor: AppColors.background,
+          body: Stack(
+            children: [
+              Positioned.fill(child: pages[_selectedIndex]),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: AppBottomNavBar(
+                  selectedIndex: _selectedIndex,
+                  onTap: _selectTab,
+                ),
+              ),
+            ],
           ),
-          child: Scaffold(
-            backgroundColor: AppColors.background,
-            body: pages[_selectedIndex],
-            bottomNavigationBar: AppBottomNavBar(
-              selectedIndex: _selectedIndex,
-              onTap: _selectTab,
-            ),
-          ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 }

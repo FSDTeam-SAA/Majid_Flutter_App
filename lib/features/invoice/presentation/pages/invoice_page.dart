@@ -31,7 +31,7 @@ class _InvoicePageState extends State<InvoicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Create Invoice'),
+          AppHeader(title: 'Create Invoice', showBackButton: false),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -60,10 +60,17 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
             ),
           ),
-          _buildBottomBar(),
+          Padding(
+            padding: EdgeInsets.only(bottom: _floatingNavClearance(context)),
+            child: _buildBottomBar(),
+          ),
         ],
       ),
     );
+  }
+
+  double _floatingNavClearance(BuildContext context) {
+    return MediaQuery.paddingOf(context).bottom + 72;
   }
 
   Widget _buildTabBar() {
@@ -98,7 +105,9 @@ class _InvoicePageState extends State<InvoicePage> {
           child: Text(
             label,
             style: TextStyle(
-              color: isActive ? Colors.black : AppColors.textSecondary,
+              color: isActive
+                  ? AppColors.surfaceForeground
+                  : AppColors.textSecondary,
               fontSize: 13,
               fontWeight: isActive ? FontWeight.bold : FontWeight.w400,
             ),
@@ -241,7 +250,9 @@ class _InvoicePageState extends State<InvoicePage> {
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                     decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: AppColors.fieldBorder)),
+                      border: Border(
+                        top: BorderSide(color: AppColors.fieldBorder),
+                      ),
                     ),
                     child: Text(
                       item,
@@ -299,13 +310,17 @@ class _InvoicePageState extends State<InvoicePage> {
               Text(
                 'Category',
                 style: TextStyle(
-                  color: Colors.black,
+                  color: AppColors.surfaceForeground,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down, color: Colors.black, size: 18),
+              Icon(
+                Icons.keyboard_arrow_down,
+                color: AppColors.surfaceForeground,
+                size: 18,
+              ),
             ],
           ),
         ),
@@ -317,7 +332,7 @@ class _InvoicePageState extends State<InvoicePage> {
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
-        color: Color(0xFF0D1A14),
+        color: AppColors.cardBackground,
         border: Border(top: BorderSide(color: AppColors.fieldBorder)),
       ),
       child: Column(

@@ -24,7 +24,11 @@ class _RepairPageState extends State<RepairPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Repair Requests', trailing: UserAvatar()),
+          AppHeader(
+            title: 'Repair Requests',
+            trailing: UserAvatar(),
+            showBackButton: false,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 16),
