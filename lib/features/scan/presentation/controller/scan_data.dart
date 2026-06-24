@@ -2,20 +2,16 @@ class ScanItem {
   final String name;
   final String imei;
   final String status;
-  const ScanItem({
-    required this.name,
-    required this.imei,
-    required this.status,
-  });
+  ScanItem({required this.name, required this.imei, required this.status});
 }
 
 class ScanDropdownOption {
   final String label;
   final String type;
-  const ScanDropdownOption(this.label, this.type);
+  ScanDropdownOption(this.label, this.type);
 }
 
-const List<ScanItem> recentScans = [
+List<ScanItem> recentScans = [
   ScanItem(
     name: 'iPhone 15 Pro Max',
     imei: '35 901234 567890',
@@ -40,7 +36,7 @@ const List<ScanItem> recentScans = [
   ),
 ];
 
-const List<ScanDropdownOption> verificationOptions = [
+List<ScanDropdownOption> verificationOptions = [
   ScanDropdownOption('Basic IMEI Check', 'Free'),
   ScanDropdownOption('Carrier Lock Status', 'Free'),
   ScanDropdownOption('Blacklist Check', 'Free'),

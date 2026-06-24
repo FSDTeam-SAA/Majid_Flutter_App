@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../theme/app_theme_controller.dart';
 
 class AppColors {
   AppColors._();
 
-  static const Color background = Color(0xFF060B0F);
-  static const Color primary = Color(0xFF8EFC7C);
-  static const Color textPrimary = Colors.white;
-  static const Color textSecondary = Color(0xFF7A8A85);
-  static const Color fieldBackground = Color(0xFF111A1E);
-  static const Color fieldBorder = Color(0xFF1E2E2A);
-  static const Color cardBackground = Color(0xFF131F1C);
+  static ProfileThemePalette get _palette {
+    if (Get.isRegistered<ProfileThemeController>()) {
+      return Get.find<ProfileThemeController>().palette;
+    }
 
-  static const String authBg = 'assets/images/bgimg.png';
+    return ProfileThemeController.fallbackPalette;
+  }
 
-  static const LinearGradient pageGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color(0xFF073238),
-      Color(0xFF092A3F),
-      Color(0xFF060B0F),
-      Color(0xFF062219),
-    ],
-    stops: [0.0, 0.28, 0.58, 1.0],
-  );
+  static Color get background => _palette.backgroundColor;
+  static Color get primary => _palette.primaryColor;
+  static Color get textPrimary => _palette.textPrimary;
+  static Color get textSecondary => _palette.textSecondary;
+  static Color get fieldBackground => _palette.fieldBackgroundColor;
+  static Color get fieldBorder => _palette.surfaceBorderColor;
+  static Color get cardBackground => _palette.cardBackgroundColor;
+  static Color get surfaceForeground => _palette.onPrimaryColor;
+  static bool get isDark => _palette.brightness == Brightness.dark;
+  static Color get overlayShadow => Colors.black.withValues(alpha: 0.18);
+  static Color get modalBarrier => Colors.black.withValues(alpha: 0.45);
+  static Color get successBackground =>
+      _palette.primaryColor.withValues(alpha: isDark ? 0.18 : 0.12);
+  static Color get errorBackground =>
+      _palette.dangerColor.withValues(alpha: isDark ? 0.22 : 0.14);
+
+  static String authBg = 'assets/images/bgimg.png';
+
+  static Gradient get pageGradient => _palette.gradient;
 }

@@ -17,26 +17,23 @@ class CarrierDropdown extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111A24),
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF1A2840)),
+          border: Border.all(color: AppColors.fieldBorder),
         ),
         child: Column(
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
+                  child: Text(
                     'FREE',
                     style: TextStyle(
                       color: Colors.black,
@@ -45,8 +42,8 @@ class CarrierDropdown extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Expanded(
+                SizedBox(width: 10),
+                Expanded(
                   child: Text(
                     'iPhone Carrier Check',
                     style: TextStyle(
@@ -62,8 +59,8 @@ class CarrierDropdown extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            const Align(
+            SizedBox(height: 4),
+            Align(
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: EdgeInsets.only(left: 2),
@@ -77,7 +74,7 @@ class CarrierDropdown extends StatelessWidget {
               ),
             ),
             if (isOpen) ...[
-              const Divider(color: Color(0xFF1A2840), height: 20),
+              Divider(color: AppColors.fieldBorder, height: 20),
               ...verificationOptions.map(_buildOption),
             ],
           ],
@@ -89,16 +86,16 @@ class CarrierDropdown extends StatelessWidget {
   Widget _buildOption(ScanDropdownOption opt) {
     final isFree = opt.type == 'Free';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             opt.label,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: isFree
                   ? AppColors.primary.withValues(alpha: 0.15)

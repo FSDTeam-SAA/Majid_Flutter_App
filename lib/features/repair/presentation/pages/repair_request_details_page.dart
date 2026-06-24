@@ -18,32 +18,32 @@ class RepairRequestDetailsPage extends StatelessWidget {
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(title: 'Repair Request Details'),
+          AppHeader(title: 'Repair Request Details'),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildDeviceCard(),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildInfoCard(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   AppOutlinedButton(
                     label: 'Make a Receipt',
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReceiptPage()),
+                      MaterialPageRoute(builder: (_) => ReceiptPage()),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const TimelineWidget(steps: repairTimeline),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
+                  TimelineWidget(steps: repairTimeline),
+                  SizedBox(height: 20),
                   _buildActions(context),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   _buildCustomerDetails(),
-                  const SizedBox(height: 30),
+                  SizedBox(height: 30),
                 ],
               ),
             ),
@@ -55,14 +55,14 @@ class RepairRequestDetailsPage extends StatelessWidget {
 
   Widget _buildDeviceCard() {
     return AppCard(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InfoField(
@@ -72,15 +72,12 @@ class RepairRequestDetailsPage extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.primary),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   'In Progress',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -91,15 +88,15 @@ class RepairRequestDetailsPage extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0B1520),
+              color: AppColors.fieldBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
+            child: Text(
               'BROKEN SCREEN, PLUS BACK NEEDS TO CHANGE...',
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -114,7 +111,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
   }
 
   Widget _buildInfoCard() {
-    return const AppCard(
+    return AppCard(
       padding: EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,11 +128,11 @@ class RepairRequestDetailsPage extends StatelessWidget {
 
   Widget _buildActions(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Actions',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -143,66 +140,66 @@ class RepairRequestDetailsPage extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: _actionBtn(
                   'Order Assigned',
-                  const Color(0xFF8B1A1A),
-                  const Color(0xFFFF6B6B),
+                  Color(0xFF8B1A1A),
+                  Color(0xFFFF6B6B),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: _actionBtn(
                   'Diagnosing Device',
-                  const Color(0xFF0D2A1A),
+                  AppColors.fieldBackground,
                   AppColors.primary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: _actionBtn(
                   'Repairing Device',
-                  const Color(0xFF2A1A00),
-                  const Color(0xFFFFA500),
+                  Color(0xFF2A1A00),
+                  Color(0xFFFFA500),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: _actionBtn(
                   'Waiting for Parts',
-                  const Color(0xFF0D1A2E),
-                  const Color(0xFF4DB8FF),
+                  Color(0xFF0D1A2E),
+                  Color(0xFF4DB8FF),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: _actionBtn(
                   'Completed',
-                  const Color(0xFF0D2A1A),
+                  AppColors.fieldBackground,
                   AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CheckoutPage()),
+                    MaterialPageRoute(builder: (_) => CheckoutPage()),
                   ),
                   child: _actionBtn(
                     'Check Out',
-                    const Color(0xFF0D2A1A),
+                    AppColors.fieldBackground,
                     AppColors.primary,
                   ),
                 ),
@@ -216,7 +213,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
 
   Widget _actionBtn(String label, Color bg, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 13),
+      padding: EdgeInsets.symmetric(vertical: 13),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(50),
@@ -235,7 +232,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
   }
 
   Widget _buildCustomerDetails() {
-    return const AppCard(
+    return AppCard(
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

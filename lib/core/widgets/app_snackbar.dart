@@ -6,12 +6,12 @@ void showErrorSnackbar(String message) {
   Get.snackbar(
     'Error',
     message,
-    backgroundColor: const Color(0xFF2A1010),
-    colorText: Colors.white,
+    backgroundColor: AppColors.errorBackground,
+    colorText: AppColors.textPrimary,
     snackPosition: SnackPosition.BOTTOM,
-    margin: const EdgeInsets.all(16),
+    margin: EdgeInsets.all(16),
     borderRadius: 12,
-    duration: const Duration(seconds: 3),
+    duration: Duration(seconds: 3),
   );
 }
 
@@ -19,11 +19,11 @@ void showSuccessSnackbar(String message) {
   Get.snackbar(
     'Success',
     message,
-    backgroundColor: const Color(0xFF0D2A1A),
+    backgroundColor: AppColors.successBackground,
     colorText: AppColors.primary,
     snackPosition: SnackPosition.BOTTOM,
-    margin: const EdgeInsets.all(16),
+    margin: EdgeInsets.all(16),
     borderRadius: 12,
-    duration: const Duration(seconds: 2),
+    duration: Duration(seconds: 2),
   );
 }

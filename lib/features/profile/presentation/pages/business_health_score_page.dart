@@ -41,12 +41,13 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
               _buildHeader(context),
               Expanded(
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(
-                            color: AppColors.primary),
+                          color: AppColors.primary,
+                        ),
                       )
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                        padding: EdgeInsets.fromLTRB(16, 8, 16, 40),
                         child: Obx(() => _buildContent()),
                       ),
               ),
@@ -64,15 +65,15 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
     return Column(
       children: [
         _buildGaugeCard(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildImprovementCard(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: _MetricCard(
                 icon: Icons.shopping_cart_outlined,
-                iconBgColor: const Color(0xFF0D2318),
+                iconBgColor: AppColors.fieldBackground,
                 iconColor: AppColors.primary,
                 label: 'Sales',
                 value: 'N/A',
@@ -81,28 +82,28 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                 lineColor: AppColors.primary,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _MetricCard(
                 icon: Icons.build_outlined,
-                iconBgColor: const Color(0xFF2A1800),
-                iconColor: const Color(0xFFE8920A),
+                iconBgColor: Color(0xFF2A1800),
+                iconColor: Color(0xFFE8920A),
                 label: 'Repairs',
                 value: '$repairs',
                 change: 'Total requests',
                 changePositive: true,
-                lineColor: const Color(0xFFE8920A),
+                lineColor: Color(0xFFE8920A),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: _MetricCard(
                 icon: Icons.inventory_2_outlined,
-                iconBgColor: const Color(0xFF0D2318),
+                iconBgColor: AppColors.fieldBackground,
                 iconColor: AppColors.primary,
                 label: 'Inventory',
                 value: '$inventory',
@@ -111,17 +112,17 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                 lineColor: AppColors.primary,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _MetricCard(
                 icon: Icons.replay_outlined,
-                iconBgColor: const Color(0xFF2A0808),
-                iconColor: const Color(0xFFE85050),
+                iconBgColor: Color(0xFF2A0808),
+                iconColor: Color(0xFFE85050),
                 label: 'Returns',
                 value: 'N/A',
                 change: 'API not available',
                 changePositive: false,
-                lineColor: const Color(0xFFE85050),
+                lineColor: Color(0xFFE85050),
               ),
             ),
           ],
@@ -132,7 +133,7 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           GestureDetector(
@@ -141,18 +142,18 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFF111B1F),
+                color: Color(0xFF111B1F),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF1E2E2A)),
+                border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: AppColors.textPrimary,
                 size: 16,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Business Health Score',
               textAlign: TextAlign.center,
@@ -169,22 +170,28 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
             return Container(
               width: 40,
               height: 40,
-              decoration: const BoxDecoration(shape: BoxShape.circle),
+              decoration: BoxDecoration(shape: BoxShape.circle),
               clipBehavior: Clip.antiAlias,
               child: url.isNotEmpty
                   ? Image.network(
                       url,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => Container(
-                        color: const Color(0xFF1E2E2A),
-                        child: const Icon(Icons.person,
-                            color: AppColors.textPrimary, size: 24),
+                        color: AppColors.fieldBorder,
+                        child: Icon(
+                          Icons.person,
+                          color: AppColors.textPrimary,
+                          size: 24,
+                        ),
                       ),
                     )
                   : Container(
-                      color: const Color(0xFF1E2E2A),
-                      child: const Icon(Icons.person,
-                          color: AppColors.textPrimary, size: 24),
+                      color: AppColors.fieldBorder,
+                      child: Icon(
+                        Icons.person,
+                        color: AppColors.textPrimary,
+                        size: 24,
+                      ),
                     ),
             );
           }),
@@ -196,11 +203,11 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
   Widget _buildGaugeCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      padding: EdgeInsets.fromLTRB(24, 32, 24, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1820),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF17293A), width: 1),
+        border: Border.all(color: AppColors.fieldBorder, width: 1),
       ),
       child: Column(
         children: [
@@ -211,7 +218,7 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
               return SizedBox(
                 width: w,
                 height: gaugeH,
-                child: const Stack(
+                child: Stack(
                   alignment: Alignment.bottomCenter,
                   children: [
                     Positioned.fill(
@@ -248,8 +255,8 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
               );
             },
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: 16),
+          Text(
             'Dashboard API needed for full score',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -265,16 +272,16 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
 
   Widget _buildImprovementCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1820),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF17293A), width: 1),
+        border: Border.all(color: AppColors.fieldBorder, width: 1),
       ),
-      child: const Row(
+      child: Row(
         children: [
           _CircleIcon(
-            bgColor: Color(0xFF0D2318),
+            bgColor: AppColors.fieldBackground,
             icon: Icons.info_outline,
             iconColor: AppColors.primary,
           ),
@@ -295,7 +302,9 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                 Text(
                   'Sales & profit data not yet available',
                   style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13),
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -356,7 +365,7 @@ class _GaugePainter extends CustomPainter {
 
     if (value > 0) {
       final rect = Rect.fromCircle(center: center, radius: radius);
-      final shader = const SweepGradient(
+      final shader = SweepGradient(
         startAngle: pi,
         endAngle: 2 * pi,
         colors: [Color(0xFF4EE86A), Color(0xFFACFF7A)],
@@ -404,11 +413,11 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1820),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF17293A), width: 1),
+        border: Border.all(color: AppColors.fieldBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,10 +433,10 @@ class _MetricCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: iconColor, size: 19),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -435,31 +444,30 @@ class _MetricCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 22,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.2,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             change,
             style: TextStyle(
-              color:
-                  changePositive ? AppColors.primary : const Color(0xFFE85050),
+              color: changePositive ? AppColors.primary : Color(0xFFE85050),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           SizedBox(
             height: 44,
             child: CustomPaint(
-              size: const Size(double.infinity, 44),
+              size: Size(double.infinity, 44),
               painter: _TrendLinePainter(
                 color: lineColor,
                 positive: changePositive,
@@ -498,10 +506,7 @@ class _TrendLinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.30),
-            color.withValues(alpha: 0.0),
-          ],
+          colors: [color.withValues(alpha: 0.30), color.withValues(alpha: 0.0)],
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 

@@ -1,5 +1,6 @@
-const String baseUrl = "http://187.77.187.56:4896";
-const String apiVersion = "api/v1";
+String baseUrl = "http://10.10.26.117:5001";
+
+String apiVersion = "api/v1";
 String get baseApiUrl => "$baseUrl/$apiVersion";
 
 class AuthEndpoints {

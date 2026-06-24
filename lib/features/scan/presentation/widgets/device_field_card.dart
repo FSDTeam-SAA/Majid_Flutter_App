@@ -11,11 +11,11 @@ class DeviceFieldFull extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: Color(0xFF111A24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: Color(0xFF1A2840)),
       ),
       child: InfoField(label: label, value: value),
     );
@@ -45,7 +45,7 @@ class DeviceFieldRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: _buildCard(leftLabel, leftValue, leftValueColor)),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(child: _buildCard(rightLabel, rightValue, rightValueColor)),
       ],
     );
@@ -53,11 +53,11 @@ class DeviceFieldRow extends StatelessWidget {
 
   Widget _buildCard(String label, String value, Color? valueColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: Color(0xFF111A24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: Color(0xFF1A2840)),
       ),
       child: InfoField(label: label, value: value, valueColor: valueColor),
     );

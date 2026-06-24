@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/gradient_scaffold.dart';
 import '../controller/stock_controller.dart';
 import '../widgets/category_card.dart';
+import 'add_new_device_page.dart';
 import 'add_category_sheet.dart';
+import 'inventory_screen.dart';
 import 'manage_categories_page.dart';
 
 class StockPage extends StatelessWidget {
@@ -13,63 +17,98 @@ class StockPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stockCtrl = Get.find<StockController>();
+    final themeCtrl = Get.find<ProfileThemeController>();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Obx(
-                () => Text(
-                  '${stockCtrl.categories.length} Categories Available',
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+    return Obx(
+      () {
+        themeCtrl.selectedTheme.value;
+        return GradientScaffold(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(context),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: Obx(
+                  () => Text(
+                    '${stockCtrl.categories.length} Categories Available',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Obx(() {
-                if (stockCtrl.isLoading.value) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-                }
+              Expanded(
+                child: Obx(() {
+                  if (stockCtrl.isLoading.value) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    );
+                  }
 
-                if (stockCtrl.categories.isEmpty) {
-                  return const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.category_outlined, color: AppColors.textSecondary, size: 48),
-                        SizedBox(height: 12),
-                        Text('No categories yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
-                      ],
+                  if (stockCtrl.categories.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.category_outlined,
+                            color: AppColors.textSecondary,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No categories yet',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.cardBackground,
+                    onRefresh: stockCtrl.fetchCategories,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.78,
+                          ),
+                      itemCount: stockCtrl.categories.length,
+                      itemBuilder: (context, i) => CategoryCard(
+                        category: stockCtrl.categories[i],
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => InventoryScreen(
+                              initialCategoryId: stockCtrl.categories[i]['_id']
+                                  ?.toString(),
+                              initialCategoryName:
+                                  stockCtrl.categories[i]['name']?.toString(),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   );
-                }
-
-                return RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.cardBackground,
-                  onRefresh: stockCtrl.fetchCategories,
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.78,
-                    ),
-                    itemCount: stockCtrl.categories.length,
-                    itemBuilder: (context, i) => CategoryCard(category: stockCtrl.categories[i], onTap: () {}),
-                  ),
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
+                }),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -78,7 +117,7 @@ class StockPage extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'category_menu',
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: AppColors.modalBarrier,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, _, _) {
@@ -95,7 +134,7 @@ class StockPage extends StatelessWidget {
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.72,
                 height: double.infinity,
-                color: const Color(0xFF0A0F0D),
+                color: AppColors.background,
                 padding: const EdgeInsets.fromLTRB(20, 60, 20, 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,17 +148,28 @@ class StockPage extends StatelessWidget {
                           height: 40,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF2A3A2A), width: 1.5),
-                            color: const Color(0xFF111A14),
+                            border: Border.all(
+                              color: AppColors.fieldBorder,
+                              width: 1.5,
+                            ),
+                            color: AppColors.cardBackground,
                           ),
-                          child: const Icon(Icons.close, color: AppColors.primary, size: 20),
+                          child: Icon(
+                            Icons.close,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Category',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildMenuOption(context, 'Add New Category', () {
@@ -127,9 +177,30 @@ class StockPage extends StatelessWidget {
                       showAddCategorySheet(context);
                     }),
                     const SizedBox(height: 10),
+                    _buildMenuOption(context, 'Add New Device', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AddNewDevicePage()),
+                      );
+                    }),
+                    const SizedBox(height: 10),
                     _buildMenuOption(context, 'Manage Categories', () {
                       Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageCategoriesPage()));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ManageCategoriesPage(),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 10),
+                    _buildMenuOption(context, 'View Inventory', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => InventoryScreen()),
+                      );
                     }),
                   ],
                 ),
@@ -141,24 +212,32 @@ class StockPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuOption(BuildContext context, String label, VoidCallback onTap) {
+  Widget _buildMenuOption(
+    BuildContext context,
+    String label,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF111A24),
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF1A2840)),
+          border: Border.all(color: AppColors.fieldBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               label,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+            Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
           ],
         ),
       ),
@@ -170,12 +249,19 @@ class StockPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          _CircleBtn(icon: Icons.arrow_back_ios_new, onTap: () => Navigator.maybePop(context)),
-          const Expanded(
+          _CircleBtn(
+            icon: Icons.arrow_back_ios_new,
+            onTap: () => Navigator.maybePop(context),
+          ),
+          Expanded(
             child: Text(
               'Categories',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           _CircleBtn(icon: Icons.menu, onTap: () => _showCategoryMenu(context)),

@@ -11,11 +11,11 @@ class TimelineWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Timeline',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -23,7 +23,7 @@ class TimelineWidget extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ...steps.asMap().entries.map(
             (e) => _buildStep(e.value, e.key == steps.length - 1),
           ),
@@ -38,11 +38,11 @@ class TimelineWidget extends StatelessWidget {
       icon = Container(
         width: 36,
         height: 36,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.primary,
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.check, color: Colors.black, size: 18),
+        child: Icon(Icons.check, color: Colors.black, size: 18),
       );
     } else if (step.status == TimelineStatus.inProgress) {
       icon = Container(
@@ -50,10 +50,10 @@ class TimelineWidget extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFF4DB8FF), width: 3),
-          color: const Color(0xFF0D1F2D),
+          border: Border.all(color: Color(0xFF4DB8FF), width: 3),
+          color: Color(0xFF0D1F2D),
         ),
-        child: const Center(
+        child: Center(
           child: SizedBox(
             width: 18,
             height: 18,
@@ -70,10 +70,10 @@ class TimelineWidget extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFF2A3A4A)),
-          color: const Color(0xFF0B1520),
+          border: Border.all(color: Color(0xFF2A3A4A)),
+          color: AppColors.fieldBackground,
         ),
-        child: const Icon(
+        child: Icon(
           Icons.access_time_rounded,
           color: Color(0xFF3A4A5A),
           size: 18,
@@ -94,15 +94,15 @@ class TimelineWidget extends StatelessWidget {
                     width: 2,
                     color: step.status == TimelineStatus.done
                         ? AppColors.primary.withValues(alpha: 0.4)
-                        : const Color(0xFF1A2840),
+                        : AppColors.fieldBorder,
                   ),
                 ),
             ],
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(bottom: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,16 +112,16 @@ class TimelineWidget extends StatelessWidget {
                     children: [
                       Text(
                         step.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      SizedBox(height: 3),
                       Text(
                         step.subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
@@ -129,7 +129,7 @@ class TimelineWidget extends StatelessWidget {
                     ],
                   ),
                   if (step.status == TimelineStatus.pending)
-                    const Text(
+                    Text(
                       'Pending',
                       style: TextStyle(
                         color: AppColors.textSecondary,

@@ -34,21 +34,25 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
               Expanded(
                 child: Obx(() {
                   if (_profileCtrl.isPaymentsLoading.value) {
-                    return const Center(
-                      child:
-                          CircularProgressIndicator(color: AppColors.primary),
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     );
                   }
 
                   final payments = _profileCtrl.payments;
 
                   if (payments.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.receipt_long_outlined,
-                              color: AppColors.textSecondary, size: 48),
+                          Icon(
+                            Icons.receipt_long_outlined,
+                            color: AppColors.textSecondary,
+                            size: 48,
+                          ),
                           SizedBox(height: 12),
                           Text(
                             'No transactions yet',
@@ -63,9 +67,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   }
 
                   return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 40),
                     itemCount: payments.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => SizedBox(height: 10),
                     itemBuilder: (context, i) =>
                         _TransactionCard(tx: payments[i]),
                   );
@@ -80,7 +84,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
@@ -93,14 +97,14 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: AppColors.textPrimary,
                 size: 16,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'My Transactions',
               textAlign: TextAlign.center,
@@ -111,7 +115,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
               ),
             ),
           ),
-          const SizedBox(width: 40),
+          SizedBox(width: 40),
         ],
       ),
     );
@@ -125,8 +129,9 @@ class _TransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final id = tx['_id'] ?? tx['transactionId'] ?? '';
-    final shortId =
-        id.length > 8 ? '#${id.substring(id.length - 8).toUpperCase()}' : id;
+    final shortId = id.length > 8
+        ? '#${id.substring(id.length - 8).toUpperCase()}'
+        : id;
     final amount = (tx['amount'] ?? 0).toDouble();
     final status = tx['status'] ?? '';
     final createdAt = tx['createdAt'] ?? '';
@@ -135,44 +140,44 @@ class _TransactionCard extends StatelessWidget {
         : '';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1923),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Row(
         children: [
           Container(
             width: 52,
             height: 52,
-            decoration: const BoxDecoration(
-              color: Color(0xFF0D2318),
+            decoration: BoxDecoration(
+              color: AppColors.fieldBackground,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_outlined,
               color: AppColors.primary,
               size: 24,
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   shortId,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(
                   status.isNotEmpty ? status : 'Payment',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
                   ),
@@ -185,19 +190,16 @@ class _TransactionCard extends StatelessWidget {
             children: [
               Text(
                 '\$${amount.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.primary,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 3),
+              SizedBox(height: 3),
               Text(
                 date,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ),

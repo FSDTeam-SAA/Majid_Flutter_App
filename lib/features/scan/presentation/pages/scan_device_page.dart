@@ -31,27 +31,27 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Scan Device', trailing: const UserAvatar()),
+          AppHeader(title: 'Scan Device', trailing: UserAvatar()),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   ScanSearchBar(controller: _controller),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   CarrierDropdown(
                     isOpen: _dropdownOpen,
                     onToggle: () =>
                         setState(() => _dropdownOpen = !_dropdownOpen),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   _buildScanNowButton(),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildUploadButton(),
-                  const SizedBox(height: 32),
-                  const Text(
+                  SizedBox(height: 32),
+                  Text(
                     'Recent Scans',
                     style: TextStyle(
                       color: AppColors.textPrimary,
@@ -59,9 +59,9 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   ...recentScans.map((item) => ScanItemCard(item: item)),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                 ],
               ),
             ),
@@ -77,7 +77,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       child: ElevatedButton(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const DeviceReportPage()),
+          MaterialPageRoute(builder: (_) => DeviceReportPage()),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -85,10 +85,10 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(50),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 17),
+          padding: EdgeInsets.symmetric(vertical: 17),
           elevation: 0,
         ),
-        child: const Text(
+        child: Text(
           'Scan Now',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
@@ -102,7 +102,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       child: OutlinedButton(
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
                 'Image upload will be connected when file picking is added.',
               ),
@@ -111,13 +111,13 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
         },
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          side: BorderSide(color: AppColors.primary, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(50),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 17),
+          padding: EdgeInsets.symmetric(vertical: 17),
         ),
-        child: const Text(
+        child: Text(
           'Upload Image',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),

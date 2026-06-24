@@ -11,7 +11,7 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final badgeColor = color ?? _colorForStatus(label);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: badgeColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
@@ -31,9 +31,9 @@ class StatusBadge extends StatelessWidget {
   static Color _colorForStatus(String status) {
     return switch (status) {
       'Clean' || 'Completed' => AppColors.primary,
-      'Blacklisted' => const Color(0xFFFF4444),
-      'Active' || 'In Progress' => const Color(0xFF4DB8FF),
-      _ => const Color(0xFF7A8A85),
+      'Blacklisted' => Color(0xFFFF4444),
+      'Active' || 'In Progress' => Color(0xFF4DB8FF),
+      _ => Color(0xFF7A8A85),
     };
   }
 }

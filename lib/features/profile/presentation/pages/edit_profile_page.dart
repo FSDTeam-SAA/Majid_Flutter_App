@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
@@ -28,6 +31,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _hideCurrentPass = true;
   bool _hideNewPass = true;
   bool _hideConfirmPass = true;
+  String? _pickedImagePath;
 
   late final ProfileController _profileCtrl;
 
@@ -72,13 +76,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
       whatsappNumber: _whatsappCtrl.text.trim(),
       shopName: _shopNameCtrl.text.trim(),
       shopAddress: _addressCtrl.text.trim(),
+      imagePath: _pickedImagePath,
     );
 
     if (success) {
+      setState(() => _pickedImagePath = null);
       showSuccessSnackbar('Profile updated successfully');
     } else {
       showErrorSnackbar(_profileCtrl.errorMessage.value);
     }
+  }
+
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    setState(() => _pickedImagePath = picked.path);
   }
 
   Future<void> _savePassword() async {
@@ -126,15 +140,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               _buildHeader(context),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     children: [
                       _buildPersonalSection(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildPasswordSection(),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       _buildSaveBtn(),
-                      const SizedBox(height: 40),
+                      SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -148,7 +162,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
@@ -161,14 +175,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: AppColors.textPrimary,
                 size: 16,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Edit Profile',
               textAlign: TextAlign.center,
@@ -179,7 +193,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
           ),
-          const SizedBox(width: 40),
+          SizedBox(width: 40),
         ],
       ),
     );
@@ -189,12 +203,57 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return _SectionCard(
       title: 'Personal & Shop Information',
       children: [
+        Center(
+          child: GestureDetector(
+            onTap: _pickProfileImage,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 104,
+                  height: 104,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.7),
+                      width: 2,
+                    ),
+                  ),
+                  child: ClipOval(child: _buildProfileImage()),
+                ),
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.background, width: 2),
+                    ),
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 10),
+        /*  Center(
+          child: Text('Tap to change profile photo', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        ), */
+        SizedBox(height: 18),
         Row(
           children: [
             Expanded(
               child: _AppField(controller: _firstNameCtrl, hint: 'First Name'),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _AppField(controller: _lastNameCtrl, hint: 'Last Name'),
             ),
@@ -219,6 +278,30 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _AppField(controller: _shopNameCtrl, hint: 'Shop Name'),
         _AppField(controller: _addressCtrl, hint: 'Shop Address'),
       ],
+    );
+  }
+
+  Widget _buildProfileImage() {
+    if (_pickedImagePath != null && _pickedImagePath!.isNotEmpty) {
+      return Image.file(File(_pickedImagePath!), fit: BoxFit.cover);
+    }
+
+    final imageUrl = _profileCtrl.imageUrl;
+    if (imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _buildProfilePlaceholder(),
+      );
+    }
+
+    return _buildProfilePlaceholder();
+  }
+
+  Widget _buildProfilePlaceholder() {
+    return Container(
+      color: AppColors.cardBackground,
+      child: Icon(Icons.person, color: AppColors.textPrimary, size: 46),
     );
   }
 
@@ -279,35 +362,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildSaveBtn() {
-    return Obx(() => SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _profileCtrl.isSaving.value ? null : _handleSave,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(50),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+    return Obx(
+      () => SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _profileCtrl.isSaving.value ? null : _handleSave,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.black,
+            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50),
             ),
-            child: _profileCtrl.isSaving.value
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.black,
-                    ),
-                  )
-                : const Text(
-                    'Save Changes',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+            padding: EdgeInsets.symmetric(vertical: 16),
           ),
-        ));
+          child: _profileCtrl.isSaving.value
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
+                )
+              : Text(
+                  'Save Changes',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+        ),
+      ),
+    );
   }
 }
 
@@ -326,39 +410,34 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E2E3A)),
+        border: Border.all(color: Color(0xFF1E2E3A)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          /*   Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
-          ),
+          ), */
           if (subtitle != null) ...[
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text(
               subtitle!,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ...children.map(
-            (child) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: child,
-            ),
+            (child) =>
+                Padding(padding: EdgeInsets.only(bottom: 12), child: child),
           ),
         ],
       ),
@@ -396,28 +475,22 @@ class _AppField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 15,
-        ),
+        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
         filled: true,
         fillColor: AppColors.fieldBackground,
         suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: AppColors.fieldBorder, width: 1),
+          borderSide: BorderSide(color: AppColors.fieldBorder, width: 1),
         ),
       ),
     );

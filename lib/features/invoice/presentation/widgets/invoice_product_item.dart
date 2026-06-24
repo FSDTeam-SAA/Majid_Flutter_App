@@ -19,12 +19,12 @@ class InvoiceProductItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF111A24),
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF1A2840)),
+          border: Border.all(color: AppColors.fieldBorder),
         ),
         child: Row(
           children: [
@@ -42,10 +42,10 @@ class InvoiceProductItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.black, size: 15)
+                  ? Icon(Icons.check, color: Colors.black, size: 15)
                   : null,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
@@ -55,23 +55,23 @@ class InvoiceProductItem extends StatelessWidget {
                 child: Icon(Icons.smartphone, color: product.color, size: 28),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     product.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     product.code,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                     ),

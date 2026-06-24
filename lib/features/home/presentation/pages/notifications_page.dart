@@ -50,15 +50,12 @@ class NotificationsPage extends StatelessWidget {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Notifications', trailing: const UserAvatar()),
+          AppHeader(title: 'Notifications', trailing: UserAvatar()),
           Expanded(
             child: ListView.separated(
               itemCount: _notifications.length,
-              separatorBuilder: (_, _) => const Divider(
-                color: Color(0xFF1A2840),
-                height: 1,
-                thickness: 1,
-              ),
+              separatorBuilder: (_, _) =>
+                  Divider(color: AppColors.fieldBorder, height: 1, thickness: 1),
               itemBuilder: (context, index) =>
                   _buildNotifItem(context, _notifications[index]),
             ),
@@ -70,7 +67,7 @@ class NotificationsPage extends StatelessWidget {
 
   Widget _buildNotifItem(BuildContext context, _NotifItem item) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -80,16 +77,16 @@ class NotificationsPage extends StatelessWidget {
               children: [
                 Text(
                   item.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   item.desc,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
                     height: 1.5,
@@ -98,19 +95,16 @@ class NotificationsPage extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 item.time,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
               if (item.hasView) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(
@@ -119,21 +113,15 @@ class NotificationsPage extends StatelessWidget {
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
-                    side: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.2,
-                    ),
+                    side: BorderSide(color: AppColors.primary, width: 1.2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 6,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text(
+                  child: Text(
                     'View',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),

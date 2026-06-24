@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
+
 import '../utils/colors.dart';
 
 class AppHeader extends StatelessWidget {
   final String title;
   final Widget? trailing;
   final VoidCallback? onBack;
+  final Color? buttonBackgroundColor;
+  final Color? buttonBorderColor;
+  final Color? iconColor;
+  final Color? textColor;
 
-  const AppHeader({super.key, required this.title, this.trailing, this.onBack});
+  const AppHeader({
+    super.key,
+    required this.title,
+    this.trailing,
+    this.onBack,
+    this.buttonBackgroundColor,
+    this.buttonBorderColor,
+    this.iconColor,
+    this.textColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
@@ -20,13 +34,15 @@ class AppHeader extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.cardBackground,
+                color: buttonBackgroundColor ?? AppColors.cardBackground,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.fieldBorder),
+                border: Border.all(
+                  color: buttonBorderColor ?? AppColors.fieldBorder,
+                ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
-                color: AppColors.textPrimary,
+                color: iconColor ?? AppColors.textPrimary,
                 size: 16,
               ),
             ),
@@ -35,14 +51,14 @@ class AppHeader extends StatelessWidget {
             child: Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
+              style: TextStyle(
+                color: textColor ?? AppColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          trailing ?? const SizedBox(width: 40),
+          trailing ?? SizedBox(width: 40),
         ],
       ),
     );

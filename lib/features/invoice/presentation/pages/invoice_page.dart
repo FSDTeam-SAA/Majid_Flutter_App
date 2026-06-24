@@ -31,19 +31,19 @@ class _InvoicePageState extends State<InvoicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(title: 'Create Invoice'),
+          AppHeader(title: 'Create Invoice'),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildTabBar(),
-                  const SizedBox(height: 22),
+                  SizedBox(height: 22),
                   if (_tabIndex == 0) _buildCreateInvoiceTab(),
                   if (_tabIndex == 1)
-                    const Center(
+                    Center(
                       child: Padding(
                         padding: EdgeInsets.only(top: 60),
                         child: Text(
@@ -55,7 +55,7 @@ class _InvoicePageState extends State<InvoicePage> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 100),
+                  SizedBox(height: 100),
                 ],
               ),
             ),
@@ -70,9 +70,9 @@ class _InvoicePageState extends State<InvoicePage> {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Row(
         children: [
@@ -88,8 +88,8 @@ class _InvoicePageState extends State<InvoicePage> {
     return GestureDetector(
       onTap: () => setState(() => _tabIndex = index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.all(4),
+        duration: Duration(milliseconds: 200),
+        margin: EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(50),
@@ -112,7 +112,7 @@ class _InvoicePageState extends State<InvoicePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Customer Information',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -120,7 +120,7 @@ class _InvoicePageState extends State<InvoicePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         _buildDropdown(
           _selectedCustomer,
           'Choose a customer',
@@ -132,21 +132,21 @@ class _InvoicePageState extends State<InvoicePage> {
           () => setState(() => _customerDropOpen = !_customerDropOpen),
           customers,
         ),
-        const SizedBox(height: 10),
-        const Row(
+        SizedBox(height: 10),
+        Row(
           children: [
             Expanded(child: InvoiceInputField(hint: 'First Name')),
             SizedBox(width: 10),
             Expanded(child: InvoiceInputField(hint: 'Last Name')),
           ],
         ),
-        const SizedBox(height: 10),
-        const InvoiceInputField(hint: 'Customer Email'),
-        const SizedBox(height: 10),
-        const InvoiceInputField(hint: 'Customer Phone Number'),
-        const SizedBox(height: 10),
-        const InvoiceInputField(hint: 'Customer Billing Address'),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Email'),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Phone Number'),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Billing Address'),
+        SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -162,16 +162,16 @@ class _InvoicePageState extends State<InvoicePage> {
                 paymentTypes,
               ),
             ),
-            const SizedBox(width: 10),
-            const Expanded(child: InvoiceInputField(hint: 'Already Paid')),
+            SizedBox(width: 10),
+            Expanded(child: InvoiceInputField(hint: 'Already Paid')),
           ],
         ),
-        const SizedBox(height: 10),
-        const InvoiceInputField(hint: 'Customer ID'),
-        const SizedBox(height: 14),
-        const ShopInfoCard(),
-        const SizedBox(height: 24),
-        const Text(
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer ID'),
+        SizedBox(height: 14),
+        ShopInfoCard(),
+        SizedBox(height: 24),
+        Text(
           'Products',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -179,9 +179,9 @@ class _InvoicePageState extends State<InvoicePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         _buildProductSearch(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         ...invoiceProducts.asMap().entries.map(
           (e) => InvoiceProductItem(
             product: e.value,
@@ -208,9 +208,9 @@ class _InvoicePageState extends State<InvoicePage> {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111A24),
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(50),
           border: Border.all(color: AppColors.primary, width: 1.2),
         ),
@@ -229,29 +229,23 @@ class _InvoicePageState extends State<InvoicePage> {
                     fontSize: 14,
                   ),
                 ),
-                const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: AppColors.textSecondary,
-                ),
+                Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
               ],
             ),
             if (isOpen) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ...items.map(
                 (item) => GestureDetector(
                   onTap: () => onSelect(item),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 4,
-                    ),
-                    decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: Color(0xFF1A2840))),
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: AppColors.fieldBorder)),
                     ),
                     child: Text(
                       item,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13,
                       ),
@@ -272,11 +266,11 @@ class _InvoicePageState extends State<InvoicePage> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF111A24),
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(50),
               border: Border.all(color: AppColors.primary, width: 1.2),
             ),
-            child: const TextField(
+            child: TextField(
               style: TextStyle(color: AppColors.primary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search items...',
@@ -293,14 +287,14 @@ class _InvoicePageState extends State<InvoicePage> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(50),
           ),
-          child: const Row(
+          child: Row(
             children: [
               Text(
                 'Category',
@@ -321,10 +315,10 @@ class _InvoicePageState extends State<InvoicePage> {
 
   Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
         color: Color(0xFF0D1A14),
-        border: Border(top: BorderSide(color: Color(0xFF1A2840))),
+        border: Border(top: BorderSide(color: AppColors.fieldBorder)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -335,7 +329,7 @@ class _InvoicePageState extends State<InvoicePage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'TOTAL AMOUNT DUE',
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -344,10 +338,10 @@ class _InvoicePageState extends State<InvoicePage> {
                       letterSpacing: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     '£${_totalAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -359,11 +353,11 @@ class _InvoicePageState extends State<InvoicePage> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF111A24),
+                  color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF1A2840)),
+                  border: Border.all(color: AppColors.fieldBorder),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.receipt_long_outlined,
                   color: AppColors.textPrimary,
                   size: 22,
@@ -371,12 +365,12 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           AppButton(
             label: 'Send Invoice',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invoice sent successfully.')),
+                SnackBar(content: Text('Invoice sent successfully.')),
               );
             },
           ),

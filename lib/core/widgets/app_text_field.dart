@@ -33,13 +33,10 @@ class _AppTextFieldState extends State<AppTextField> {
       obscureText: widget.isPassword && _obscure,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         hintText: widget.hint,
-        hintStyle: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 14,
-        ),
+        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         filled: true,
         fillColor: AppColors.fieldBackground,
         prefixIcon: widget.prefixIcon,
@@ -55,29 +52,26 @@ class _AppTextFieldState extends State<AppTextField> {
                 onPressed: () => setState(() => _obscure = !_obscure),
               )
             : null,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 16,
-        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderSide: BorderSide(color: AppColors.primary),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderSide: BorderSide(color: AppColors.primary),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderSide: BorderSide(color: Colors.redAccent),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(50),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderSide: BorderSide(color: Colors.redAccent),
         ),
       ),
     );

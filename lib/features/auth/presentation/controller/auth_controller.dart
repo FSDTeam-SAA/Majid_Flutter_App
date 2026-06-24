@@ -140,18 +140,23 @@ class AuthController extends GetxController {
       _clearFields();
       return true;
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Something went wrong';
+      final responseData = e.response?.data;
+      final message = responseData is Map
+          ? responseData['message'] ?? 'Something went wrong'
+          : 'Something went wrong';
       errorMessage.value = message;
 
       if (message.toString().toLowerCase().contains('verify your email')) {
         isEmailNotVerified.value = true;
         isEmailVerification.value = true;
-        final data = e.response?.data?['data'];
-        if (data != null && data['accessToken'] != null) {
-          await TokenManager.saveToken(
-            accessToken: data['accessToken'],
-            refreshToken: data['refreshToken'] ?? '',
-          );
+        if (responseData is Map) {
+          final data = responseData['data'];
+          if (data is Map && data['accessToken'] != null) {
+            await TokenManager.saveToken(
+              accessToken: data['accessToken'],
+              refreshToken: data['refreshToken'] ?? '',
+            );
+          }
         }
       }
       return false;
@@ -173,8 +178,10 @@ class AuthController extends GetxController {
       final token = await _repo.forgotPassword(
         email: emailController.text.trim(),
       );
+      await TokenManager.clearToken();
       await TokenManager.accessToken(token);
       isEmailVerification.value = false;
+      _clearOtp();
     });
   }
 
@@ -187,6 +194,7 @@ class AuthController extends GetxController {
 
     return _execute(() async {
       final token = await _repo.verifyOtp(otp: otp);
+      await TokenManager.clearToken();
       await TokenManager.accessToken(token);
       _clearOtp();
     });
@@ -222,8 +230,10 @@ class AuthController extends GetxController {
       await action();
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Something went wrong';
+      final data = e.response?.data;
+      errorMessage.value = data is Map
+          ? data['message'] ?? 'Something went wrong'
+          : 'Something went wrong';
       return false;
     } catch (e) {
       errorMessage.value = e.toString();

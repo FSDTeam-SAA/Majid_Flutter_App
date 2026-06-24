@@ -26,7 +26,7 @@ class SalesTrendChart extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Sales Trend',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -36,15 +36,12 @@ class SalesTrendChart extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.fieldBorder),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Text(
                       'Monthly',
@@ -53,7 +50,7 @@ class SalesTrendChart extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Icon(
                       Icons.keyboard_arrow_down,
                       color: AppColors.textPrimary,
@@ -76,15 +73,16 @@ class SalesTrendChart extends StatelessWidget {
           SizedBox(
             height: 160,
             child: CustomPaint(
-              size: const Size(double.infinity, 160),
+              size: Size(double.infinity, 160),
               painter: _ChartPainter(
                 thisMonth: thisMonth,
                 lastMonth: lastMonth,
+                isDark: AppColors.isDark,
               ),
             ),
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
@@ -118,10 +116,10 @@ class SalesTrendChart extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
       ],
     );
@@ -131,8 +129,13 @@ class SalesTrendChart extends StatelessWidget {
 class _ChartPainter extends CustomPainter {
   final List<double> thisMonth;
   final List<double> lastMonth;
+  final bool isDark;
 
-  const _ChartPainter({required this.thisMonth, required this.lastMonth});
+  const _ChartPainter({
+    required this.thisMonth,
+    required this.lastMonth,
+    required this.isDark,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -141,7 +144,7 @@ class _ChartPainter extends CustomPainter {
     final minVal = allValues.reduce(min) * 0.8;
 
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
+      ..color = AppColors.fieldBorder.withValues(alpha: AppColors.isDark ? 0.28 : 0.42)
       ..strokeWidth = 1;
     for (int i = 0; i <= 4; i++) {
       final y = size.height * i / 4;
@@ -150,7 +153,7 @@ class _ChartPainter extends CustomPainter {
 
     const yLabels = ['18000', '13500', '9000', '4500', '0'];
     final textStyle = TextStyle(
-      color: Colors.white.withValues(alpha: 0.3),
+      color: AppColors.textSecondary.withValues(alpha: 0.75),
       fontSize: 9,
     );
     for (int i = 0; i < yLabels.length; i++) {
@@ -161,7 +164,14 @@ class _ChartPainter extends CustomPainter {
       tp.paint(canvas, Offset(0, size.height * i / 4 - 6));
     }
 
-    _drawLine(canvas, size, lastMonth, const Color(0xFF6B7B74), minVal, maxVal);
+    _drawLine(
+      canvas,
+      size,
+      lastMonth,
+      AppColors.textSecondary.withValues(alpha: 0.85),
+      minVal,
+      maxVal,
+    );
     _drawLine(
       canvas,
       size,
@@ -209,7 +219,7 @@ class _ChartPainter extends CustomPainter {
           Offset(x(i), y(i)),
           4,
           Paint()
-            ..color = const Color(0xFF131F1C)
+            ..color = AppColors.cardBackground
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
@@ -218,5 +228,5 @@ class _ChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ChartPainter old) => false;
+  bool shouldRepaint(_ChartPainter old) => old.isDark != isDark;
 }

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
@@ -75,6 +75,7 @@ class ProfileController extends GetxController {
     String? whatsappNumber,
     String? shopName,
     String? shopAddress,
+    String? imagePath,
   }) async {
     isSaving.value = true;
     errorMessage.value = '';
@@ -90,7 +91,14 @@ class ProfileController extends GetxController {
       if (shopName != null) data['shopName'] = shopName;
       if (shopAddress != null) data['shopAddress'] = shopAddress;
 
-      final res = await _api.put(UserEndpoints.updateProfile, data: data);
+      final payload = imagePath != null && imagePath.isNotEmpty
+          ? FormData.fromMap({
+              ...data,
+              'image': await MultipartFile.fromFile(imagePath),
+            })
+          : data;
+
+      final res = await _api.put(UserEndpoints.updateProfile, data: payload);
       final updated = res.data['data'];
       if (updated != null) {
         profileData.value = Map<String, dynamic>.from(updated);
@@ -114,10 +122,7 @@ class ProfileController extends GetxController {
     try {
       await _api.post(
         AuthEndpoints.changePassword,
-        data: {
-          'currentPassword': currentPassword,
-          'newPassword': newPassword,
-        },
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
       );
       return true;
     } on DioException catch (e) {
@@ -167,7 +172,8 @@ class ProfileController extends GetxController {
       ]);
 
       final repairData = results[0].data;
-      totalRepairs.value = repairData['meta']?['total'] ??
+      totalRepairs.value =
+          repairData['meta']?['total'] ??
           (repairData['data'] is List ? repairData['data'].length : 0);
 
       final inventoryData = results[1].data['data'];

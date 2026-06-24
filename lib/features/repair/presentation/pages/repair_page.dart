@@ -24,43 +24,43 @@ class _RepairPageState extends State<RepairPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Repair Requests', trailing: const UserAvatar()),
+          AppHeader(title: 'Repair Requests', trailing: UserAvatar()),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
-                  const RepairStatsRow(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 16),
+                  RepairStatsRow(),
+                  SizedBox(height: 20),
                   AppButton(
                     label: 'Create Repair Request',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('Repair request form is coming soon.'),
                         ),
                       );
                     },
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   _buildSectionHeader(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   ...sampleRepairs.map(
                     (item) => RepairCard(
                       item: item,
                       onViewReport: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const RepairRequestDetailsPage(),
+                          builder: (_) => RepairRequestDetailsPage(),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildPagination(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                 ],
               ),
             ),
@@ -71,7 +71,7 @@ class _RepairPageState extends State<RepairPage> {
   }
 
   Widget _buildSectionHeader() {
-    return const Row(
+    return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
@@ -121,14 +121,14 @@ class _RepairPageState extends State<RepairPage> {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         ...[1, 2, 3].map(_buildPageNumber),
-        const Text(
+        Text(
           '  ...  ',
           style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
         _buildPageNumber(totalPages),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         GestureDetector(
           onTap: () {
             if (_currentPage < totalPages) setState(() => _currentPage++);
@@ -164,7 +164,7 @@ class _RepairPageState extends State<RepairPage> {
     return GestureDetector(
       onTap: () => setState(() => _currentPage = page),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3),
+        margin: EdgeInsets.symmetric(horizontal: 3),
         width: 32,
         height: 32,
         decoration: BoxDecoration(

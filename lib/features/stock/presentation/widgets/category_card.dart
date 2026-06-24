@@ -12,8 +12,7 @@ class CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = category['name'] ?? '';
     final itemCount = category['itemCount'] ?? category['totalItems'] ?? 0;
-    final imageUrl =
-        category['image'] is Map ? category['image']['url'] : null;
+    final imageUrl = category['image'] is Map ? category['image']['url'] : null;
 
     return GestureDetector(
       onTap: onTap,
@@ -23,35 +22,38 @@ class CategoryCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Container(
-              color: const Color(0xFF0D1E2E),
+              color: AppColors.fieldBackground,
               child: imageUrl != null
                   ? Image.network(
                       imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Icon(
+                      errorBuilder: (_, _, _) => Icon(
                         Icons.category_outlined,
                         size: 90,
                         color: Colors.white10,
                       ),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.category_outlined,
                       size: 90,
                       color: Colors.white10,
                     ),
             ),
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   stops: [0.35, 1.0],
-                  colors: [Colors.transparent, Color(0xEE0B0F14)],
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.72),
+                  ],
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(14),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -65,17 +67,17 @@ class CategoryCard extends StatelessWidget {
                           children: [
                             Text(
                               name,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
+                              style: TextStyle(
+                                color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            SizedBox(height: 2),
                             Text(
                               '$itemCount Items',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.82),
                                 fontSize: 12,
                               ),
                             ),
@@ -85,14 +87,14 @@ class CategoryCard extends StatelessWidget {
                       Container(
                         width: 36,
                         height: 36,
-                        decoration: const BoxDecoration(
-                          color: AppColors.textPrimary,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_outward,
                           size: 16,
-                          color: AppColors.background,
+                          color: AppColors.surfaceForeground,
                         ),
                       ),
                     ],

@@ -5,7 +5,7 @@ class InvoiceProduct {
   final String code;
   final double price;
   final Color color;
-  const InvoiceProduct({
+  InvoiceProduct({
     required this.name,
     required this.code,
     required this.price,
@@ -13,7 +13,7 @@ class InvoiceProduct {
   });
 }
 
-const List<InvoiceProduct> invoiceProducts = [
+List<InvoiceProduct> invoiceProducts = [
   InvoiceProduct(
     name: 'iPhone 14 Pro',
     code: 'PRD-1001',
@@ -40,5 +40,5 @@ const List<InvoiceProduct> invoiceProducts = [
   ),
 ];
 
-const List<String> customers = ['Muhammad Majid', 'Sarah Johnson', 'David Lee'];
-const List<String> paymentTypes = ['Cash', 'Card', 'Bank Transfer', 'Online'];
+List<String> customers = ['Muhammad Majid', 'Sarah Johnson', 'David Lee'];
+List<String> paymentTypes = ['Cash', 'Card', 'Bank Transfer', 'Online'];

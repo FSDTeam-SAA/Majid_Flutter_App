@@ -39,32 +39,32 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       return Scaffold(
         backgroundColor: AppColors.background,
         body: Container(
-          decoration: const BoxDecoration(gradient: AppColors.pageGradient),
+          decoration: BoxDecoration(gradient: AppColors.pageGradient),
           child: SafeArea(
             child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
+              physics: ClampingScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _buildHeader(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildHeroSection(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _buildSearchBar(),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _buildCarrierChip(),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     _buildScanNowButton(),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     _buildIconRow(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildLiveDevicePreview(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildAiInsightsSection(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildBuiltForBusiness(),
                   ],
                 ),
@@ -89,30 +89,26 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
               width: 132,
               fit: BoxFit.contain,
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Container(
               width: 30,
               height: 30,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [Color(0xFF35A7FF), Color(0xFF126DDE)],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1A73E8).withValues(alpha: 0.35),
+                    color: Color(0xFF1A73E8).withValues(alpha: 0.35),
                     blurRadius: 14,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
             ),
           ],
         ),
@@ -120,10 +116,10 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: const Color(0xFF111D1A),
+            color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.notifications_outlined,
             color: Colors.white70,
             size: 26,
@@ -137,7 +133,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Scan Any Device.\nKnow Everything.',
           style: TextStyle(
             color: Colors.white,
@@ -146,7 +142,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             height: 1.25,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'Instant IMEI lookup, blacklist check, warranty status & resale value all in one tap.',
           style: TextStyle(
@@ -163,19 +159,19 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: const Color(0xFF111D1A),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1E3028), width: 1),
+        border: Border.all(color: AppColors.fieldBorder, width: 1),
       ),
       child: Row(
         children: [
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Icon(
             Icons.search,
             color: Colors.white.withValues(alpha: 0.4),
             size: 20,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               'Enter IMEI / Serial Number',
@@ -186,18 +182,14 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             ),
           ),
           Container(
-            margin: const EdgeInsets.all(6),
+            margin: EdgeInsets.all(6),
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFF8EFC7C),
+              color: Color(0xFF8EFC7C),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.qr_code_scanner,
-              color: Colors.black,
-              size: 20,
-            ),
+            child: Icon(Icons.qr_code_scanner, color: Colors.black, size: 20),
           ),
         ],
       ),
@@ -206,21 +198,21 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
 
   Widget _buildCarrierChip() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF111D1A),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1E3028), width: 1),
+        border: Border.all(color: AppColors.fieldBorder, width: 1),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFF8EFC7C),
+              color: Color(0xFF8EFC7C),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Text(
+            child: Text(
               'FREE',
               style: TextStyle(
                 color: Colors.black,
@@ -229,12 +221,12 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'iPhone Carrier Check',
                   style: TextStyle(
                     color: Colors.white,
@@ -269,16 +261,14 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       child: ElevatedButton(
         onPressed: () => Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const AppGroundView(initialIndex: 2),
-          ),
+          MaterialPageRoute(builder: (_) => AppGroundView(initialIndex: 2)),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF8EFC7C),
-          shape: const StadiumBorder(),
+          backgroundColor: Color(0xFF8EFC7C),
+          shape: StadiumBorder(),
           elevation: 0,
         ),
-        child: const Text(
+        child: Text(
           'Scan Now',
           style: TextStyle(
             color: Colors.black,
@@ -312,7 +302,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Live Device Preview',
           style: TextStyle(
             color: Colors.white,
@@ -320,13 +310,13 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1D1A),
+            color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF1E3028), width: 1),
+            border: Border.all(color: AppColors.fieldBorder, width: 1),
           ),
           child: Column(
             children: [
@@ -336,21 +326,21 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                     width: 52,
                     height: 68,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF192820),
+                      color: Color(0xFF192820),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.smartphone,
                       color: Color(0xFF8EFC7C),
                       size: 30,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'iPhone 15 Pro Max',
                           style: TextStyle(
                             color: Colors.white,
@@ -358,7 +348,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           '256GB · Natural Titanium',
                           style: TextStyle(
@@ -370,18 +360,12 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color: const Color(0xFF8EFC7C),
-                        width: 1,
-                      ),
+                      border: Border.all(color: Color(0xFF8EFC7C), width: 1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Verified',
                       style: TextStyle(
                         color: Color(0xFF8EFC7C),
@@ -392,7 +376,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -402,7 +386,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                       valueColor: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: _StatChip(
                       label: 'Warranty',
@@ -410,12 +394,12 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                       valueColor: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: _StatChip(
                       label: 'Blacklist',
                       value: 'Clean',
-                      valueColor: const Color(0xFF8EFC7C),
+                      valueColor: Color(0xFF8EFC7C),
                     ),
                   ),
                 ],
@@ -431,7 +415,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'AI Insights',
           style: TextStyle(
             color: Colors.white,
@@ -439,13 +423,13 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1D1A),
+            color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF1E3028), width: 1),
+            border: Border.all(color: AppColors.fieldBorder, width: 1),
           ),
           child: Row(
             children: [
@@ -454,7 +438,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                 height: 80,
                 child: CustomPaint(
                   painter: _TrustScorePainter(94),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -480,24 +464,24 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
-                  children: const [
-                    _ProgressBar(
+                  children: [
+                    const _ProgressBar(
                       label: 'Device Health',
                       value: 0.85,
                       displayValue: '85%',
                     ),
                     SizedBox(height: 10),
-                    _ProgressBar(
+                    const _ProgressBar(
                       label: 'Fraud Risk',
                       value: 0.06,
                       displayValue: '6%',
                       barColor: Color(0xFF8EFC7C),
                     ),
                     SizedBox(height: 10),
-                    _ProgressBar(
+                    const _ProgressBar(
                       label: 'Resale Pred.',
                       value: 0.92,
                       displayValue: '92%',
@@ -508,16 +492,16 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Row(
           children: [
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F1D1A),
+                  color: AppColors.fieldBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF1E3028), width: 1),
+                  border: Border.all(color: AppColors.fieldBorder, width: 1),
                 ),
                 child: Column(
                   children: [
@@ -528,14 +512,14 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     SizedBox(
                       width: 70,
                       height: 40,
                       child: CustomPaint(painter: _GaugePainter(0.1)),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'Low',
                       style: TextStyle(
                         color: Color(0xFF8EFC7C),
@@ -547,14 +531,14 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F1D1A),
+                  color: AppColors.fieldBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF1E3028), width: 1),
+                  border: Border.all(color: AppColors.fieldBorder, width: 1),
                 ),
                 child: Column(
                   children: [
@@ -565,13 +549,13 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     SizedBox(
                       width: 70,
                       height: 70,
                       child: CustomPaint(
                         painter: _DonutPainter(0.06),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             '6%',
                             style: TextStyle(
@@ -583,8 +567,8 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'Very Safe',
                       style: TextStyle(color: Colors.white54, fontSize: 11),
                     ),
@@ -604,15 +588,15 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
         asset: 'assets/built/inventorydark.png',
         title: 'Inventory',
         subtitle: 'Track stock in real time',
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0D2A1A), Color(0xFF143520)],
+        gradient: LinearGradient(
+          colors: [AppColors.fieldBackground, Color(0xFF143520)],
         ),
       ),
       _BizCard(
         asset: 'assets/built/repairdark.png',
         title: 'Repair Track',
         subtitle: 'Smart job pipeline',
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [Color(0xFF2A1A00), Color(0xFF3D2800)],
         ),
       ),
@@ -620,7 +604,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
         asset: 'assets/built/invoicedark.png',
         title: 'Invoice & CRM',
         subtitle: 'Send pro invoices',
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [Color(0xFF0A1A2A), Color(0xFF0F2236)],
         ),
       ),
@@ -628,7 +612,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
         asset: 'assets/built/aireportdark.png',
         title: 'AI Reports',
         subtitle: 'Deep device insights',
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [Color(0xFF1A0A2A), Color(0xFF260F3A)],
         ),
       ),
@@ -637,7 +621,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Built for Business',
           style: TextStyle(
             color: Colors.white,
@@ -645,10 +629,10 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         GridView.count(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          physics: NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
@@ -663,7 +647,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 10),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -677,16 +661,16 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
         ),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+          padding: EdgeInsets.fromLTRB(18, 14, 18, 14),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1D1A),
+            color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF1E3028), width: 1),
+            border: Border.all(color: AppColors.fieldBorder, width: 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Ready to scan smarter?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -695,7 +679,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 'Join 50,000+ businesses using imoscan AI',
                 textAlign: TextAlign.center,
@@ -704,45 +688,42 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
                   fontSize: 10,
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const LoginScreenView()),
+                    MaterialPageRoute(builder: (_) => LoginScreenView()),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8EFC7C),
+                    backgroundColor: Color(0xFF8EFC7C),
                     foregroundColor: Colors.black,
-                    shape: const StadiumBorder(),
+                    shape: StadiumBorder(),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Login',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: OutlinedButton(
                   onPressed: () => Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const SignupScreenView()),
+                    MaterialPageRoute(builder: (_) => SignupScreenView()),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: const BorderSide(
-                      color: Color(0xFF8EFC7C),
-                      width: 1.5,
-                    ),
-                    shape: const StadiumBorder(),
+                    side: BorderSide(color: Color(0xFF8EFC7C), width: 1.5),
+                    shape: StadiumBorder(),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Create Free Account',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
@@ -769,11 +750,8 @@ class _IconChip extends StatelessWidget {
     return Column(
       children: [
         Image.asset(assetPath, width: 44, height: 44, fit: BoxFit.contain),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white60, fontSize: 10),
-        ),
+        SizedBox(height: 5),
+        Text(label, style: TextStyle(color: Colors.white60, fontSize: 10)),
       ],
     );
   }
@@ -793,7 +771,7 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(10),
@@ -802,10 +780,10 @@ class _StatChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.white38, fontSize: 9),
+            style: TextStyle(color: Colors.white38, fontSize: 9),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 3),
+          SizedBox(height: 3),
           Text(
             value,
             style: TextStyle(
@@ -841,22 +819,19 @@ class _ProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
-            ),
+            Text(label, style: TextStyle(color: Colors.white70, fontSize: 11)),
             Text(
               displayValue,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              style: TextStyle(color: Colors.white70, fontSize: 11),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: value,
-            backgroundColor: const Color(0xFF1E3028),
+            backgroundColor: AppColors.fieldBorder,
             valueColor: AlwaysStoppedAnimation<Color>(barColor),
             minHeight: 5,
           ),
@@ -891,18 +866,18 @@ class _BizCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: card.gradient,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E3028), width: 1),
+        border: Border.all(color: AppColors.fieldBorder, width: 1),
       ),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Image.asset(card.asset, width: 28, height: 28, fit: BoxFit.contain),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             card.title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -934,7 +909,7 @@ class _TrustScorePainter extends CustomPainter {
     final radius = size.width / 2 - 6;
 
     final bgPaint = Paint()
-      ..color = const Color(0xFF1E3028)
+      ..color = AppColors.fieldBorder
       ..style = PaintingStyle.stroke
       ..strokeWidth = 7
       ..strokeCap = StrokeCap.round;
@@ -942,7 +917,7 @@ class _TrustScorePainter extends CustomPainter {
     canvas.drawCircle(center, radius, bgPaint);
 
     final fgPaint = Paint()
-      ..shader = const SweepGradient(
+      ..shader = SweepGradient(
         startAngle: -math.pi / 2,
         endAngle: 3 * math.pi / 2,
         colors: [Color(0xFF4A9EFF), Color(0xFF8EFC7C)],
@@ -975,7 +950,7 @@ class _GaugePainter extends CustomPainter {
     final radius = size.width / 2 - 4;
 
     final bgPaint = Paint()
-      ..color = const Color(0xFF1E3028)
+      ..color = AppColors.fieldBorder
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
@@ -989,7 +964,7 @@ class _GaugePainter extends CustomPainter {
     );
 
     final fgPaint = Paint()
-      ..color = const Color(0xFF8EFC7C)
+      ..color = Color(0xFF8EFC7C)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
@@ -1018,14 +993,14 @@ class _DonutPainter extends CustomPainter {
     final radius = size.width / 2 - 6;
 
     final bgPaint = Paint()
-      ..color = const Color(0xFF1E3028)
+      ..color = AppColors.fieldBorder
       ..style = PaintingStyle.stroke
       ..strokeWidth = 10;
 
     canvas.drawCircle(center, radius, bgPaint);
 
     final fgPaint = Paint()
-      ..color = const Color(0xFF4A9EFF)
+      ..color = Color(0xFF4A9EFF)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 10
       ..strokeCap = StrokeCap.round;
