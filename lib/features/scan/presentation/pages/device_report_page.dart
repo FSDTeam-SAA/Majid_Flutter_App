@@ -9,7 +9,9 @@ import '../widgets/ai_risk_card.dart';
 import '../widgets/device_field_card.dart';
 
 class DeviceReportPage extends StatelessWidget {
-  const DeviceReportPage({super.key});
+  final Map<String, dynamic> report;
+
+  const DeviceReportPage({super.key, this.report = const {}});
 
   @override
   Widget build(BuildContext context) {
@@ -22,40 +24,39 @@ class DeviceReportPage extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: Column(
                 children: [
-                  DeviceFieldFull(
-                    label: 'DEVICE NAME',
-                    value: 'iPhone SE 1st Gen 2016',
-                  ),
+                  DeviceFieldFull(label: 'DEVICE NAME', value: _field('Model')),
                   SizedBox(height: 10),
                   DeviceFieldFull(
                     label: 'DEVICE DESCRIPTION',
-                    value: 'OBS,IPHONE SE,HB,16GB,GRAY',
+                    value: _field('Device') == 'N/A'
+                        ? _field('Description')
+                        : _field('Device'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldFull(
                     label: 'SERIAL NUMBER',
-                    value: 'HH3HJ0TJ0D84',
+                    value: _field('Serial'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'SERVICE ID',
-                    leftValue: '354957736904965',
+                    leftValue: report['serviceId']?.toString() ?? 'N/A',
                     rightLabel: 'MANUFACTURER',
-                    rightValue: '354957736789788',
+                    rightValue: _field('Manufacturer'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'IMEI',
-                    leftValue: '354957736904965',
+                    leftValue: report['imei']?.toString() ?? _field('IMEI'),
                     rightLabel: 'IMEI 2',
-                    rightValue: '354957736789788',
+                    rightValue: _field('IMEI2'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'FIND MY IPHONE',
-                    leftValue: 'No',
+                    leftValue: _field('Find My iPhone'),
                     rightLabel: 'ICLOUD STATUS',
-                    rightValue: 'Clean',
+                    rightValue: _field('iCloud Status'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
@@ -143,5 +144,27 @@ class DeviceReportPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Map<String, dynamic> get _data {
+    final data = report['data'];
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return report;
+  }
+
+  String _field(String key) {
+    final data = _data;
+    final providerData = data['parsedProviderData'] ?? data['providerData'];
+    if (providerData is Map) {
+      final direct = providerData[key] ?? providerData[key.toLowerCase()];
+      if (direct != null && direct.toString().trim().isNotEmpty) {
+        return direct.toString();
+      }
+    }
+    final direct = data[key] ?? data[key.toLowerCase()];
+    if (direct != null && direct.toString().trim().isNotEmpty) {
+      return direct.toString();
+    }
+    return 'N/A';
   }
 }

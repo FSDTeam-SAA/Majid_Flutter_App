@@ -68,7 +68,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
-  Future<void> _saveProfile() async {
+  Future<bool> _saveProfile() async {
+    if (_firstNameCtrl.text.trim().isEmpty ||
+        _lastNameCtrl.text.trim().isEmpty) {
+      showErrorSnackbar('Please enter first and last name');
+      return false;
+    }
+
     final success = await _profileCtrl.updateProfile(
       firstName: _firstNameCtrl.text.trim(),
       lastName: _lastNameCtrl.text.trim(),
@@ -82,8 +88,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (success) {
       setState(() => _pickedImagePath = null);
       showSuccessSnackbar('Profile updated successfully');
+      return true;
     } else {
-      showErrorSnackbar(_profileCtrl.errorMessage.value);
+      showErrorSnackbar(
+        _profileCtrl.errorMessage.value.isNotEmpty
+            ? _profileCtrl.errorMessage.value
+            : 'Failed to update profile',
+      );
+      return false;
     }
   }
 
@@ -95,14 +107,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() => _pickedImagePath = picked.path);
   }
 
-  Future<void> _savePassword() async {
+  Future<bool> _savePassword() async {
     if (_currentPassCtrl.text.isEmpty || _newPassCtrl.text.isEmpty) {
       showErrorSnackbar('Please fill all password fields');
-      return;
+      return false;
     }
     if (_newPassCtrl.text != _confirmPassCtrl.text) {
       showErrorSnackbar('New passwords do not match');
-      return;
+      return false;
     }
 
     final success = await _profileCtrl.changePassword(
@@ -115,17 +127,30 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _currentPassCtrl.clear();
       _newPassCtrl.clear();
       _confirmPassCtrl.clear();
+      return true;
     } else {
       showErrorSnackbar(_profileCtrl.errorMessage.value);
+      return false;
     }
   }
 
   Future<void> _handleSave() async {
-    if (_currentPassCtrl.text.isNotEmpty) {
-      await Future.wait([_saveProfile(), _savePassword()]);
-    } else {
-      await _saveProfile();
+    final wantsPasswordChange =
+        _currentPassCtrl.text.isNotEmpty ||
+        _newPassCtrl.text.isNotEmpty ||
+        _confirmPassCtrl.text.isNotEmpty;
+
+    final profileSaved = await _saveProfile();
+    if (!profileSaved) return;
+
+    if (wantsPasswordChange) {
+      final passwordSaved = await _savePassword();
+      if (!passwordSaved) return;
     }
+
+    await _profileCtrl.fetchProfile();
+    if (!mounted) return;
+    Navigator.pop(context, true);
   }
 
   @override

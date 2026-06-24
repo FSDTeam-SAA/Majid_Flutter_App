@@ -21,7 +21,7 @@ class HomeController extends GetxController {
   final totalRepairRequests = 0.obs;
   final totalCategories = 0.obs;
 
-  // Sold products (top selling)
+  // Sold inventory items (top selling)
   final soldProducts = <Map<String, dynamic>>[].obs;
 
   // Inventory items
@@ -44,7 +44,7 @@ class HomeController extends GetxController {
       await Future.wait([
         _fetchProfile(),
         _fetchInventory(),
-        _fetchSoldProducts(),
+        _fetchSoldItems(),
         _fetchRepairRequests(),
         _fetchCategories(),
       ]);
@@ -86,16 +86,17 @@ class HomeController extends GetxController {
     }
   }
 
-  Future<void> _fetchSoldProducts() async {
+  Future<void> _fetchSoldItems() async {
     try {
-      final res = await _api.get(SoldProductEndpoints.myProducts);
+      final res = await _api.get(InventoryEndpoints.soldItems);
       final data = res.data['data'];
       if (data is List) {
-        soldProducts.value = List<Map<String, dynamic>>.from(data);
-        totalSoldProducts.value = data.length;
+        final items = List<Map<String, dynamic>>.from(data);
+        soldProducts.value = items;
+        totalSoldProducts.value = items.length;
       }
     } on DioException catch (e) {
-      debugPrint('Sold products fetch error: $e');
+      debugPrint('Sold items fetch error: $e');
     }
   }
 

@@ -8,7 +8,8 @@ class ScanItem {
 class ScanDropdownOption {
   final String label;
   final String type;
-  ScanDropdownOption(this.label, this.type);
+  final int? serviceId;
+  ScanDropdownOption(this.label, this.type, {this.serviceId});
 }
 
 List<ScanItem> recentScans = [

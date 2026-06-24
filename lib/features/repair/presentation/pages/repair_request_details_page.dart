@@ -11,7 +11,9 @@ import 'checkout_page.dart';
 import 'receipt_page.dart';
 
 class RepairRequestDetailsPage extends StatelessWidget {
-  const RepairRequestDetailsPage({super.key});
+  final Map<String, dynamic> repair;
+
+  const RepairRequestDetailsPage({super.key, this.repair = const {}});
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +56,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
   }
 
   Widget _buildDeviceCard() {
+    final status = _formatStatus(repair['status']?.toString());
     return AppCard(
       padding: EdgeInsets.all(14),
       child: Column(
@@ -67,7 +70,8 @@ class RepairRequestDetailsPage extends StatelessWidget {
                 children: [
                   InfoField(
                     label: 'DEVICE INFORMATION',
-                    value: 'iPhone 14 Pro',
+                    value:
+                        repair['deviceModel']?.toString() ?? 'Unknown device',
                   ),
                 ],
               ),
@@ -78,7 +82,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'In Progress',
+                  status,
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 12,
@@ -97,7 +101,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'BROKEN SCREEN, PLUS BACK NEEDS TO CHANGE...',
+              repair['description']?.toString() ?? 'No description provided',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
@@ -116,9 +120,15 @@ class RepairRequestDetailsPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InfoField(label: 'REQUEST ID', value: '#6A281FA64AB4CD6B2D3D6031'),
+          InfoField(
+            label: 'REQUEST ID',
+            value: '#${repair['_id']?.toString() ?? 'N/A'}',
+          ),
           SizedBox(height: 12),
-          InfoField(label: 'SUBMITTED', value: 'Jun 09, 2026 · 07:53 PM'),
+          InfoField(
+            label: 'SUBMITTED',
+            value: _formatDateTime(repair['createdAt']?.toString()),
+          ),
           SizedBox(height: 12),
           InfoField(label: 'SHOP', value: 'Your Shop'),
         ],
@@ -239,13 +249,55 @@ class RepairRequestDetailsPage extends StatelessWidget {
         children: [
           InfoField(label: 'CUSTOMER DETAILS', value: ''),
           SizedBox(height: 14),
-          InfoField(label: 'NAME', value: 'John'),
+          InfoField(
+            label: 'NAME',
+            value: repair['firstName']?.toString() ?? '',
+          ),
           SizedBox(height: 12),
-          InfoField(label: 'EMAIL ADDRESS', value: 'john@gmai.com'),
+          InfoField(
+            label: 'EMAIL ADDRESS',
+            value: repair['email']?.toString() ?? '',
+          ),
           SizedBox(height: 12),
-          InfoField(label: 'PHONE NUMBER', value: '+1 266 625 515'),
+          InfoField(
+            label: 'PHONE NUMBER',
+            value: repair['phoneNumber']?.toString() ?? '',
+          ),
         ],
       ),
     );
+  }
+
+  String _formatStatus(String? status) {
+    return switch (status) {
+      'completed' => 'Completed',
+      'rejected' => 'Rejected',
+      null || '' => 'In Progress',
+      _ => 'In Progress',
+    };
+  }
+
+  String _formatDateTime(String? value) {
+    final parsed = DateTime.tryParse(value ?? '');
+    if (parsed == null) return '';
+    final local = parsed.toLocal();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year} · $hour:$minute $period';
   }
 }

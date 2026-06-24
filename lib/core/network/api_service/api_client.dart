@@ -197,8 +197,7 @@ class ApiClient {
     return path.contains('/auth/login') ||
         path.contains('/auth/forgot-password') ||
         path.contains('/auth/refresh-token') ||
-        path.contains('/user/register') ||
-        path.contains('/user/verify-email');
+        path.contains('/user/register');
   }
 
   // API methods

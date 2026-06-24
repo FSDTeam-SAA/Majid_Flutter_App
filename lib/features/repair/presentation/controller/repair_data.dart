@@ -5,6 +5,8 @@ class RepairItem {
   final String issueDesc;
   final String date;
   final String status;
+  final double price;
+  final Map<String, dynamic> raw;
 
   RepairItem({
     required this.name,
@@ -13,6 +15,8 @@ class RepairItem {
     required this.issueDesc,
     required this.date,
     required this.status,
+    this.price = 0,
+    this.raw = const {},
   });
 }
 

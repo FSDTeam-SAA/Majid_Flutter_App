@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/colors.dart';
 
 class RepairStatsRow extends StatelessWidget {
-  const RepairStatsRow({super.key});
+  final int inProgress;
+  final int completed;
+  final double totalSales;
+
+  const RepairStatsRow({
+    super.key,
+    this.inProgress = 0,
+    this.completed = 0,
+    this.totalSales = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +22,7 @@ class RepairStatsRow extends StatelessWidget {
             Icons.build_rounded,
             Color(0xFF1A2A6C),
             Color(0xFF5B8DEF),
-            '27',
+            '$inProgress',
             'In Progress',
           ),
         ),
@@ -23,7 +32,7 @@ class RepairStatsRow extends StatelessWidget {
             Icons.check_circle_outline_rounded,
             AppColors.fieldBackground,
             AppColors.primary,
-            '10',
+            '$completed',
             'Completed',
           ),
         ),
@@ -33,12 +42,19 @@ class RepairStatsRow extends StatelessWidget {
             Icons.bar_chart_rounded,
             AppColors.fieldBackground,
             AppColors.primary,
-            '£14,650',
+            _formatCurrency(totalSales),
             'Total Sales',
           ),
         ),
       ],
     );
+  }
+
+  String _formatCurrency(double value) {
+    if (value >= 1000) {
+      return '£${(value / 1000).toStringAsFixed(1)}k';
+    }
+    return '£${value.toStringAsFixed(0)}';
   }
 
   Widget _buildCard(

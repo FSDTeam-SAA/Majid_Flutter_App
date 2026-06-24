@@ -1,4 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
@@ -7,6 +11,7 @@ import '../controller/invoice_data.dart';
 import '../widgets/invoice_input_field.dart';
 import '../widgets/invoice_product_item.dart';
 import '../widgets/shop_info_card.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 
 class InvoicePage extends StatefulWidget {
   const InvoicePage({super.key});
@@ -16,15 +21,97 @@ class InvoicePage extends StatefulWidget {
 }
 
 class _InvoicePageState extends State<InvoicePage> {
+  late final ApiClient _api;
+  late final ProfileController _profileCtrl;
   int _tabIndex = 0;
   String? _selectedCustomer;
+  String? _selectedCustomerId;
   String? _selectedPaymentType;
   bool _paymentTypeOpen = false;
   bool _customerDropOpen = false;
-  final Set<int> _selectedProducts = {1};
+  final Set<int> _selectedProducts = {};
+  bool _isLoading = true;
+  String _errorMessage = '';
+  List<InvoiceProduct> _products = [];
+  List<Map<String, dynamic>> _customers = [];
 
   double get _totalAmount =>
-      _selectedProducts.fold(0, (sum, i) => sum + invoiceProducts[i].price);
+      _selectedProducts.fold(0, (sum, i) => sum + _products[i].price);
+
+  @override
+  void initState() {
+    super.initState();
+    _api = ApiClient(baseUrl);
+    _profileCtrl = Get.find<ProfileController>();
+    _loadInvoiceData();
+  }
+
+  Future<void> _loadInvoiceData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    try {
+      await Future.wait([_fetchCustomers(), _fetchProducts()]);
+      if (_selectedProducts.isEmpty && _products.isNotEmpty) {
+        _selectedProducts.add(0);
+      }
+    } on DioException catch (e) {
+      _errorMessage =
+          e.response?.data?['message'] ?? 'Failed to load invoice data';
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchCustomers() async {
+    var shopkeeperId = _profileCtrl.userId;
+    if (shopkeeperId.isEmpty) {
+      await _profileCtrl.fetchProfile();
+      shopkeeperId = _profileCtrl.userId;
+    }
+    if (shopkeeperId.isEmpty) {
+      _customers = [];
+      return;
+    }
+    final res = await _api.get(CustomerEndpoints.byShopkeeper(shopkeeperId));
+    final data = res.data['data'];
+    if (data is! List) {
+      throw const FormatException('Invalid customers response');
+    }
+    _customers = List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> _fetchProducts() async {
+    final res = await _api.get(InventoryEndpoints.myInventory);
+    final data = res.data['data'];
+    if (data is! List) {
+      throw const FormatException('Invalid inventory response');
+    }
+    _products = data
+        .whereType<Map>()
+        .map((item) => _productFromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  InvoiceProduct _productFromJson(Map<String, dynamic> item) {
+    final price =
+        (item['expectedPrice'] as num?)?.toDouble() ??
+        (item['purchasePrice'] as num?)?.toDouble() ??
+        0;
+    return InvoiceProduct(
+      id: item['_id']?.toString() ?? '',
+      name:
+          item['itemName']?.toString() ??
+          item['brand']?.toString() ??
+          'Inventory item',
+      code: item['sku']?.toString() ?? item['imeiNumber']?.toString() ?? 'N/A',
+      price: price,
+      color: AppColors.primary,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +128,19 @@ class _InvoicePageState extends State<InvoicePage> {
                   SizedBox(height: 14),
                   _buildTabBar(),
                   SizedBox(height: 22),
-                  if (_tabIndex == 0) _buildCreateInvoiceTab(),
+                  if (_isLoading)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 48),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  else if (_errorMessage.isNotEmpty)
+                    _buildLoadError()
+                  else if (_tabIndex == 0)
+                    _buildCreateInvoiceTab(),
                   if (_tabIndex == 1)
                     Center(
                       child: Padding(
@@ -118,6 +217,7 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Widget _buildCreateInvoiceTab() {
+    final customerNames = _customers.map(_customerLabel).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -136,10 +236,15 @@ class _InvoicePageState extends State<InvoicePage> {
           _customerDropOpen,
           (v) => setState(() {
             _selectedCustomer = v;
+            _selectedCustomerId = _customers
+                .firstWhereOrNull(
+                  (customer) => _customerLabel(customer) == v,
+                )?['_id']
+                ?.toString();
             _customerDropOpen = false;
           }),
           () => setState(() => _customerDropOpen = !_customerDropOpen),
-          customers,
+          customerNames,
         ),
         SizedBox(height: 10),
         Row(
@@ -191,19 +296,62 @@ class _InvoicePageState extends State<InvoicePage> {
         SizedBox(height: 14),
         _buildProductSearch(),
         SizedBox(height: 12),
-        ...invoiceProducts.asMap().entries.map(
-          (e) => InvoiceProductItem(
-            product: e.value,
-            isSelected: _selectedProducts.contains(e.key),
-            onTap: () => setState(
-              () => _selectedProducts.contains(e.key)
-                  ? _selectedProducts.remove(e.key)
-                  : _selectedProducts.add(e.key),
+        if (_products.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                'No inventory products available',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          )
+        else
+          ..._products.asMap().entries.map(
+            (e) => InvoiceProductItem(
+              product: e.value,
+              isSelected: _selectedProducts.contains(e.key),
+              onTap: () => setState(
+                () => _selectedProducts.contains(e.key)
+                    ? _selectedProducts.remove(e.key)
+                    : _selectedProducts.add(e.key),
+              ),
             ),
           ),
-        ),
       ],
     );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Column(
+          children: [
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _loadInvoiceData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _customerLabel(Map<String, dynamic> customer) {
+    final first = customer['firstName']?.toString() ?? '';
+    final last = customer['lastName']?.toString() ?? '';
+    final name = '$first $last'.trim();
+    if (name.isNotEmpty) return name;
+    return customer['name']?.toString() ??
+        customer['email']?.toString() ??
+        'Customer';
   }
 
   Widget _buildDropdown(
@@ -384,8 +532,24 @@ class _InvoicePageState extends State<InvoicePage> {
           AppButton(
             label: 'Send Invoice',
             onPressed: () {
+              if (_selectedCustomerId == null || _selectedCustomerId!.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please choose a customer.')),
+                );
+                return;
+              }
+              if (_selectedProducts.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please select a product.')),
+                );
+                return;
+              }
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Invoice sent successfully.')),
+                const SnackBar(
+                  content: Text(
+                    'Invoice API requires a generated PDF file before sending.',
+                  ),
+                ),
               );
             },
           ),

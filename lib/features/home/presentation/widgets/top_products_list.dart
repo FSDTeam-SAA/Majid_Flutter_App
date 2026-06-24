@@ -67,10 +67,18 @@ class TopProductsList extends StatelessWidget {
           else
             ...List.generate(products.length, (i) {
               final item = products[i];
-              final name = item['productName'] ?? item['itemName'] ?? 'Unknown';
-              final sold = item['quantity'] ?? 1;
-              final maxSold = products[0]['quantity'] ?? 1;
+              final name =
+                  item['productName'] ??
+                  item['itemName'] ??
+                  item['brand'] ??
+                  'Unknown';
+              final sold = _asNumber(item['quantity']) ?? 1;
+              final maxSold = _asNumber(products[0]['quantity']) ?? 1;
               final progress = maxSold > 0 ? sold / maxSold : 0.0;
+              final price =
+                  _asNumber(item['expectedPrice']) ??
+                  _asNumber(item['sellingPrice']) ??
+                  _asNumber(item['purchasePrice']);
 
               return Padding(
                 padding: EdgeInsets.only(bottom: 14),
@@ -134,7 +142,9 @@ class TopProductsList extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '$sold',
+                          price == null
+                              ? sold.toStringAsFixed(0)
+                              : '£${price.toStringAsFixed(0)}',
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,
@@ -142,7 +152,7 @@ class TopProductsList extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Sold',
+                          price == null ? 'Sold' : 'Price',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -157,5 +167,11 @@ class TopProductsList extends StatelessWidget {
         ],
       );
     });
+  }
+
+  num? _asNumber(dynamic value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
   }
 }

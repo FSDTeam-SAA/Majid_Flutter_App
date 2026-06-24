@@ -105,8 +105,14 @@ class ProfileController extends GetxController {
       }
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to update profile';
+      errorMessage.value = _messageFromDioError(
+        e,
+        fallback: 'Failed to update profile',
+      );
+      return false;
+    } catch (e) {
+      errorMessage.value = 'Failed to update profile';
+      debugPrint('Profile update error: $e');
       return false;
     } finally {
       isSaving.value = false;
@@ -126,12 +132,42 @@ class ProfileController extends GetxController {
       );
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to change password';
+      errorMessage.value = _messageFromDioError(
+        e,
+        fallback: 'Failed to change password',
+      );
+      return false;
+    } catch (e) {
+      errorMessage.value = 'Failed to change password';
+      debugPrint('Password change error: $e');
       return false;
     } finally {
       isSaving.value = false;
     }
+  }
+
+  String _messageFromDioError(DioException error, {required String fallback}) {
+    final statusCode = error.response?.statusCode;
+    final responseData = error.response?.data;
+
+    if (responseData is Map && responseData['message'] != null) {
+      return responseData['message'].toString();
+    }
+
+    if (statusCode == 404) {
+      return 'API route not found. Please check the backend base URL.';
+    }
+
+    if (statusCode == 401) {
+      return 'Session expired. Please login again.';
+    }
+
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.connectionError) {
+      return 'Cannot connect to the backend server.';
+    }
+
+    return fallback;
   }
 
   Future<void> fetchPayments() async {

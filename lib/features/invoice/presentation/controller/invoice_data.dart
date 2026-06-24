@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 class InvoiceProduct {
+  final String id;
   final String name;
   final String code;
   final double price;
   final Color color;
   InvoiceProduct({
+    this.id = '',
     required this.name,
     required this.code,
     required this.price,
