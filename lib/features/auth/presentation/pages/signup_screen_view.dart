@@ -19,11 +19,11 @@ class SignupScreenView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          const AuthBackButton(),
-          const SizedBox(height: 36),
+          SizedBox(height: 16),
+          AuthBackButton(),
+          SizedBox(height: 36),
           RichText(
-            text: const TextSpan(
+            text: TextSpan(
               children: [
                 TextSpan(
                   text: 'Create Your ',
@@ -60,35 +60,32 @@ class SignupScreenView extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           AppTextField(
             hint: 'First Name',
             controller: auth.firstNameController,
           ),
-          const SizedBox(height: 14),
-          AppTextField(
-            hint: 'Last Name',
-            controller: auth.lastNameController,
-          ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
+          AppTextField(hint: 'Last Name', controller: auth.lastNameController),
+          SizedBox(height: 14),
           AppTextField(
             hint: 'Enter your email',
             controller: auth.emailController,
             keyboardType: TextInputType.emailAddress,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppTextField(
             hint: 'Password',
             controller: auth.passwordController,
             isPassword: true,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppTextField(
             hint: 'Confirm Password',
             controller: auth.confirmPasswordController,
             isPassword: true,
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           Obx(
             () => AppButton(
               label: 'Create Account',
@@ -104,14 +101,14 @@ class SignupScreenView extends StatelessWidget {
                   showSuccessSnackbar(
                     'Account created! Please verify your email.',
                   );
-                  Get.to(() => const OtpVerificationScreenView());
+                  Get.to(() => OtpVerificationScreenView());
                 } else if (auth.errorMessage.isNotEmpty) {
                   showErrorSnackbar(auth.errorMessage.value);
                 }
               },
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Center(
             child: AuthLink(
               text: 'Already have an account? ',
@@ -119,8 +116,8 @@ class SignupScreenView extends StatelessWidget {
               onTap: () => Get.back(),
             ),
           ),
-          const Spacer(),
-          const SizedBox(height: 24),
+          Spacer(),
+          SizedBox(height: 24),
         ],
       ),
     );

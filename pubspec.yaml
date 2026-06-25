@@ -57,6 +57,7 @@ dependencies:
   # animated bottom nav bar
   animated_bottom_navigation_bar: ^1.4.0
   image_picker: ^1.2.2
+  file_picker: ^8.1.7
 
 
 dev_dependencies:

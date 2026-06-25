@@ -13,16 +13,16 @@ class ReceiptPage extends StatelessWidget {
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(title: 'Receipt'),
+          AppHeader(title: 'Receipt'),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  const SizedBox(height: 30),
+                  SizedBox(height: 30),
                   _buildVerifiedIcon(),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Receipt Verified',
                     style: TextStyle(
                       color: AppColors.textPrimary,
@@ -30,24 +30,22 @@ class ReceiptPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   _buildDetails(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   _buildQrCode(),
-                  const SizedBox(height: 30),
+                  SizedBox(height: 30),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 28),
             child: AppOutlinedButton(
               label: 'Get PDF Receipt',
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PDF receipt export is coming soon.'),
-                  ),
+                  SnackBar(content: Text('PDF receipt export is coming soon.')),
                 );
               },
             ),
@@ -69,7 +67,7 @@ class ReceiptPage extends StatelessWidget {
           width: 2,
         ),
       ),
-      child: const Icon(
+      child: Icon(
         Icons.check_circle_rounded,
         color: AppColors.primary,
         size: 42,
@@ -93,15 +91,15 @@ class ReceiptPage extends StatelessWidget {
         return Column(
           children: [
             if (isFirst)
-              const Divider(color: Color(0xFF1E2E2A), height: 1, thickness: 1),
+              Divider(color: AppColors.fieldBorder, height: 1, thickness: 1),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: EdgeInsets.symmetric(vertical: 14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     e.value.$1,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
                     ),
@@ -121,9 +119,9 @@ class ReceiptPage extends StatelessWidget {
               ),
             ),
             if (!isLast)
-              const DashedDivider()
+              DashedDivider()
             else
-              const Divider(color: Color(0xFF1E2E2A), height: 1, thickness: 1),
+              Divider(color: AppColors.fieldBorder, height: 1, thickness: 1),
           ],
         );
       }).toList(),
@@ -132,7 +130,7 @@ class ReceiptPage extends StatelessWidget {
 
   Widget _buildQrCode() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),

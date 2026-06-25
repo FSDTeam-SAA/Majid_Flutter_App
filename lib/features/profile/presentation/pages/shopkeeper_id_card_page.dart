@@ -20,7 +20,7 @@ class ShopkeeperIdCardPage extends StatelessWidget {
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(title: 'Shopkeeper Id Card'),
+          AppHeader(title: 'Shopkeeper Id Card'),
           Expanded(
             child: Obx(() {
               final data = profileCtrl.profileData;
@@ -35,9 +35,9 @@ class ShopkeeperIdCardPage extends StatelessWidget {
                   : id;
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 child: AppCard(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20),
                   borderRadius: 20,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,36 +46,36 @@ class ShopkeeperIdCardPage extends StatelessWidget {
                         label: 'NAME',
                         value: name.isNotEmpty ? name : 'N/A',
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       _buildIdBox(context, shortId),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       InfoField(
                         label: 'EMAIL:',
                         value: email.isNotEmpty ? email : 'N/A',
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       InfoField(
                         label: 'PHONE:',
                         value: phone.isNotEmpty ? phone : 'N/A',
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       InfoField(
                         label: 'SHOP NAME:',
                         value: shop.isNotEmpty ? shop : 'N/A',
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       InfoField(
                         label: 'ADDRESS:',
                         value: address.isNotEmpty ? address : 'N/A',
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       _buildQrBox(),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       AppButton(
                         label: 'Download QR',
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text('QR download is coming soon.'),
                             ),
                           );
@@ -94,11 +94,11 @@ class ShopkeeperIdCardPage extends StatelessWidget {
 
   Widget _buildIdBox(BuildContext context, String shopkeeperId) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B1520),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Row(
         children: [
@@ -109,19 +109,19 @@ class ShopkeeperIdCardPage extends StatelessWidget {
             onTap: () {
               Clipboard.setData(ClipboardData(text: shopkeeperId));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('ID copied!'),
                   duration: Duration(seconds: 1),
                 ),
               );
             },
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A2840),
+                color: AppColors.fieldBorder,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.copy_outlined,
                 color: AppColors.textPrimary,
                 size: 20,

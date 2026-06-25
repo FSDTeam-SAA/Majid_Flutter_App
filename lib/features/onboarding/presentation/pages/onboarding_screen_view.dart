@@ -38,13 +38,13 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
   void _nextPage() {
     if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 350),
+        duration: Duration(milliseconds: 350),
         curve: Curves.easeInOut,
       );
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const AiHomePreviewScreen()),
+        MaterialPageRoute(builder: (_) => AiHomePreviewScreen()),
       );
     }
   }
@@ -52,7 +52,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
   void _openLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreenView()),
+      MaterialPageRoute(builder: (_) => LoginScreenView()),
     );
   }
 
@@ -64,7 +64,6 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final isLast = _currentPage == _pages.length - 1;
 
     return Scaffold(
@@ -73,44 +72,43 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
         decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: Column(
           children: [
-            // Image section — not swipeable
-            Padding(
-              padding: const EdgeInsets.only(top: 40, bottom: 8),
-              child: SizedBox(
-                height: size.height * 0.63,
-                width: double.infinity,
+            Expanded(
+              flex: 11,
+              child: ClipRect(
                 child: PageView.builder(
                   controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: NeverScrollableScrollPhysics(),
                   onPageChanged: (i) => setState(() => _currentPage = i),
                   itemCount: _pages.length,
-                  itemBuilder: (_, i) => Padding(
-                    padding: const EdgeInsets.all(8.0),
+                  itemBuilder: (_, i) => SizedBox.expand(
                     child: Image.asset(_pages[i].image, fit: BoxFit.cover),
                   ),
                 ),
               ),
             ),
-
-            const SizedBox(height: 24),
-
             Expanded(
+              flex: 6,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  8,
+                  24,
+                  MediaQuery.of(context).padding.bottom + 20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       _pages[_currentPage].title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Text(
                       _pages[_currentPage].subtitle,
                       textAlign: TextAlign.center,
@@ -120,53 +118,52 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                         height: 1.6,
                       ),
                     ),
-                    const Spacer(),
-                    // Dot indicators (3 dots only)
+                    Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
                         _pages.length,
                         (i) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          duration: Duration(milliseconds: 300),
+                          margin: EdgeInsets.symmetric(horizontal: 4),
                           width: i == _currentPage ? 24 : 8,
                           height: 8,
                           decoration: BoxDecoration(
                             color: i == _currentPage
-                                ? const Color(0xFF8EFC7C)
+                                ? Color(0xFF8EFC7C)
                                 : Colors.white.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
                         onPressed: _nextPage,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8EFC7C),
+                          backgroundColor: Color(0xFF8EFC7C),
                           foregroundColor: Colors.black,
-                          shape: const StadiumBorder(),
+                          shape: StadiumBorder(),
                           elevation: 0,
                         ),
                         child: Text(
                           isLast ? 'Get Started' : 'Next',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     GestureDetector(
                       onTap: _openLogin,
                       behavior: HitTestBehavior.opaque,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        padding: EdgeInsets.symmetric(vertical: 4),
                         child: RichText(
                           textAlign: TextAlign.center,
                           text: TextSpan(
@@ -178,7 +175,7 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                                   fontSize: 12,
                                 ),
                               ),
-                              const TextSpan(
+                              TextSpan(
                                 text: 'Login',
                                 style: TextStyle(
                                   color: Color(0xFF8EFC7C),

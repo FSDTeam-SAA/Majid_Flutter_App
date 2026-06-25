@@ -31,13 +31,13 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
     return Container(
       height: 85,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F0F0F), // Dark background
+        color: Color(0xFF0F0F0F), // Dark background
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 20,
             spreadRadius: 2,
-            offset: const Offset(0, -5),
+            offset: Offset(0, -5),
           ),
         ],
       ),
@@ -56,7 +56,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Icon(
                       _icons[index],
                       color: _selectedIndex == index
@@ -64,7 +64,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                           : Colors.grey[600],
                       size: isCenter ? 28 : 26,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       _labels[index],
                       style: TextStyle(
@@ -75,7 +75,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                   ],
                 ),
               );
@@ -104,7 +104,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                     ),
                   ],
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.inventory_2_rounded,
                     color: Colors.black,

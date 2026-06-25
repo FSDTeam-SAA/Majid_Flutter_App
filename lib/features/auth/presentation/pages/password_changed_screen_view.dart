@@ -29,15 +29,15 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
 
     _badgeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 600),
     );
     _checkController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: Duration(milliseconds: 500),
     );
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: Duration(milliseconds: 900),
     )..repeat();
 
     _badgeScale = TweenSequence([
@@ -89,13 +89,13 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
         decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 GestureDetector(
-                  onTap: () => Get.offAll(() => const LoginScreenView()),
+                  onTap: () => Get.offAll(() => LoginScreenView()),
                   child: Container(
                     width: 40,
                     height: 40,
@@ -104,17 +104,17 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                       borderRadius: BorderRadius.circular(10),
                       color: AppColors.fieldBackground,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_back_ios_new,
                       color: AppColors.textPrimary,
                       size: 16,
                     ),
                   ),
                 ),
-                const Spacer(),
+                Spacer(),
                 Center(child: _buildAnimation()),
-                const SizedBox(height: 36),
-                const Center(
+                SizedBox(height: 36),
+                Center(
                   child: Text(
                     'Password Changed!',
                     style: TextStyle(
@@ -124,8 +124,8 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Center(
+                SizedBox(height: 12),
+                Center(
                   child: Text(
                     'Your password has been changed\nsuccessfully.',
                     textAlign: TextAlign.center,
@@ -136,12 +136,12 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
                     ),
                   ),
                 ),
-                const Spacer(),
+                Spacer(),
                 AppButton(
                   label: 'Back to Login',
-                  onPressed: () => Get.offAll(() => const LoginScreenView()),
+                  onPressed: () => Get.offAll(() => LoginScreenView()),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
               ],
             ),
           ),
@@ -183,7 +183,7 @@ class _PasswordChangedScreenViewState extends State<PasswordChangedScreenView>
               child: Container(
                 width: 110,
                 height: 110,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),

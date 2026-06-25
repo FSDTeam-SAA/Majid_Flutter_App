@@ -11,39 +11,41 @@ import 'checkout_page.dart';
 import 'receipt_page.dart';
 
 class RepairRequestDetailsPage extends StatelessWidget {
-  const RepairRequestDetailsPage({super.key});
+  final Map<String, dynamic> repair;
+
+  const RepairRequestDetailsPage({super.key, this.repair = const {}});
 
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(title: 'Repair Request Details'),
+          AppHeader(title: 'Repair Request Details'),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildDeviceCard(),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildInfoCard(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   AppOutlinedButton(
                     label: 'Make a Receipt',
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReceiptPage()),
+                      MaterialPageRoute(builder: (_) => ReceiptPage()),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const TimelineWidget(steps: repairTimeline),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
+                  TimelineWidget(steps: repairTimeline),
+                  SizedBox(height: 20),
                   _buildActions(context),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   _buildCustomerDetails(),
-                  const SizedBox(height: 30),
+                  SizedBox(height: 30),
                 ],
               ),
             ),
@@ -54,34 +56,33 @@ class RepairRequestDetailsPage extends StatelessWidget {
   }
 
   Widget _buildDeviceCard() {
+    final status = _formatStatus(repair['status']?.toString());
     return AppCard(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InfoField(
                     label: 'DEVICE INFORMATION',
-                    value: 'iPhone 14 Pro',
+                    value:
+                        repair['deviceModel']?.toString() ?? 'Unknown device',
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.primary),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'In Progress',
+                child: Text(
+                  status,
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 12,
@@ -91,16 +92,16 @@ class RepairRequestDetailsPage extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0B1520),
+              color: AppColors.fieldBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
-              'BROKEN SCREEN, PLUS BACK NEEDS TO CHANGE...',
+            child: Text(
+              repair['description']?.toString() ?? 'No description provided',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
@@ -114,14 +115,20 @@ class RepairRequestDetailsPage extends StatelessWidget {
   }
 
   Widget _buildInfoCard() {
-    return const AppCard(
+    return AppCard(
       padding: EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InfoField(label: 'REQUEST ID', value: '#6A281FA64AB4CD6B2D3D6031'),
+          InfoField(
+            label: 'REQUEST ID',
+            value: '#${repair['_id']?.toString() ?? 'N/A'}',
+          ),
           SizedBox(height: 12),
-          InfoField(label: 'SUBMITTED', value: 'Jun 09, 2026 · 07:53 PM'),
+          InfoField(
+            label: 'SUBMITTED',
+            value: _formatDateTime(repair['createdAt']?.toString()),
+          ),
           SizedBox(height: 12),
           InfoField(label: 'SHOP', value: 'Your Shop'),
         ],
@@ -131,11 +138,11 @@ class RepairRequestDetailsPage extends StatelessWidget {
 
   Widget _buildActions(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Actions',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -143,66 +150,66 @@ class RepairRequestDetailsPage extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: _actionBtn(
                   'Order Assigned',
-                  const Color(0xFF8B1A1A),
-                  const Color(0xFFFF6B6B),
+                  Color(0xFF8B1A1A),
+                  Color(0xFFFF6B6B),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: _actionBtn(
                   'Diagnosing Device',
-                  const Color(0xFF0D2A1A),
+                  AppColors.fieldBackground,
                   AppColors.primary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: _actionBtn(
                   'Repairing Device',
-                  const Color(0xFF2A1A00),
-                  const Color(0xFFFFA500),
+                  Color(0xFF2A1A00),
+                  Color(0xFFFFA500),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: _actionBtn(
                   'Waiting for Parts',
-                  const Color(0xFF0D1A2E),
-                  const Color(0xFF4DB8FF),
+                  Color(0xFF0D1A2E),
+                  Color(0xFF4DB8FF),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: _actionBtn(
                   'Completed',
-                  const Color(0xFF0D2A1A),
+                  AppColors.fieldBackground,
                   AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CheckoutPage()),
+                    MaterialPageRoute(builder: (_) => CheckoutPage()),
                   ),
                   child: _actionBtn(
                     'Check Out',
-                    const Color(0xFF0D2A1A),
+                    AppColors.fieldBackground,
                     AppColors.primary,
                   ),
                 ),
@@ -216,7 +223,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
 
   Widget _actionBtn(String label, Color bg, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 13),
+      padding: EdgeInsets.symmetric(vertical: 13),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(50),
@@ -235,20 +242,62 @@ class RepairRequestDetailsPage extends StatelessWidget {
   }
 
   Widget _buildCustomerDetails() {
-    return const AppCard(
+    return AppCard(
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InfoField(label: 'CUSTOMER DETAILS', value: ''),
           SizedBox(height: 14),
-          InfoField(label: 'NAME', value: 'John'),
+          InfoField(
+            label: 'NAME',
+            value: repair['firstName']?.toString() ?? '',
+          ),
           SizedBox(height: 12),
-          InfoField(label: 'EMAIL ADDRESS', value: 'john@gmai.com'),
+          InfoField(
+            label: 'EMAIL ADDRESS',
+            value: repair['email']?.toString() ?? '',
+          ),
           SizedBox(height: 12),
-          InfoField(label: 'PHONE NUMBER', value: '+1 266 625 515'),
+          InfoField(
+            label: 'PHONE NUMBER',
+            value: repair['phoneNumber']?.toString() ?? '',
+          ),
         ],
       ),
     );
+  }
+
+  String _formatStatus(String? status) {
+    return switch (status) {
+      'completed' => 'Completed',
+      'rejected' => 'Rejected',
+      null || '' => 'In Progress',
+      _ => 'In Progress',
+    };
+  }
+
+  String _formatDateTime(String? value) {
+    final parsed = DateTime.tryParse(value ?? '');
+    if (parsed == null) return '';
+    final local = parsed.toLocal();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year} · $hour:$minute $period';
   }
 }

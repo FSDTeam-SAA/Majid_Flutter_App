@@ -11,12 +11,12 @@ class ScanItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      margin: EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Row(
         children: [
@@ -26,16 +26,16 @@ class ScanItemCard extends StatelessWidget {
               children: [
                 Text(
                   item.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   item.imei,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
                   ),

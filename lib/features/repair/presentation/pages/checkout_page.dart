@@ -31,7 +31,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_outlined,
                 color: AppColors.textPrimary,
                 size: 20,
@@ -40,14 +40,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildOrdersDropdown(),
-                  const SizedBox(height: 20),
-                  const Text(
+                  SizedBox(height: 20),
+                  Text(
                     'Products',
                     style: TextStyle(
                       color: AppColors.textPrimary,
@@ -55,26 +55,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   ...checkoutProducts.map(
                     (p) => CheckoutProductItem(product: p),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   _buildSummary(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 20),
             child: AppButton(
               label: 'Send Invoice',
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Repair invoice sent successfully.'),
-                  ),
+                  SnackBar(content: Text('Repair invoice sent successfully.')),
                 );
               },
             ),
@@ -88,18 +86,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return GestureDetector(
       onTap: () => setState(() => _ordersExpanded = !_ordersExpanded),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111A24),
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF1A2840)),
+          border: Border.all(color: AppColors.fieldBorder),
         ),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -129,22 +127,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ],
             ),
             if (_ordersExpanded) ...[
-              const Divider(color: Color(0xFF1A2840), height: 20),
+              Divider(color: AppColors.fieldBorder, height: 20),
               ...List.generate(
                 3,
                 (i) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Order #00${i + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Ready',
                         style: TextStyle(
                           color: AppColors.primary,
@@ -169,8 +167,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         _summaryRow('R-1045', '£247.00'),
         _summaryRow('Deposit Paid', '£2,247.00'),
         _summaryRow('Discount', '-20%'),
-        const Divider(color: Color(0xFF1A2840), height: 20),
-        const Row(
+        Divider(color: AppColors.fieldBorder, height: 20),
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
@@ -198,25 +196,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget _summaryRow(String label, String value) {
     return Column(
       children: [
-        const Divider(color: Color(0xFF1A2840), height: 1),
+        Divider(color: AppColors.fieldBorder, height: 1),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
               Text(
                 value,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               ),
             ],
           ),

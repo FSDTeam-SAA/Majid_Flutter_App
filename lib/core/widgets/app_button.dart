@@ -22,26 +22,23 @@ class AppButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.surfaceForeground,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-          shape: const StadiumBorder(),
+          shape: StadiumBorder(),
           elevation: 0,
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.black,
+                  color: AppColors.surfaceForeground,
                 ),
               )
             : Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
       ),
     );

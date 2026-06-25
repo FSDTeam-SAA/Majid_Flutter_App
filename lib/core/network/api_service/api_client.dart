@@ -18,8 +18,9 @@ class ApiClient {
     : dio = Dio(
         BaseOptions(
           baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 90),
+          connectTimeout: Duration(seconds: 60),
+          sendTimeout: Duration(seconds: 60),
+          receiveTimeout: Duration(seconds: 90),
         ),
       ) {
     if (kDebugMode) {
@@ -39,7 +40,7 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await TokenManager.getToken();
-          if (token != null) {
+          if (token != null && !_shouldSkipAuthHeader(options.path)) {
             options.headers['Authorization'] = 'Bearer $token';
           }
 
@@ -64,20 +65,23 @@ class ApiClient {
             return handler.reject(err);
           }
 
+          if (err.type == DioExceptionType.connectionTimeout) {
+            final retryResponse = await _retryRequestOnTransientFailure(
+              err.requestOptions,
+            );
+            if (retryResponse != null) {
+              return handler.resolve(retryResponse);
+            }
+          }
+
           // Retry once on 502/503/504 (Render server waking up)
           final statusCode = err.response?.statusCode;
           if (statusCode == 502 || statusCode == 503 || statusCode == 504) {
-            final retryCount = err.requestOptions.extra['retryCount'] ?? 0;
-            if (retryCount < 2) {
-              await Future.delayed(const Duration(seconds: 3));
-              final opts = err.requestOptions;
-              opts.extra['retryCount'] = retryCount + 1;
-              try {
-                final retryResponse = await dio.fetch(opts);
-                return handler.resolve(retryResponse);
-              } catch (_) {
-                return handler.reject(err);
-              }
+            final retryResponse = await _retryRequestOnTransientFailure(
+              err.requestOptions,
+            );
+            if (retryResponse != null) {
+              return handler.resolve(retryResponse);
             }
           }
 
@@ -106,6 +110,26 @@ class ApiClient {
         },
       ),
     );
+  }
+
+  Future<Response<dynamic>?> _retryRequestOnTransientFailure(
+    RequestOptions requestOptions,
+  ) async {
+    final retryCount = (requestOptions.extra['retryCount'] as int?) ?? 0;
+    if (retryCount >= 2) {
+      return null;
+    }
+
+    final retryOptions = requestOptions.copyWith();
+    retryOptions.extra['retryCount'] = retryCount + 1;
+
+    await Future.delayed(Duration(seconds: 2 + retryCount));
+
+    try {
+      return await dio.fetch(retryOptions);
+    } on DioException {
+      return null;
+    }
   }
 
   /// Refresh token logic – race condition prevent
@@ -167,6 +191,13 @@ class ApiClient {
     } finally {
       _isRefreshing = false;
     }
+  }
+
+  bool _shouldSkipAuthHeader(String path) {
+    return path.contains('/auth/login') ||
+        path.contains('/auth/forgot-password') ||
+        path.contains('/auth/refresh-token') ||
+        path.contains('/user/register');
   }
 
   // API methods

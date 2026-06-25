@@ -22,39 +22,36 @@ void showAddCategorySheet(
     builder: (_) => StatefulBuilder(
       builder: (context, setDialogState) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF111A1E),
+            color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(20),
           ),
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          padding: EdgeInsets.fromLTRB(20, 24, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 isEdit ? 'Edit Category' : 'Add New Category',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B1520),
+                  color: AppColors.fieldBackground,
                   borderRadius: BorderRadius.circular(50),
                   border: Border.all(color: AppColors.primary, width: 1.2),
                 ),
                 child: TextField(
                   controller: controller,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                  ),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                  decoration: InputDecoration(
                     hintText: 'Enter category name',
                     hintStyle: TextStyle(
                       color: AppColors.textSecondary,
@@ -69,12 +66,13 @@ void showAddCategorySheet(
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               GestureDetector(
                 onTap: () async {
                   final picker = ImagePicker();
-                  final picked =
-                      await picker.pickImage(source: ImageSource.gallery);
+                  final picked = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
                   if (picked != null) {
                     setDialogState(() => pickedImagePath = picked.path);
                   }
@@ -83,20 +81,17 @@ void showAddCategorySheet(
                   width: double.infinity,
                   height: 200,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0B1520),
+                    color: AppColors.fieldBackground,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: AppColors.primary.withValues(alpha: 0.5),
                       width: 1.5,
                     ),
                   ),
-                  child: _buildImageContent(
-                    pickedImagePath,
-                    existingImageUrl,
-                  ),
+                  child: _buildImageContent(pickedImagePath, existingImageUrl),
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
@@ -104,16 +99,13 @@ void showAddCategorySheet(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(
-                          color: AppColors.primary,
-                          width: 1.2,
-                        ),
+                        side: BorderSide(color: AppColors.primary, width: 1.2),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(50),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Cancel',
                         style: TextStyle(
                           fontSize: 14,
@@ -122,7 +114,7 @@ void showAddCategorySheet(
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
@@ -152,9 +144,7 @@ void showAddCategorySheet(
                         if (success) {
                           Navigator.pop(context);
                           showSuccessSnackbar(
-                            isEdit
-                                ? 'Category updated'
-                                : 'Category created',
+                            isEdit ? 'Category updated' : 'Category created',
                           );
                         } else {
                           showErrorSnackbar(stockCtrl.errorMessage.value);
@@ -166,12 +156,12 @@ void showAddCategorySheet(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(50),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
                       ),
                       child: Text(
                         isEdit ? 'Save Changes' : 'Create Category',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -226,14 +216,10 @@ class _UploadPlaceholder extends StatelessWidget {
             border: Border.all(color: AppColors.primary, width: 1.5),
             color: AppColors.primary.withValues(alpha: 0.1),
           ),
-          child: const Icon(
-            Icons.upload_rounded,
-            color: AppColors.primary,
-            size: 26,
-          ),
+          child: Icon(Icons.upload_rounded, color: AppColors.primary, size: 26),
         ),
-        const SizedBox(height: 12),
-        const Text(
+        SizedBox(height: 12),
+        Text(
           'Upload Category Image',
           style: TextStyle(
             color: AppColors.textPrimary,
@@ -241,8 +227,8 @@ class _UploadPlaceholder extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 6),
-        const Padding(
+        SizedBox(height: 6),
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 24),
           child: Text(
             'Upload a transparent PNG image for a cleaner and more professional appearance.',

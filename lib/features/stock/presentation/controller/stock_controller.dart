@@ -36,10 +36,7 @@ class StockController extends GetxController {
     }
   }
 
-  Future<bool> createCategory({
-    required String name,
-    String? imagePath,
-  }) async {
+  Future<bool> createCategory({required String name, String? imagePath}) async {
     isSaving.value = true;
     errorMessage.value = '';
     try {

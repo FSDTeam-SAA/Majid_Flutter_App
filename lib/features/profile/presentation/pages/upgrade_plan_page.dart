@@ -34,16 +34,17 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
               Expanded(
                 child: Obx(() {
                   if (_profileCtrl.isSubscriptionsLoading.value) {
-                    return const Center(
-                      child:
-                          CircularProgressIndicator(color: AppColors.primary),
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     );
                   }
 
                   final subs = _profileCtrl.subscriptions;
 
                   if (subs.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         'No plans available',
                         style: TextStyle(
@@ -55,9 +56,9 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                   }
 
                   return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 40),
                     itemCount: subs.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => SizedBox(height: 12),
                     itemBuilder: (context, i) {
                       final plan = subs[i];
                       final isPopular = plan['isPopular'] == true;
@@ -69,8 +70,9 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                         name: plan['name'] ?? '',
                         subtitle: plan['description'] ?? '',
                         price: plan['priceLabel'] ?? '\$${plan['price'] ?? 0}',
-                        priceUnit:
-                            plan['customPricing'] == true ? '' : '/month',
+                        priceUnit: plan['customPricing'] == true
+                            ? ''
+                            : '/month',
                         features: _extractFeatures(plan['features']),
                         buttonLabel: plan['ctaText'] ?? 'Select',
                         buttonFilled: isPopular,
@@ -105,7 +107,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
           iconColor: Color(0xFF5B8DEF),
         );
       case 'PAY AS YOU GO':
-        return const _IconBox(
+        return _IconBox(
           bgColor: Color(0xFF0E2318),
           icon: Icons.bolt,
           iconColor: AppColors.primary,
@@ -133,7 +135,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
@@ -146,14 +148,14 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: AppColors.textPrimary,
                 size: 16,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Pricing Plan',
               textAlign: TextAlign.center,
@@ -164,7 +166,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
               ),
             ),
           ),
-          const SizedBox(width: 40),
+          SizedBox(width: 40),
         ],
       ),
     );
@@ -197,11 +199,11 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1923),
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Column(
         children: [
@@ -209,23 +211,23 @@ class _PlanCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               icon,
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
@@ -233,13 +235,13 @@ class _PlanCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     price,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -248,7 +250,7 @@ class _PlanCard extends StatelessWidget {
                   if (priceUnit.isNotEmpty)
                     Text(
                       priceUnit,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
@@ -257,9 +259,9 @@ class _PlanCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _FeaturesGrid(features: features),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _ActionBtn(label: buttonLabel, filled: buttonFilled),
         ],
       ),
@@ -277,14 +279,14 @@ class _PlanCard extends StatelessWidget {
           right: 0,
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFFB8760A),
+                color: Color(0xFFB8760A),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 badge!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -313,11 +315,11 @@ class _FeaturesGrid extends StatelessWidget {
             if (i + 1 < features.length)
               Expanded(child: _FeatureItem(features[i + 1]))
             else
-              const Expanded(child: SizedBox()),
+              Expanded(child: SizedBox()),
           ],
         ),
       );
-      if (i + 2 < features.length) rows.add(const SizedBox(height: 8));
+      if (i + 2 < features.length) rows.add(SizedBox(height: 8));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: rows);
   }
@@ -331,12 +333,12 @@ class _FeatureItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.check, color: Color(0xFF4DD9AC), size: 16),
-        const SizedBox(width: 6),
+        Icon(Icons.check, color: Color(0xFF4DD9AC), size: 16),
+        SizedBox(width: 6),
         Flexible(
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
           ),
         ),
       ],
@@ -368,11 +370,11 @@ class _ActionBtn extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(50),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
             label,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
         ),
       );
@@ -388,15 +390,15 @@ class _ActionBtn extends StatelessWidget {
           );
         },
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.primary),
+          side: BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(50),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: EdgeInsets.symmetric(vertical: 14),
         ),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 15,
             fontWeight: FontWeight.bold,

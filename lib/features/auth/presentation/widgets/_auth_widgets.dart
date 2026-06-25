@@ -17,7 +17,7 @@ class AuthBackButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           color: AppColors.fieldBackground,
         ),
-        child: const Icon(
+        child: Icon(
           Icons.arrow_back_ios_new,
           color: AppColors.textPrimary,
           size: 16,
@@ -33,7 +33,7 @@ class ImoscanTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RichText(
-      text: const TextSpan(
+      text: TextSpan(
         children: [
           TextSpan(
             text: 'Imo',
@@ -78,14 +78,11 @@ class AuthLink extends StatelessWidget {
           children: [
             TextSpan(
               text: text,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             TextSpan(
               text: linkText,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -115,7 +112,7 @@ class AuthPageScaffold extends StatelessWidget {
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: IntrinsicHeight(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(horizontal: 24),
                   child: child,
                 ),
               ),

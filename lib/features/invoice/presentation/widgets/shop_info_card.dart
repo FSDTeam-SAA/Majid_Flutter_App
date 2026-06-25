@@ -8,7 +8,7 @@ class ShopInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       child: Row(
         children: [
           ClipRRect(
@@ -16,15 +16,15 @@ class ShopInfoCard extends StatelessWidget {
             child: Container(
               width: 60,
               height: 60,
-              color: const Color(0xFFD4A853),
-              child: const Icon(Icons.store, color: Colors.white, size: 30),
+              color: Color(0xFFD4A853),
+              child: Icon(Icons.store, color: Colors.white, size: 30),
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Mobile kit Distribution',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -32,7 +32,7 @@ class ShopInfoCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               _info(Icons.email_outlined, 'shopkeeper2@gmail.com'),
               _info(Icons.phone_outlined, '07777787771'),
               _info(Icons.location_on_outlined, 'Store Address'),
@@ -45,17 +45,14 @@ class ShopInfoCard extends StatelessWidget {
 
   Widget _info(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.only(top: 3),
+      padding: EdgeInsets.only(top: 3),
       child: Row(
         children: [
           Icon(icon, color: AppColors.textSecondary, size: 13),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(
             text,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ],
       ),

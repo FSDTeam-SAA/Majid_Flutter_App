@@ -5,18 +5,22 @@ class RepairItem {
   final String issueDesc;
   final String date;
   final String status;
+  final double price;
+  final Map<String, dynamic> raw;
 
-  const RepairItem({
+  RepairItem({
     required this.name,
     required this.brand,
     required this.issueLabel,
     required this.issueDesc,
     required this.date,
     required this.status,
+    this.price = 0,
+    this.raw = const {},
   });
 }
 
-const List<RepairItem> sampleRepairs = [
+List<RepairItem> sampleRepairs = [
   RepairItem(
     name: 'Muhammad Majid',
     brand: 'Realme',
@@ -49,10 +53,10 @@ class TimelineStep {
   final String title;
   final String subtitle;
   final TimelineStatus status;
-  const TimelineStep(this.title, this.subtitle, this.status);
+  TimelineStep(this.title, this.subtitle, this.status);
 }
 
-const List<TimelineStep> repairTimeline = [
+List<TimelineStep> repairTimeline = [
   TimelineStep(
     'Order Booked',
     'Your order has been successfully created',
@@ -100,7 +104,7 @@ class CheckoutProduct {
   final String code;
   final double price;
   final int colorHex;
-  const CheckoutProduct({
+  CheckoutProduct({
     required this.name,
     required this.code,
     required this.price,
@@ -108,7 +112,7 @@ class CheckoutProduct {
   });
 }
 
-const List<CheckoutProduct> checkoutProducts = [
+List<CheckoutProduct> checkoutProducts = [
   CheckoutProduct(
     name: 'iPhone 14 Pro',
     code: 'PRD-1001',

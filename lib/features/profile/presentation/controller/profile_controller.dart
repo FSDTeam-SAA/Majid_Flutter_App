@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
@@ -75,6 +75,7 @@ class ProfileController extends GetxController {
     String? whatsappNumber,
     String? shopName,
     String? shopAddress,
+    String? imagePath,
   }) async {
     isSaving.value = true;
     errorMessage.value = '';
@@ -90,15 +91,28 @@ class ProfileController extends GetxController {
       if (shopName != null) data['shopName'] = shopName;
       if (shopAddress != null) data['shopAddress'] = shopAddress;
 
-      final res = await _api.put(UserEndpoints.updateProfile, data: data);
+      final payload = imagePath != null && imagePath.isNotEmpty
+          ? FormData.fromMap({
+              ...data,
+              'image': await MultipartFile.fromFile(imagePath),
+            })
+          : data;
+
+      final res = await _api.put(UserEndpoints.updateProfile, data: payload);
       final updated = res.data['data'];
       if (updated != null) {
         profileData.value = Map<String, dynamic>.from(updated);
       }
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to update profile';
+      errorMessage.value = _messageFromDioError(
+        e,
+        fallback: 'Failed to update profile',
+      );
+      return false;
+    } catch (e) {
+      errorMessage.value = 'Failed to update profile';
+      debugPrint('Profile update error: $e');
       return false;
     } finally {
       isSaving.value = false;
@@ -114,19 +128,46 @@ class ProfileController extends GetxController {
     try {
       await _api.post(
         AuthEndpoints.changePassword,
-        data: {
-          'currentPassword': currentPassword,
-          'newPassword': newPassword,
-        },
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
       );
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to change password';
+      errorMessage.value = _messageFromDioError(
+        e,
+        fallback: 'Failed to change password',
+      );
+      return false;
+    } catch (e) {
+      errorMessage.value = 'Failed to change password';
+      debugPrint('Password change error: $e');
       return false;
     } finally {
       isSaving.value = false;
     }
+  }
+
+  String _messageFromDioError(DioException error, {required String fallback}) {
+    final statusCode = error.response?.statusCode;
+    final responseData = error.response?.data;
+
+    if (responseData is Map && responseData['message'] != null) {
+      return responseData['message'].toString();
+    }
+
+    if (statusCode == 404) {
+      return 'API route not found. Please check the backend base URL.';
+    }
+
+    if (statusCode == 401) {
+      return 'Session expired. Please login again.';
+    }
+
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.connectionError) {
+      return 'Cannot connect to the backend server.';
+    }
+
+    return fallback;
   }
 
   Future<void> fetchPayments() async {
@@ -167,7 +208,8 @@ class ProfileController extends GetxController {
       ]);
 
       final repairData = results[0].data;
-      totalRepairs.value = repairData['meta']?['total'] ??
+      totalRepairs.value =
+          repairData['meta']?['total'] ??
           (repairData['data'] is List ? repairData['data'].length : 0);
 
       final inventoryData = results[1].data['data'];

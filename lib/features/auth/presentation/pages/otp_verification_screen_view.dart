@@ -42,10 +42,10 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          const AuthBackButton(),
-          const SizedBox(height: 48),
-          const Text(
+          SizedBox(height: 16),
+          AuthBackButton(),
+          SizedBox(height: 48),
+          Text(
             'OTP Verification',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -53,8 +53,8 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
+          SizedBox(height: 10),
+          Text(
             'Enter the verification code we just sent to your email address.',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -62,7 +62,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
               height: 1.6,
             ),
           ),
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(
@@ -81,7 +81,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           Obx(
             () => AppButton(
               label: 'Verify',
@@ -92,12 +92,12 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
                   success = await auth.verifyEmail();
                   if (success) {
                     showSuccessSnackbar('Email verified successfully!');
-                    Get.offAll(() => const LoginScreenView());
+                    Get.offAll(() => LoginScreenView());
                   }
                 } else {
                   success = await auth.verifyForgotOtp();
                   if (success) {
-                    Get.to(() => const CreateNewPasswordScreenView());
+                    Get.to(() => CreateNewPasswordScreenView());
                   }
                 }
                 if (!success && auth.errorMessage.isNotEmpty) {
@@ -106,7 +106,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
               },
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Center(
             child: Obx(
               () => GestureDetector(
@@ -120,7 +120,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
                           showErrorSnackbar(auth.errorMessage.value);
                         }
                       },
-                child: const Text(
+                child: Text(
                   'Resend Code',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -131,7 +131,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
               ),
             ),
           ),
-          const Spacer(),
+          Spacer(),
         ],
       ),
     );
@@ -162,7 +162,7 @@ class _OtpBox extends StatelessWidget {
         keyboardType: TextInputType.number,
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 22,
           fontWeight: FontWeight.bold,
@@ -173,15 +173,15 @@ class _OtpBox extends StatelessWidget {
           fillColor: AppColors.fieldBackground,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.fieldBorder),
+            borderSide: BorderSide(color: AppColors.fieldBorder),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.fieldBorder),
+            borderSide: BorderSide(color: AppColors.fieldBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),

@@ -31,12 +31,12 @@ class LoginScreenView extends StatelessWidget {
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 64),
-                          const Text(
+                          SizedBox(height: 64),
+                          Text(
                             'Welcome Back to',
                             style: TextStyle(
                               color: AppColors.textPrimary,
@@ -44,20 +44,20 @@ class LoginScreenView extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const ImoscanTitle(),
-                          const SizedBox(height: 40),
+                          ImoscanTitle(),
+                          SizedBox(height: 40),
                           AppTextField(
                             hint: 'Enter your email',
                             controller: auth.emailController,
                             keyboardType: TextInputType.emailAddress,
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           AppTextField(
                             hint: 'Enter your password',
                             controller: auth.passwordController,
                             isPassword: true,
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           Obx(
                             () => AppButton(
                               label: 'Sign In',
@@ -65,26 +65,24 @@ class LoginScreenView extends StatelessWidget {
                               onPressed: () async {
                                 final success = await auth.login();
                                 if (success) {
-                                  Get.offAll(() => const AppGroundView());
+                                  Get.offAll(() => AppGroundView());
                                 } else if (auth.isEmailNotVerified.value) {
                                   showErrorSnackbar(
                                     'Email not verified. Check your inbox for the OTP or register again.',
                                   );
-                                  Get.to(
-                                    () => const OtpVerificationScreenView(),
-                                  );
+                                  Get.to(() => OtpVerificationScreenView());
                                 } else if (auth.errorMessage.isNotEmpty) {
                                   showErrorSnackbar(auth.errorMessage.value);
                                 }
                               },
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
                           Center(
                             child: GestureDetector(
                               onTap: () =>
-                                  Get.to(() => const ForgotPasswordScreenView()),
-                              child: const Text(
+                                  Get.to(() => ForgotPasswordScreenView()),
+                              child: Text(
                                 'Forgot Password?',
                                 style: TextStyle(
                                   color: AppColors.primary,
@@ -94,15 +92,15 @@ class LoginScreenView extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          Spacer(),
                           Center(
                             child: AuthLink(
                               text: "Don't have an account? ",
                               linkText: 'Register Now',
-                              onTap: () => Get.to(() => const SignupScreenView()),
+                              onTap: () => Get.to(() => SignupScreenView()),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                         ],
                       ),
                     ),

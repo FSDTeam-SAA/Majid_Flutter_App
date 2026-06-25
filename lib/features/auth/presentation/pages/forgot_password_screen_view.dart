@@ -19,10 +19,10 @@ class ForgotPasswordScreenView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          const AuthBackButton(),
-          const SizedBox(height: 48),
-          const Text(
+          SizedBox(height: 16),
+          AuthBackButton(),
+          SizedBox(height: 48),
+          Text(
             'Forgot Password?',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -30,8 +30,8 @@ class ForgotPasswordScreenView extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
+          SizedBox(height: 10),
+          Text(
             "Don't worry! It occurs. Please enter the email address linked with your account.",
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -39,13 +39,13 @@ class ForgotPasswordScreenView extends StatelessWidget {
               height: 1.6,
             ),
           ),
-          const SizedBox(height: 36),
+          SizedBox(height: 36),
           AppTextField(
             hint: 'Email',
             controller: auth.emailController,
             keyboardType: TextInputType.emailAddress,
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           Obx(
             () => AppButton(
               label: 'Send Code',
@@ -54,14 +54,14 @@ class ForgotPasswordScreenView extends StatelessWidget {
                 final success = await auth.forgotPassword();
                 if (success) {
                   showSuccessSnackbar('OTP sent to your email');
-                  Get.to(() => const OtpVerificationScreenView());
+                  Get.to(() => OtpVerificationScreenView());
                 } else if (auth.errorMessage.isNotEmpty) {
                   showErrorSnackbar(auth.errorMessage.value);
                 }
               },
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Center(
             child: AuthLink(
               text: 'Already have an account? ',
@@ -69,7 +69,7 @@ class ForgotPasswordScreenView extends StatelessWidget {
               onTap: () => Get.until((route) => route.isFirst),
             ),
           ),
-          const Spacer(),
+          Spacer(),
         ],
       ),
     );

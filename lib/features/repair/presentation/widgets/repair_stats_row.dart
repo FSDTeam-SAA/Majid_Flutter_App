@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/colors.dart';
 
 class RepairStatsRow extends StatelessWidget {
-  const RepairStatsRow({super.key});
+  final int inProgress;
+  final int completed;
+  final double totalSales;
+
+  const RepairStatsRow({
+    super.key,
+    this.inProgress = 0,
+    this.completed = 0,
+    this.totalSales = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -11,34 +20,41 @@ class RepairStatsRow extends StatelessWidget {
         Expanded(
           child: _buildCard(
             Icons.build_rounded,
-            const Color(0xFF1A2A6C),
-            const Color(0xFF5B8DEF),
-            '27',
+            Color(0xFF1A2A6C),
+            Color(0xFF5B8DEF),
+            '$inProgress',
             'In Progress',
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           child: _buildCard(
             Icons.check_circle_outline_rounded,
-            const Color(0xFF0D2A1A),
+            AppColors.fieldBackground,
             AppColors.primary,
-            '10',
+            '$completed',
             'Completed',
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           child: _buildCard(
             Icons.bar_chart_rounded,
-            const Color(0xFF0D2A1A),
+            AppColors.fieldBackground,
             AppColors.primary,
-            '£14,650',
+            _formatCurrency(totalSales),
             'Total Sales',
           ),
         ),
       ],
     );
+  }
+
+  String _formatCurrency(double value) {
+    if (value >= 1000) {
+      return '£${(value / 1000).toStringAsFixed(1)}k';
+    }
+    return '£${value.toStringAsFixed(0)}';
   }
 
   Widget _buildCard(
@@ -49,11 +65,11 @@ class RepairStatsRow extends StatelessWidget {
     String label,
   ) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,22 +83,19 @@ class RepairStatsRow extends StatelessWidget {
             ),
             child: Icon(icon, color: iconColor, size: 22),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ],
       ),

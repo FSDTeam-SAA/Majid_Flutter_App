@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../profile/presentation/pages/profile_page_view.dart';
+import '../../../stock/presentation/pages/add_new_device_page.dart';
 import 'notifications_page.dart';
 import '../controller/home_controller.dart';
 import '../controller/home_data.dart';
@@ -33,12 +36,14 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+    final themeCtrl = Get.find<ProfileThemeController>();
+
+    return Obx(() {
+      themeCtrl.selectedTheme.value;
+      return GradientScaffold(
         child: Obx(() {
           if (homeCtrl.isLoading.value) {
-            return const Center(
+            return Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             );
           }
@@ -62,10 +67,10 @@ class _HomePageState extends State<HomePage> {
                   QuickActions(
                     onAddRepair: () => widget.onOpenTab?.call(3),
                     onCreateInvoice: () => widget.onOpenTab?.call(4),
-                    onAddItem: () => widget.onOpenTab?.call(1),
+                    onAddItem: () => Get.to(() => const AddNewDevicePage()),
                   ),
                   const SizedBox(height: 20),
-                  const SalesTrendChart(
+                  SalesTrendChart(
                     thisMonth: thisMonthData,
                     lastMonth: lastMonthData,
                   ),
@@ -79,33 +84,21 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         }),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildHeader() {
     return Row(
       children: [
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            children: [
-              TextSpan(
-                text: 'imo',
-                style: TextStyle(color: AppColors.primary),
-              ),
-              TextSpan(
-                text: 'scan',
-                style: TextStyle(color: AppColors.textPrimary),
-              ),
-            ],
-          ),
+        Image.asset(
+          'assets/images/imoscan_logo.png',
+          width: 132,
+          fit: BoxFit.contain,
         ),
-        const SizedBox(width: 4),
-        const Icon(Icons.verified, color: Color(0xFF1DA1F2), size: 18),
         const Spacer(),
         GestureDetector(
-          onTap: () => Get.to(() => const NotificationsPage()),
+          onTap: () => Get.to(() => NotificationsPage()),
           child: Container(
             width: 38,
             height: 38,
@@ -114,7 +107,7 @@ class _HomePageState extends State<HomePage> {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.fieldBorder),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.notifications_outlined,
               color: AppColors.textPrimary,
               size: 20,
@@ -123,7 +116,7 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(width: 10),
         GestureDetector(
-          onTap: () => Get.to(() => const ProfilePageView()),
+          onTap: () => Get.to(() => ProfilePageView()),
           child: Obx(() {
             final imageUrl = homeCtrl.userImage.value;
             return CircleAvatar(
@@ -136,15 +129,10 @@ class _HomePageState extends State<HomePage> {
                         width: 38,
                         height: 38,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(
-                          Icons.person,
-                          color: AppColors.textPrimary,
-                        ),
+                        errorBuilder: (_, _, _) =>
+                            Icon(Icons.person, color: AppColors.textPrimary),
                       )
-                    : const Icon(
-                        Icons.person,
-                        color: AppColors.textPrimary,
-                      ),
+                    : Icon(Icons.person, color: AppColors.textPrimary),
               ),
             );
           }),

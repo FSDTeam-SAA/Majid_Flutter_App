@@ -17,7 +17,7 @@ class TopProductsList extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Top Selling Products',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -25,7 +25,7 @@ class TopProductsList extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Spacer(),
+              Spacer(),
               Text(
                 'View All',
                 style: TextStyle(
@@ -36,17 +36,17 @@ class TopProductsList extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (products.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 32),
+              padding: EdgeInsets.symmetric(vertical: 32),
               decoration: BoxDecoration(
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Icon(
                     Icons.inventory_2_outlined,
@@ -67,27 +67,35 @@ class TopProductsList extends StatelessWidget {
           else
             ...List.generate(products.length, (i) {
               final item = products[i];
-              final name = item['productName'] ?? item['itemName'] ?? 'Unknown';
-              final sold = item['quantity'] ?? 1;
-              final maxSold = products[0]['quantity'] ?? 1;
+              final name =
+                  item['productName'] ??
+                  item['itemName'] ??
+                  item['brand'] ??
+                  'Unknown';
+              final sold = _asNumber(item['quantity']) ?? 1;
+              final maxSold = _asNumber(products[0]['quantity']) ?? 1;
               final progress = maxSold > 0 ? sold / maxSold : 0.0;
+              final price =
+                  _asNumber(item['expectedPrice']) ??
+                  _asNumber(item['sellingPrice']) ??
+                  _asNumber(item['purchasePrice']);
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
+                padding: EdgeInsets.only(bottom: 14),
                 child: Row(
                   children: [
                     SizedBox(
                       width: 20,
                       child: Text(
                         '${i + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Container(
                       width: 44,
                       height: 44,
@@ -95,32 +103,32 @@ class TopProductsList extends StatelessWidget {
                         color: AppColors.fieldBackground,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.phone_iphone,
                         color: AppColors.textSecondary,
                         size: 22,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             name.toString(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: progress.toDouble(),
                               backgroundColor: AppColors.fieldBackground,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
+                              valueColor: AlwaysStoppedAnimation<Color>(
                                 AppColors.primary,
                               ),
                               minHeight: 5,
@@ -129,20 +137,22 @@ class TopProductsList extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '$sold',
-                          style: const TextStyle(
+                          price == null
+                              ? sold.toStringAsFixed(0)
+                              : '£${price.toStringAsFixed(0)}',
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Text(
-                          'Sold',
+                        Text(
+                          price == null ? 'Sold' : 'Price',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -157,5 +167,11 @@ class TopProductsList extends StatelessWidget {
         ],
       );
     });
+  }
+
+  num? _asNumber(dynamic value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
   }
 }

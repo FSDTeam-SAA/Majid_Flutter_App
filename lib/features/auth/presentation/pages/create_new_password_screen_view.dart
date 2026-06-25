@@ -19,10 +19,10 @@ class CreateNewPasswordScreenView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          const AuthBackButton(),
-          const SizedBox(height: 48),
-          const Text(
+          SizedBox(height: 16),
+          AuthBackButton(),
+          SizedBox(height: 48),
+          Text(
             'Create New Password',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -30,8 +30,8 @@ class CreateNewPasswordScreenView extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
+          SizedBox(height: 10),
+          Text(
             'Your new password must be unique from those previously used.',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -39,19 +39,19 @@ class CreateNewPasswordScreenView extends StatelessWidget {
               height: 1.6,
             ),
           ),
-          const SizedBox(height: 36),
+          SizedBox(height: 36),
           AppTextField(
             hint: 'New Password',
             controller: auth.newPasswordController,
             isPassword: true,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppTextField(
             hint: 'Confirm Password',
             controller: auth.confirmPasswordController,
             isPassword: true,
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           Obx(
             () => AppButton(
               label: 'Reset Password',
@@ -59,14 +59,14 @@ class CreateNewPasswordScreenView extends StatelessWidget {
               onPressed: () async {
                 final success = await auth.resetPassword();
                 if (success) {
-                  Get.to(() => const PasswordChangedScreenView());
+                  Get.to(() => PasswordChangedScreenView());
                 } else if (auth.errorMessage.isNotEmpty) {
                   showErrorSnackbar(auth.errorMessage.value);
                 }
               },
             ),
           ),
-          const Spacer(),
+          Spacer(),
         ],
       ),
     );

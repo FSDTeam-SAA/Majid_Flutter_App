@@ -22,27 +22,30 @@ class ManageCategoriesPage extends StatelessWidget {
             children: [
               _buildHeader(context),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-                child: Obx(() => Text(
-                      '${stockCtrl.categories.length} Categories Available',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )),
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 14),
+                child: Obx(
+                  () => Text(
+                    '${stockCtrl.categories.length} Categories Available',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
               Expanded(
                 child: Obx(() {
                   if (stockCtrl.isLoading.value) {
-                    return const Center(
+                    return Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary),
+                        color: AppColors.primary,
+                      ),
                     );
                   }
 
                   if (stockCtrl.categories.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         'No categories yet',
                         style: TextStyle(
@@ -54,9 +57,8 @@ class ManageCategoriesPage extends StatelessWidget {
                   }
 
                   return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 30),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
@@ -79,7 +81,7 @@ class ManageCategoriesPage extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
@@ -92,14 +94,14 @@ class ManageCategoriesPage extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: AppColors.textPrimary,
                 size: 16,
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Manage Categories',
               textAlign: TextAlign.center,
@@ -118,11 +120,7 @@ class ManageCategoriesPage extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.fieldBorder),
             ),
-            child: const Icon(
-              Icons.menu,
-              color: AppColors.textPrimary,
-              size: 18,
-            ),
+            child: Icon(Icons.menu, color: AppColors.textPrimary, size: 18),
           ),
         ],
       ),
@@ -140,31 +138,30 @@ class ManageCategoriesPage extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               child: Container(
                 width: double.infinity,
-                color: const Color(0xFF0D1E2E),
+                color: Color(0xFF0D1E2E),
                 child: imageUrl != null
                     ? Image.network(
                         imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(
+                        errorBuilder: (_, _, _) => Icon(
                           Icons.category_outlined,
                           color: Colors.white24,
                           size: 64,
                         ),
                       )
-                    : const Icon(
+                    : Icon(
                         Icons.category_outlined,
                         color: Colors.white24,
                         size: 64,
@@ -173,13 +170,13 @@ class ManageCategoriesPage extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            padding: EdgeInsets.fromLTRB(12, 10, 8, 10),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -196,12 +193,11 @@ class ManageCategoriesPage extends StatelessWidget {
                     existingImageUrl: imageUrl,
                   ),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 _buildIconBtn(
                   icon: Icons.delete_outline_rounded,
-                  color: const Color(0xFFFF4444),
-                  onTap: () =>
-                      _confirmDelete(context, id, name, stockCtrl),
+                  color: Color(0xFFFF4444),
+                  onTap: () => _confirmDelete(context, id, name, stockCtrl),
                 ),
               ],
             ),
@@ -239,20 +235,20 @@ class ManageCategoriesPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF111A24),
+        backgroundColor: AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Delete Category',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Are you sure you want to delete "$name"?',
-          style: const TextStyle(color: Color(0xFF7A8A85)),
+          style: TextStyle(color: Color(0xFF7A8A85)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+            child: Text('Cancel', style: TextStyle(color: Colors.white)),
           ),
           TextButton(
             onPressed: () async {
@@ -264,10 +260,7 @@ class ManageCategoriesPage extends StatelessWidget {
                 showErrorSnackbar(stockCtrl.errorMessage.value);
               }
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Color(0xFFFF4444)),
-            ),
+            child: Text('Delete', style: TextStyle(color: Color(0xFFFF4444))),
           ),
         ],
       ),

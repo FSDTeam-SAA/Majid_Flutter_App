@@ -5,11 +5,17 @@ import '../controller/scan_data.dart';
 class CarrierDropdown extends StatelessWidget {
   final bool isOpen;
   final VoidCallback onToggle;
+  final List<ScanDropdownOption>? options;
+  final ScanDropdownOption? selected;
+  final ValueChanged<ScanDropdownOption>? onSelect;
 
   const CarrierDropdown({
     super.key,
     required this.isOpen,
     required this.onToggle,
+    this.options,
+    this.selected,
+    this.onSelect,
   });
 
   @override
@@ -17,26 +23,23 @@ class CarrierDropdown extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111A24),
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF1A2840)),
+          border: Border.all(color: AppColors.fieldBorder),
         ),
         child: Column(
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
+                  child: Text(
                     'FREE',
                     style: TextStyle(
                       color: Colors.black,
@@ -45,10 +48,10 @@ class CarrierDropdown extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Expanded(
+                SizedBox(width: 10),
+                Expanded(
                   child: Text(
-                    'iPhone Carrier Check',
+                    selected?.label ?? 'iPhone Carrier Check',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15,
@@ -62,13 +65,13 @@ class CarrierDropdown extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            const Align(
+            SizedBox(height: 4),
+            Align(
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: EdgeInsets.only(left: 2),
                 child: Text(
-                  '8 verification types available',
+                  '${(options ?? verificationOptions).length} verification types available',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -77,8 +80,8 @@ class CarrierDropdown extends StatelessWidget {
               ),
             ),
             if (isOpen) ...[
-              const Divider(color: Color(0xFF1A2840), height: 20),
-              ...verificationOptions.map(_buildOption),
+              Divider(color: AppColors.fieldBorder, height: 20),
+              ...(options ?? verificationOptions).map(_buildOption),
             ],
           ],
         ),
@@ -88,33 +91,36 @@ class CarrierDropdown extends StatelessWidget {
 
   Widget _buildOption(ScanDropdownOption opt) {
     final isFree = opt.type == 'Free';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            opt.label,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: isFree
-                  ? AppColors.primary.withValues(alpha: 0.15)
-                  : Colors.orange.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
+    return GestureDetector(
+      onTap: () => onSelect?.call(opt),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              opt.label,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
             ),
-            child: Text(
-              opt.type,
-              style: TextStyle(
-                color: isFree ? AppColors.primary : Colors.orange,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isFree
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                opt.type,
+                style: TextStyle(
+                  color: isFree ? AppColors.primary : Colors.orange,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
