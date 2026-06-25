@@ -78,6 +78,171 @@ class _RepairPageState extends State<RepairPage> {
     }
   }
 
+  Future<void> _showCreateRepairSheet() async {
+    final deviceCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final firstNameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Color(0xFF0D171C),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        bool isSaving = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                18,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'New Repair Request',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    _sheetField(deviceCtrl, 'Device Model', 'e.g. iPhone 14 Pro'),
+                    SizedBox(height: 10),
+                    _sheetField(descCtrl, 'Issue Description', 'Describe the problem...', maxLines: 3),
+                    SizedBox(height: 10),
+                    _sheetField(firstNameCtrl, 'Customer Name', 'First name'),
+                    SizedBox(height: 10),
+                    _sheetField(emailCtrl, 'Customer Email', 'email@example.com'),
+                    SizedBox(height: 10),
+                    _sheetField(phoneCtrl, 'Phone Number', '+44...'),
+                    SizedBox(height: 10),
+                    _sheetField(priceCtrl, 'Repair Price', '0.00', keyboard: TextInputType.number),
+                    SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                if (deviceCtrl.text.trim().isEmpty ||
+                                    descCtrl.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(content: Text('Device and description are required')),
+                                  );
+                                  return;
+                                }
+                                setSheetState(() => isSaving = true);
+                                try {
+                                  await _api.post(
+                                    RepairRequestEndpoints.add,
+                                    data: {
+                                      'deviceModel': deviceCtrl.text.trim(),
+                                      'description': descCtrl.text.trim(),
+                                      'firstName': firstNameCtrl.text.trim(),
+                                      'email': emailCtrl.text.trim(),
+                                      'phoneNumber': phoneCtrl.text.trim(),
+                                      'price': double.tryParse(priceCtrl.text.trim()) ?? 0,
+                                    },
+                                  );
+                                  if (ctx.mounted) Navigator.pop(ctx, true);
+                                } on DioException catch (e) {
+                                  if (ctx.mounted) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          e.response?.data?['message'] ?? 'Failed to create repair request',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(content: Text('Failed to create repair request')),
+                                    );
+                                  }
+                                } finally {
+                                  if (ctx.mounted) setSheetState(() => isSaving = false);
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: isSaving
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                              )
+                            : Text('Submit', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (created == true) {
+      _fetchRepairs(page: 1);
+    }
+  }
+
+  Widget _sheetField(
+    TextEditingController ctrl,
+    String label,
+    String hint, {
+    int maxLines = 1,
+    TextInputType keyboard = TextInputType.text,
+  }) {
+    return TextField(
+      controller: ctrl,
+      maxLines: maxLines,
+      keyboardType: keyboard,
+      style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 13),
+        filled: true,
+        fillColor: Color(0xFF101A22),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.fieldBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.fieldBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.primary),
+        ),
+      ),
+    );
+  }
+
   RepairItem _repairFromJson(Map<String, dynamic> item) {
     return RepairItem(
       name: item['firstName']?.toString() ?? 'Customer',
@@ -163,13 +328,7 @@ class _RepairPageState extends State<RepairPage> {
             const SizedBox(height: 20),
             AppButton(
               label: 'Create Repair Request',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Repair request form is coming soon.'),
-                  ),
-                );
-              },
+              onPressed: _showCreateRepairSheet,
             ),
             const SizedBox(height: 24),
             _buildSectionHeader(),

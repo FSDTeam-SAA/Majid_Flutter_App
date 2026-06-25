@@ -1,20 +1,94 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../controller/repair_data.dart';
-import '../widgets/checkout_product_item.dart';
 
 class CheckoutPage extends StatefulWidget {
-  const CheckoutPage({super.key});
+  final Map<String, dynamic> repair;
+
+  const CheckoutPage({super.key, this.repair = const {}});
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  late final ApiClient _api;
   bool _ordersExpanded = false;
+  bool _isSending = false;
+
+  Map<String, dynamic> get _repair => widget.repair;
+
+  String get _deviceModel =>
+      _repair['deviceModel']?.toString() ?? 'Unknown Device';
+  String get _requestId => _repair['_id']?.toString() ?? 'N/A';
+  double get _price => (_repair['price'] as num?)?.toDouble() ?? 0;
+  double get _depositPaid =>
+      (_repair['depositPaid'] as num?)?.toDouble() ?? 0;
+  double get _discount =>
+      (_repair['discount'] as num?)?.toDouble() ?? 0;
+  double get _totalCost {
+    final subtotal = _price - _depositPaid;
+    if (_discount > 0) {
+      return subtotal * (1 - _discount / 100);
+    }
+    return subtotal;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _api = ApiClient(baseUrl);
+  }
+
+  Future<void> _sendInvoice() async {
+    final repairId = _repair['_id']?.toString();
+    if (repairId == null || repairId.isEmpty) {
+      _showMessage('Invalid repair request');
+      return;
+    }
+
+    setState(() => _isSending = true);
+    try {
+      await _api.post(
+        InvoiceEndpoints.create,
+        data: {
+          'repairRequestId': repairId,
+          'items': [
+            {
+              'name': _deviceModel,
+              'price': _price,
+              'quantity': 1,
+            },
+          ],
+          'totalAmount': _totalCost,
+          'customerId': _repair['customerId'] ?? _repair['userId'],
+        },
+      );
+      if (!mounted) return;
+      _showMessage('Invoice sent successfully!');
+      Navigator.pop(context, true);
+    } on DioException catch (e) {
+      _showMessage(
+        e.response?.data?['message'] ?? 'Failed to send invoice',
+      );
+    } catch (e) {
+      _showMessage('Failed to send invoice');
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +130,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ),
                   SizedBox(height: 12),
-                  ...checkoutProducts.map(
-                    (p) => CheckoutProductItem(product: p),
-                  ),
+                  _buildProductItem(),
                   SizedBox(height: 24),
                   _buildSummary(),
                   SizedBox(height: 20),
@@ -69,12 +141,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           Padding(
             padding: EdgeInsets.fromLTRB(16, 10, 16, 20),
             child: AppButton(
-              label: 'Send Invoice',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Repair invoice sent successfully.')),
-                );
-              },
+              label: _isSending ? 'Sending...' : 'Send Invoice',
+              onPressed: _isSending ? null : _sendInvoice,
             ),
           ),
         ],
@@ -101,7 +169,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Orders Ready for Collection',
+                      'Repair Details',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
@@ -110,7 +178,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                     SizedBox(height: 3),
                     Text(
-                      '8 orders are ready.',
+                      _deviceModel,
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -128,32 +196,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
             if (_ordersExpanded) ...[
               Divider(color: AppColors.fieldBorder, height: 20),
-              ...List.generate(
-                3,
-                (i) => Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Order #00${i + 1}',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      Text(
-                        'Ready',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _detailRow('Request ID', '#$_requestId'),
+              _detailRow('Customer',
+                  _repair['firstName']?.toString() ?? 'N/A'),
+              _detailRow(
+                  'Status',
+                  _repair['status']?.toString().toUpperCase() ??
+                      'IN PROGRESS'),
+              _detailRow('Description',
+                  _repair['description']?.toString() ?? 'N/A'),
             ],
           ],
         ),
@@ -161,12 +212,101 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductItem() {
+    return Container(
+      padding: EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: AppColors.fieldBackground,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.phone_iphone,
+              color: AppColors.textSecondary,
+              size: 28,
+            ),
+          ),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _deviceModel,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'REQ-$_requestId',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            _formatCurrency(_price),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummary() {
     return Column(
       children: [
-        _summaryRow('R-1045', '£247.00'),
-        _summaryRow('Deposit Paid', '£2,247.00'),
-        _summaryRow('Discount', '-20%'),
+        _summaryRow('Repair Cost', _formatCurrency(_price)),
+        if (_depositPaid > 0)
+          _summaryRow('Deposit Paid', _formatCurrency(_depositPaid)),
+        if (_discount > 0) _summaryRow('Discount', '-${_discount.toInt()}%'),
         Divider(color: AppColors.fieldBorder, height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -180,7 +320,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
             Text(
-              '£2,000.00',
+              _formatCurrency(_totalCost),
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
@@ -215,5 +355,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       ],
     );
+  }
+
+  String _formatCurrency(double value) {
+    return '£${value.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
   }
 }

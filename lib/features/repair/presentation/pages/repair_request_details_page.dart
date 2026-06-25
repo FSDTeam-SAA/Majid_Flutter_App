@@ -1,4 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
@@ -10,10 +13,71 @@ import '../widgets/timeline_widget.dart';
 import 'checkout_page.dart';
 import 'receipt_page.dart';
 
-class RepairRequestDetailsPage extends StatelessWidget {
+class RepairRequestDetailsPage extends StatefulWidget {
   final Map<String, dynamic> repair;
 
   const RepairRequestDetailsPage({super.key, this.repair = const {}});
+
+  @override
+  State<RepairRequestDetailsPage> createState() =>
+      _RepairRequestDetailsPageState();
+}
+
+class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
+  late final ApiClient _api;
+  late Map<String, dynamic> _repair;
+  bool _isUpdating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = ApiClient(baseUrl);
+    _repair = Map<String, dynamic>.from(widget.repair);
+
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _updateStatus(String status) async {
+    final id = _repair['_id']?.toString();
+    if (id == null || id.isEmpty) {
+      _showMessage('Invalid repair request');
+      return;
+    }
+
+    setState(() => _isUpdating = true);
+    try {
+      final res = await _api.patch(
+        RepairRequestEndpoints.updateStatus(id),
+        data: {'status': status},
+      );
+      final data = res.data['data'];
+      if (data is Map) {
+        setState(() => _repair = Map<String, dynamic>.from(data));
+      } else {
+        setState(() => _repair['status'] = status);
+      }
+      _showMessage('Status updated to ${_formatStatus(status)}');
+    } on DioException catch (e) {
+      _showMessage(
+        e.response?.data?['message'] ?? 'Failed to update status',
+      );
+    } catch (e) {
+      _showMessage('Failed to update status');
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,41 +86,85 @@ class RepairRequestDetailsPage extends StatelessWidget {
         children: [
           AppHeader(title: 'Repair Request Details'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 14),
-                  _buildDeviceCard(),
-                  SizedBox(height: 12),
-                  _buildInfoCard(),
-                  SizedBox(height: 14),
-                  AppOutlinedButton(
-                    label: 'Make a Receipt',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ReceiptPage()),
+            child: _isUpdating
+                ? Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 14),
+                        _buildDeviceCard(),
+                        SizedBox(height: 12),
+                        _buildInfoCard(),
+                        SizedBox(height: 14),
+                        AppOutlinedButton(
+                          label: 'Make a Receipt',
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ReceiptPage(repair: _repair),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        TimelineWidget(steps: _buildTimelineSteps()),
+                        SizedBox(height: 20),
+                        _buildActions(context),
+                        SizedBox(height: 20),
+                        _buildCustomerDetails(),
+                        SizedBox(height: 30),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 20),
-                  TimelineWidget(steps: repairTimeline),
-                  SizedBox(height: 20),
-                  _buildActions(context),
-                  SizedBox(height: 20),
-                  _buildCustomerDetails(),
-                  SizedBox(height: 30),
-                ],
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
+  List<TimelineStep> _buildTimelineSteps() {
+    final status = _repair['status']?.toString() ?? '';
+
+    final statusOrder = [
+      'inProgress',
+      'order-assigned',
+      'diagnosing',
+      'quote_sent',
+      'repairing',
+      'waiting-for-parts',
+      'completed',
+      'checkout',
+    ];
+
+    var currentIndex = statusOrder.indexOf(status);
+    if (currentIndex < 0 && status == 'approved') currentIndex = 1;
+    if (currentIndex < 0 && status == 'start-work') currentIndex = 4;
+    if (currentIndex < 0 && status == 'inReview') currentIndex = 2;
+
+    TimelineStatus stepStatus(int index) {
+      if (currentIndex < 0) return TimelineStatus.pending;
+      if (index < currentIndex) return TimelineStatus.done;
+      if (index == currentIndex) return TimelineStatus.inProgress;
+      return TimelineStatus.pending;
+    }
+
+    return [
+      TimelineStep('Order Booked', 'Your order has been successfully created', stepStatus(0)),
+      TimelineStep('Order Assigned', 'A technician has been assigned', stepStatus(1)),
+      TimelineStep('Diagnosing Started', 'Technician is diagnosing the issue', stepStatus(2)),
+      TimelineStep('Quote Sent', 'A quote has been sent for the repair', stepStatus(3)),
+      TimelineStep('Repairing Started', 'Device is being repaired', stepStatus(4)),
+      TimelineStep('Waiting for Parts', 'Repair is paused until parts arrive', stepStatus(5)),
+      TimelineStep('Repair Complete', 'Repair has been successfully completed', stepStatus(6)),
+      TimelineStep('Checkout', 'Repair has been successfully completed', stepStatus(7)),
+    ];
+  }
+
   Widget _buildDeviceCard() {
-    final status = _formatStatus(repair['status']?.toString());
+    final status = _formatStatus(_repair['status']?.toString());
     return AppCard(
       padding: EdgeInsets.all(14),
       child: Column(
@@ -71,7 +179,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   InfoField(
                     label: 'DEVICE INFORMATION',
                     value:
-                        repair['deviceModel']?.toString() ?? 'Unknown device',
+                        _repair['deviceModel']?.toString() ?? 'Unknown device',
                   ),
                 ],
               ),
@@ -101,7 +209,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              repair['description']?.toString() ?? 'No description provided',
+              _repair['description']?.toString() ?? 'No description provided',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
@@ -122,15 +230,18 @@ class RepairRequestDetailsPage extends StatelessWidget {
         children: [
           InfoField(
             label: 'REQUEST ID',
-            value: '#${repair['_id']?.toString() ?? 'N/A'}',
+            value: '#${_repair['_id']?.toString() ?? 'N/A'}',
           ),
           SizedBox(height: 12),
           InfoField(
             label: 'SUBMITTED',
-            value: _formatDateTime(repair['createdAt']?.toString()),
+            value: _formatDateTime(_repair['createdAt']?.toString()),
           ),
           SizedBox(height: 12),
-          InfoField(label: 'SHOP', value: 'Your Shop'),
+          InfoField(
+            label: 'SHOP',
+            value: _repair['shopName']?.toString() ?? 'Your Shop',
+          ),
         ],
       ),
     );
@@ -155,9 +266,10 @@ class RepairRequestDetailsPage extends StatelessWidget {
             children: [
               Expanded(
                 child: _actionBtn(
-                  'Order Assigned',
+                  'In Progress',
                   Color(0xFF8B1A1A),
                   Color(0xFFFF6B6B),
+                  onTap: () => _updateStatus('inProgress'),
                 ),
               ),
               SizedBox(width: 10),
@@ -166,6 +278,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   'Diagnosing Device',
                   AppColors.fieldBackground,
                   AppColors.primary,
+                  onTap: () => _updateStatus('diagnosing'),
                 ),
               ),
             ],
@@ -178,6 +291,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   'Repairing Device',
                   Color(0xFF2A1A00),
                   Color(0xFFFFA500),
+                  onTap: () => _updateStatus('repairing'),
                 ),
               ),
               SizedBox(width: 10),
@@ -186,6 +300,7 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   'Waiting for Parts',
                   Color(0xFF0D1A2E),
                   Color(0xFF4DB8FF),
+                  onTap: () => _updateStatus('waiting-for-parts'),
                 ),
               ),
             ],
@@ -198,19 +313,20 @@ class RepairRequestDetailsPage extends StatelessWidget {
                   'Completed',
                   AppColors.fieldBackground,
                   AppColors.primary,
+                  onTap: () => _updateStatus('completed'),
                 ),
               ),
               SizedBox(width: 10),
               Expanded(
-                child: GestureDetector(
+                child: _actionBtn(
+                  'Check Out',
+                  AppColors.fieldBackground,
+                  AppColors.primary,
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => CheckoutPage()),
-                  ),
-                  child: _actionBtn(
-                    'Check Out',
-                    AppColors.fieldBackground,
-                    AppColors.primary,
+                    MaterialPageRoute(
+                      builder: (_) => CheckoutPage(repair: _repair),
+                    ),
                   ),
                 ),
               ),
@@ -221,24 +337,56 @@ class RepairRequestDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _actionBtn(String label, Color bg, Color textColor) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 13),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+  Widget _actionBtn(
+    String label,
+    Color bg,
+    Color textColor, {
+    VoidCallback? onTap,
+  }) {
+    final isCurrentStatus =
+        _formatStatus(_repair['status']?.toString()) == label ||
+        _repair['status']?.toString() == _statusKey(label);
+
+    return GestureDetector(
+      onTap: _isUpdating ? null : onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: isCurrentStatus ? AppColors.primary.withValues(alpha: 0.2) : bg,
+          borderRadius: BorderRadius.circular(50),
+          border: isCurrentStatus
+              ? Border.all(color: AppColors.primary, width: 1.5)
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
     );
+  }
+
+  String _statusKey(String label) {
+    switch (label) {
+      case 'In Progress':
+        return 'inProgress';
+      case 'Diagnosing Device':
+        return 'diagnosing';
+      case 'Repairing Device':
+        return 'repairing';
+      case 'Waiting for Parts':
+        return 'waiting-for-parts';
+      case 'Completed':
+        return 'completed';
+      default:
+        return '';
+    }
   }
 
   Widget _buildCustomerDetails() {
@@ -251,17 +399,17 @@ class RepairRequestDetailsPage extends StatelessWidget {
           SizedBox(height: 14),
           InfoField(
             label: 'NAME',
-            value: repair['firstName']?.toString() ?? '',
+            value: _repair['firstName']?.toString() ?? '',
           ),
           SizedBox(height: 12),
           InfoField(
             label: 'EMAIL ADDRESS',
-            value: repair['email']?.toString() ?? '',
+            value: _repair['email']?.toString() ?? '',
           ),
           SizedBox(height: 12),
           InfoField(
             label: 'PHONE NUMBER',
-            value: repair['phoneNumber']?.toString() ?? '',
+            value: _repair['phoneNumber']?.toString() ?? '',
           ),
         ],
       ),
@@ -272,6 +420,10 @@ class RepairRequestDetailsPage extends StatelessWidget {
     return switch (status) {
       'completed' => 'Completed',
       'rejected' => 'Rejected',
+      'inProgress' || 'order-assigned' || 'quote_sent' || 'approved' || 'start-work' || 'inReview' => 'In Progress',
+      'diagnosing' => 'Diagnosing Device',
+      'repairing' => 'Repairing Device',
+      'waiting-for-parts' => 'Waiting for Parts',
       null || '' => 'In Progress',
       _ => 'In Progress',
     };
@@ -282,18 +434,8 @@ class RepairRequestDetailsPage extends StatelessWidget {
     if (parsed == null) return '';
     final local = parsed.toLocal();
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');

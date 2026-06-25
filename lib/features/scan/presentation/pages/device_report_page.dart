@@ -61,58 +61,57 @@ class DeviceReportPage extends StatelessWidget {
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'ICLOUD LOCK',
-                    leftValue: '354957736904965',
+                    leftValue: _field('iCloud Lock'),
                     rightLabel: 'SIM LOCK',
-                    rightValue: '354957736789788',
+                    rightValue: _field('SIM Lock'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'MDM LOCK',
-                    leftValue: 'No',
+                    leftValue: _field('MDM Lock'),
                     rightLabel: 'SIM POLICY',
-                    rightValue: 'Yes',
+                    rightValue: _field('SIM Policy'),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'ACTIVATION POLICY',
-                    leftValue: 'Yes',
+                    leftValue: _field('Activation Policy'),
                     rightLabel: 'LOCKED CARRIER',
-                    rightValue: 'Clean',
+                    rightValue: _field('Locked Carrier'),
                     leftValueColor: AppColors.primary,
                     rightValueColor: Color(0xFF4DB8FF),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'WARRANTY',
-                    leftValue: 'Yes',
+                    leftValue: _field('Warranty'),
                     rightLabel: 'LIMITED WARRANTY',
-                    rightValue: 'No',
+                    rightValue: _field('Limited Warranty'),
                     leftValueColor: AppColors.primary,
                     rightValueColor: Color(0xFF4DB8FF),
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'PURCHASE DATE',
-                    leftValue: 'N/A',
+                    leftValue: _field('Purchase Date'),
                     rightLabel: 'COVERAGE START',
-                    rightValue: 'N/A',
+                    rightValue: _field('Coverage Start'),
                     leftValueColor: AppColors.primary,
                     rightValueColor: AppColors.primary,
                   ),
                   SizedBox(height: 10),
                   DeviceFieldRow(
                     leftLabel: 'REPLACED BY APPLE',
-                    leftValue: 'Yes',
-                    rightLabel: 'PURCHASE DATE',
-                    rightValue: 'N/A',
+                    leftValue: _field('Replaced'),
+                    rightLabel: 'BLACKLIST STATUS',
+                    rightValue: _field('Blacklist Status'),
                     leftValueColor: AppColors.primary,
                     rightValueColor: AppColors.primary,
                   ),
                   SizedBox(height: 12),
                   AiRiskCard(
-                    percentage: 0.96,
-                    description:
-                        'This device shows excellent health, verified original components, low fraud probability, and high resale potential. Recommended for resale, trade-in, or direct customer purchase.',
+                    percentage: _riskScore,
+                    description: _riskDescription,
                   ),
                   SizedBox(height: 16),
                   AppButton(
@@ -150,6 +149,43 @@ class DeviceReportPage extends StatelessWidget {
     final data = report['data'];
     if (data is Map) return Map<String, dynamic>.from(data);
     return report;
+  }
+
+  double get _riskScore {
+    final data = _data;
+    final providerData = data['parsedProviderData'] ?? data['providerData'];
+
+    for (final source in [providerData, data]) {
+      if (source is! Map) continue;
+      for (final key in ['riskScore', 'risk_score', 'score', 'healthScore']) {
+        final val = source[key];
+        if (val is num) return val.toDouble().clamp(0.0, 1.0);
+      }
+    }
+
+    final blacklist = _field('Blacklist Status').toLowerCase();
+    final icloud = _field('iCloud Lock').toLowerCase();
+    if (blacklist.contains('clean') && icloud.contains('off')) return 0.96;
+    if (blacklist.contains('clean')) return 0.85;
+    if (blacklist.contains('blacklisted') || blacklist.contains('lost')) return 0.15;
+    return 0.70;
+  }
+
+  String get _riskDescription {
+    final data = _data;
+    final providerData = data['parsedProviderData'] ?? data['providerData'];
+    if (providerData is Map) {
+      final desc = providerData['riskDescription'] ?? providerData['risk_description'];
+      if (desc != null && desc.toString().trim().isNotEmpty) return desc.toString();
+    }
+
+    if (_riskScore >= 0.8) {
+      return 'This device shows excellent health, verified original components, low fraud probability, and high resale potential. Recommended for resale, trade-in, or direct customer purchase.';
+    } else if (_riskScore >= 0.5) {
+      return 'This device shows moderate risk indicators. Some checks could not be fully verified. Proceed with caution and consider additional verification.';
+    } else {
+      return 'This device shows high risk indicators. It may be blacklisted, lost, or stolen. Not recommended for purchase or resale without further investigation.';
+    }
   }
 
   String _field(String key) {

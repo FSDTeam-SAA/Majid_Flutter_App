@@ -3,8 +3,15 @@ import '../../../../core/utils/colors.dart';
 
 class InvoiceInputField extends StatelessWidget {
   final String hint;
+  final TextEditingController? controller;
+  final bool readOnly;
 
-  const InvoiceInputField({super.key, required this.hint});
+  const InvoiceInputField({
+    super.key,
+    required this.hint,
+    this.controller,
+    this.readOnly = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +22,8 @@ class InvoiceInputField extends StatelessWidget {
         border: Border.all(color: AppColors.primary, width: 1.2),
       ),
       child: TextField(
+        controller: controller,
+        readOnly: readOnly,
         style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
