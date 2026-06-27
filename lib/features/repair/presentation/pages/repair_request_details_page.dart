@@ -50,7 +50,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
 
     setState(() => _isUpdating = true);
     try {
-      final res = await _api.patch(
+      final res = await _api.put(
         RepairRequestEndpoints.updateStatus(id),
         data: {'status': status},
       );
@@ -418,14 +418,19 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
 
   String _formatStatus(String? status) {
     return switch (status) {
-      'completed' => 'Completed',
+      'inProgress' => 'In Progress',
+      'approved' => 'Approved',
       'rejected' => 'Rejected',
-      'inProgress' || 'order-assigned' || 'quote_sent' || 'approved' || 'start-work' || 'inReview' => 'In Progress',
-      'diagnosing' => 'Diagnosing Device',
-      'repairing' => 'Repairing Device',
+      'completed' => 'Completed',
+      'inReview' => 'In Review',
+      'start-work' => 'Start Work',
+      'quote-sent' => 'Quote Sent',
       'waiting-for-parts' => 'Waiting for Parts',
+      'diagnosing' => 'Diagnosing',
+      'repairing' => 'Repairing',
+      'order-assigned' => 'Order Assigned',
       null || '' => 'In Progress',
-      _ => 'In Progress',
+      _ => status,
     };
   }
 

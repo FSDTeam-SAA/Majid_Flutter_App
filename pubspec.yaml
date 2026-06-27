@@ -57,10 +57,14 @@ dependencies:
   # animated bottom nav bar
   animated_bottom_navigation_bar: ^1.4.0
   image_picker: ^1.2.2
-  file_picker: ^8.1.7
+  file_picker: ^10.3.10
+  mobile_scanner: ^7.2.0
   pdf: ^3.11.2
   path_provider: ^2.1.5
   share_plus: ^10.1.4
+  url_launcher: ^6.3.2
+  webview_flutter: ^4.14.0
+  qr_flutter: ^4.1.0
 
 
 dev_dependencies:

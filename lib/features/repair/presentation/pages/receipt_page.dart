@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_outlined_button.dart';
@@ -64,104 +66,191 @@ class _ReceiptPageState extends State<ReceiptPage> {
   String get _status =>
       widget.repair['status']?.toString().toUpperCase() ?? 'COMPLETED';
 
+  String get _invoiceNumber {
+    final id = _orderId;
+    final short = id.length > 6 ? id.substring(id.length - 6).toUpperCase() : id.toUpperCase();
+    return 'IMS-$short';
+  }
+
+  String get _email => widget.repair['email']?.toString() ?? 'N/A';
+  String get _techFeedback => widget.repair['technicianFeedback']?.toString() ?? '';
+
+  List<Map<String, String>> get _techNotes {
+    final notes = widget.repair['technicianNotes'];
+    if (notes is! List || notes.isEmpty) return [];
+    return notes.whereType<Map>().map((n) {
+      return {
+        'part': n['partName']?.toString() ?? '-',
+        'cost': '\$${(n['cost'] as num?)?.toStringAsFixed(2) ?? '0.00'}',
+        'time': '${n['time']?.toString() ?? '-'}h',
+      };
+    }).toList();
+  }
+
   Future<void> _generateAndSharePdf() async {
     setState(() => _isGenerating = true);
     try {
       final pdf = pw.Document();
+      final green = PdfColor.fromHex('#4CAF50');
+      final darkText = PdfColors.grey900;
+      final lightText = PdfColors.grey600;
 
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(40),
+          margin: pw.EdgeInsets.zero,
           build: (context) {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Center(
-                  child: pw.Text(
-                    'REPAIR RECEIPT',
-                    style: pw.TextStyle(
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Center(
-                  child: pw.Text(
-                    _shopName,
-                    style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
-                  ),
-                ),
-                pw.SizedBox(height: 30),
-                pw.Divider(),
-                pw.SizedBox(height: 16),
-                _pdfRow('Order ID', _orderId),
-                _pdfRow('Date', _date),
-                _pdfRow('Time', _time),
-                _pdfRow('Status', _status),
-                pw.SizedBox(height: 20),
-                pw.Divider(),
-                pw.SizedBox(height: 16),
-                pw.Text(
-                  'Customer Details',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 10),
-                _pdfRow('Name', _customerName),
-                _pdfRow('Email',
-                    widget.repair['email']?.toString() ?? 'N/A'),
-                _pdfRow('Phone',
-                    widget.repair['phoneNumber']?.toString() ?? 'N/A'),
-                pw.SizedBox(height: 20),
-                pw.Divider(),
-                pw.SizedBox(height: 16),
-                pw.Text(
-                  'Repair Details',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 10),
-                _pdfRow('Device', _deviceModel),
-                _pdfRow('Description',
-                    widget.repair['description']?.toString() ??
-                        'No description'),
-                pw.SizedBox(height: 20),
-                pw.Divider(thickness: 2),
-                pw.SizedBox(height: 12),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'Total Price',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
+                // ── Green header ──
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.fromLTRB(40, 36, 40, 28),
+                  color: green,
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Repair Invoice', style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                          pw.SizedBox(height: 4),
+                          pw.Text('Verified Device Repair Invoice', style: pw.TextStyle(fontSize: 11, color: PdfColor.fromHex('#C8E6C9'))),
+                        ],
                       ),
-                    ),
-                    pw.Text(
-                      _formatCurrency(_price),
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: pw.BoxDecoration(color: PdfColors.white, borderRadius: pw.BorderRadius.circular(6)),
+                        child: pw.Text('✓  VERIFIED', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: green)),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                pw.SizedBox(height: 40),
-                pw.Center(
-                  child: pw.Text(
-                    'Thank you for your business!',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      color: PdfColors.grey600,
-                      fontStyle: pw.FontStyle.italic,
-                    ),
+
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 40),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.SizedBox(height: 24),
+
+                      // ── Invoice no & date ──
+                      pw.Container(
+                        padding: const pw.EdgeInsets.all(16),
+                        decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(8)),
+                        child: pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                              pw.Text('INVOICE NO', style: pw.TextStyle(fontSize: 9, color: lightText, letterSpacing: 1)),
+                              pw.SizedBox(height: 4),
+                              pw.Text(_invoiceNumber, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: darkText)),
+                            ]),
+                            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                              pw.Text('DATE', style: pw.TextStyle(fontSize: 9, color: lightText, letterSpacing: 1)),
+                              pw.SizedBox(height: 4),
+                              pw.Text(_date, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: darkText)),
+                            ]),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 20),
+
+                      // ── Device info box ──
+                      pw.Container(
+                        width: double.infinity,
+                        padding: const pw.EdgeInsets.all(16),
+                        decoration: pw.BoxDecoration(color: PdfColor.fromHex('#F5F5F5'), borderRadius: pw.BorderRadius.circular(8)),
+                        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                          pw.Text(_deviceModel, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: darkText)),
+                          if (widget.repair['IMEINumber'] != null) ...[
+                            pw.SizedBox(height: 4),
+                            pw.Text('IMEI: ${widget.repair['IMEINumber']}', style: pw.TextStyle(fontSize: 11, color: lightText)),
+                          ],
+                          pw.SizedBox(height: 4),
+                          pw.Text('Status: $_status', style: pw.TextStyle(fontSize: 11, color: lightText)),
+                        ]),
+                      ),
+                      pw.SizedBox(height: 20),
+
+                      // ── Customer & Shop side by side ──
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Expanded(child: _pdfInfoBox('CUSTOMER', _customerName, _email)),
+                          pw.SizedBox(width: 16),
+                          pw.Expanded(child: _pdfInfoBox('REPAIR SHOP', _shopName, 'Created: $_date')),
+                        ],
+                      ),
+                      pw.SizedBox(height: 24),
+
+                      // ── Repair notes table ──
+                      _buildNotesTable(),
+                      pw.SizedBox(height: 20),
+
+                      // ── Technician feedback & totals row ──
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Expanded(
+                            child: pw.Container(
+                              padding: const pw.EdgeInsets.all(14),
+                              decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(8)),
+                              child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                                pw.Text('TECHNICIAN FEEDBACK', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: darkText, letterSpacing: 1)),
+                                pw.SizedBox(height: 8),
+                                pw.Text(
+                                  _techFeedback.isNotEmpty ? _techFeedback : 'No feedback provided yet.',
+                                  style: pw.TextStyle(fontSize: 10, color: lightText, lineSpacing: 4),
+                                ),
+                              ]),
+                            ),
+                          ),
+                          pw.SizedBox(width: 16),
+                          pw.Container(
+                            width: 140,
+                            padding: const pw.EdgeInsets.all(14),
+                            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(8)),
+                            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                              _pdfTotalLine('Subtotal', _formatCurrency(_price)),
+                              pw.SizedBox(height: 6),
+                              _pdfTotalLine('Tax', _formatCurrency(0)),
+                              pw.Divider(color: PdfColors.grey400),
+                              pw.SizedBox(height: 2),
+                              pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                                pw.Text('TOTAL', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: darkText)),
+                                pw.Text(_formatCurrency(_price), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: darkText)),
+                              ]),
+                            ]),
+                          ),
+                        ],
+                      ),
+                      pw.SizedBox(height: 24),
+
+                      // ── QR code ──
+                      pw.BarcodeWidget(
+                        barcode: pw.Barcode.qrCode(),
+                        data: _qrData,
+                        width: 80,
+                        height: 80,
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Scan to verify invoice', style: pw.TextStyle(fontSize: 9, color: lightText)),
+                      pw.SizedBox(height: 20),
+                      pw.Divider(color: PdfColors.grey300),
+                      pw.SizedBox(height: 10),
+
+                      // ── Footer ──
+                      pw.Center(
+                        child: pw.Column(children: [
+                          pw.Text('Thank you for choosing $_shopName', style: pw.TextStyle(fontSize: 10, color: lightText)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('Computer generated smart verified invoice', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey400)),
+                        ]),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -171,7 +260,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
       );
 
       final dir = await getTemporaryDirectory();
-      final fileName = 'receipt_${_orderId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
+      final fileName = 'repair_invoice_${_invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
       final file = File('${dir.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
 
@@ -179,7 +268,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
       try {
         await Share.shareXFiles(
           [XFile(file.path)],
-          text: 'Repair Receipt - $_deviceModel',
+          text: 'Repair Invoice - $_deviceModel',
         );
       } catch (_) {
         if (!mounted) return;
@@ -197,29 +286,48 @@ class _ReceiptPageState extends State<ReceiptPage> {
     }
   }
 
-  pw.Widget _pdfRow(String label, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 4),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.SizedBox(
-            width: 120,
-            child: pw.Text(
-              label,
-              style: pw.TextStyle(color: PdfColors.grey700, fontSize: 12),
-            ),
-          ),
-          pw.Expanded(
-            child: pw.Text(
-              value,
-              style: pw.TextStyle(fontSize: 12),
-              textAlign: pw.TextAlign.right,
-            ),
-          ),
-        ],
+  pw.Widget _pdfInfoBox(String title, String name, String subtitle) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(8),
       ),
+      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500, letterSpacing: 1)),
+        pw.SizedBox(height: 6),
+        pw.Text(name, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 3),
+        pw.Text(subtitle, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+      ]),
+    );
+  }
+
+  pw.Widget _buildNotesTable() {
+    final green = PdfColor.fromHex('#4CAF50');
+    final notes = _techNotes;
+
+    final rows = notes.isEmpty
+        ? [['−', 'No Repair Notes Added', '−', _formatCurrency(0)]]
+        : notes.map((n) => ['-', n['part']!, n['time']!, n['cost']!]).toList();
+
+    return pw.TableHelper.fromTextArray(
+      headerDecoration: pw.BoxDecoration(color: green),
+      headerStyle: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+      cellStyle: pw.TextStyle(fontSize: 10),
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      headers: ['DATE', 'DESCRIPTION', 'TIME', 'COST'],
+      data: rows,
+    );
+  }
+
+  pw.Widget _pdfTotalLine(String label, String value) {
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+        pw.Text(value, style: pw.TextStyle(fontSize: 10)),
+      ],
     );
   }
 
@@ -348,16 +456,30 @@ class _ReceiptPageState extends State<ReceiptPage> {
     );
   }
 
+  String get _qrData {
+    final id = widget.repair['_id']?.toString() ?? '';
+    return '$baseUrl/api/v1/repair-requests/status-page/$id';
+  }
+
   Widget _buildQrCode() {
     return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.asset(
-          'assets/images/qrcode.jpg',
-          width: double.infinity,
-          fit: BoxFit.contain,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: QrImageView(
+        data: _qrData,
+        version: QrVersions.auto,
+        size: 220,
+        backgroundColor: Colors.white,
+        eyeStyle: QrEyeStyle(
+          eyeShape: QrEyeShape.square,
+          color: Colors.black,
+        ),
+        dataModuleStyle: QrDataModuleStyle(
+          dataModuleShape: QrDataModuleShape.square,
+          color: Colors.black,
         ),
       ),
     );

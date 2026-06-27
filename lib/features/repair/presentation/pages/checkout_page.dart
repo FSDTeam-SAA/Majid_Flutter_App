@@ -6,6 +6,7 @@ import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../invoice/presentation/utils/invoice_pdf_builder.dart';
 
 class CheckoutPage extends StatefulWidget {
   final Map<String, dynamic> repair;
@@ -54,20 +55,67 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     setState(() => _isSending = true);
     try {
+      final now = DateTime.now();
+      final pdfFile = await InvoicePdfBuilder.build(
+        fileNamePrefix: 'repair_invoice',
+        invoiceTitle: 'REPAIR INVOICE',
+        invoiceNumber: repairId,
+        createdAt: now,
+        shopName: _repair['shopName']?.toString() ?? 'Your Shop',
+        shopAddress: _repair['shopAddress']?.toString() ?? '',
+        shopEmail: _repair['shopEmail']?.toString() ?? '',
+        shopPhone: _repair['shopPhone']?.toString() ?? '',
+        customerName: [
+          _repair['firstName']?.toString() ?? '',
+          _repair['lastName']?.toString() ?? '',
+        ].where((value) => value.isNotEmpty).join(' '),
+        customerEmail: _repair['email']?.toString() ?? '',
+        customerPhone:
+            _repair['phoneNumber']?.toString() ??
+            _repair['phone']?.toString() ??
+            '',
+        customerAddress:
+            _repair['address']?.toString() ??
+            _repair['billingAddress']?.toString() ??
+            '',
+        paymentType: _repair['paymentType']?.toString() ?? 'cash',
+        items: [
+          InvoicePdfItem(
+            name: _deviceModel,
+            code: _requestId,
+            quantity: 1,
+            unitPrice: _price,
+          ),
+        ],
+        totalAmount: _totalCost,
+        footerNote: 'Generated from iMoScan checkout flow.',
+      );
+      final shopkeeperId =
+          (_repair['shopkeeperId'] ?? _repair['userId'] ?? '').toString();
+      final customerId =
+          (_repair['customerId'] ?? '').toString();
+      final payload = FormData();
+      payload.fields.addAll([
+        MapEntry('shopkeeperId', shopkeeperId),
+        MapEntry('type', 'repair'),
+        MapEntry('repairRequestId', repairId),
+        MapEntry('totalAmount', _totalCost.toString()),
+        MapEntry('paymentMethod', _repair['paymentType']?.toString() ?? 'cash'),
+        if (customerId.isNotEmpty) MapEntry('customerInfo', customerId),
+      ]);
+      payload.files.add(
+        MapEntry(
+          'invoice',
+          await MultipartFile.fromFile(
+            pdfFile.path,
+            filename: pdfFile.uri.pathSegments.last,
+          ),
+        ),
+      );
+
       await _api.post(
         InvoiceEndpoints.create,
-        data: {
-          'repairRequestId': repairId,
-          'items': [
-            {
-              'name': _deviceModel,
-              'price': _price,
-              'quantity': 1,
-            },
-          ],
-          'totalAmount': _totalCost,
-          'customerId': _repair['customerId'] ?? _repair['userId'],
-        },
+        data: payload,
       );
       if (!mounted) return;
       _showMessage('Invoice sent successfully!');

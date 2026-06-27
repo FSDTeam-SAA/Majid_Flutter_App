@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
-import '../controller/home_controller.dart';
+import '../controller/home_data.dart';
 
 class StatsGrid extends StatelessWidget {
-  const StatsGrid({super.key});
+  final HomeStatsSnapshot stats;
+
+  const StatsGrid({super.key, required this.stats});
 
   static const _lightIconBackgrounds = [
     Color(0xFFE6F4EA),
@@ -29,56 +30,52 @@ class StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final homeCtrl = Get.find<HomeController>();
-
-    return Obx(
-      () => GridView.count(
-        key: ValueKey(AppColors.isDark),
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.3,
-        children: [
-          _StatCard(
-            title: 'Total Items',
-            value: '${homeCtrl.totalInventoryItems.value}',
-            icon: Icons.inventory_2_outlined,
-            iconBg: AppColors.isDark
-                ? _darkIconBackgrounds[0]
-                : _lightIconBackgrounds[0],
-            iconColor: _iconColors[0],
-          ),
-          _StatCard(
-            title: 'Sold Products',
-            value: '${homeCtrl.totalSoldProducts.value}',
-            icon: Icons.shopping_cart_outlined,
-            iconBg: AppColors.isDark
-                ? _darkIconBackgrounds[1]
-                : _lightIconBackgrounds[1],
-            iconColor: _iconColors[1],
-          ),
-          _StatCard(
-            title: 'Repair Requests',
-            value: '${homeCtrl.totalRepairRequests.value}',
-            icon: Icons.build_outlined,
-            iconBg: AppColors.isDark
-                ? _darkIconBackgrounds[2]
-                : _lightIconBackgrounds[2],
-            iconColor: _iconColors[2],
-          ),
-          _StatCard(
-            title: 'Categories',
-            value: '${homeCtrl.totalCategories.value}',
-            icon: Icons.category_outlined,
-            iconBg: AppColors.isDark
-                ? _darkIconBackgrounds[3]
-                : _lightIconBackgrounds[3],
-            iconColor: _iconColors[3],
-          ),
-        ],
-      ),
+    return GridView.count(
+      key: ValueKey(AppColors.isDark),
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.3,
+      children: [
+        _StatCard(
+          title: 'Total Items',
+          value: '${stats.totalItems}',
+          icon: Icons.inventory_2_outlined,
+          iconBg: AppColors.isDark
+              ? _darkIconBackgrounds[0]
+              : _lightIconBackgrounds[0],
+          iconColor: _iconColors[0],
+        ),
+        _StatCard(
+          title: 'Sold Products',
+          value: '${stats.soldProducts}',
+          icon: Icons.shopping_cart_outlined,
+          iconBg: AppColors.isDark
+              ? _darkIconBackgrounds[1]
+              : _lightIconBackgrounds[1],
+          iconColor: _iconColors[1],
+        ),
+        _StatCard(
+          title: 'Repair Requests',
+          value: '${stats.repairRequests}',
+          icon: Icons.build_outlined,
+          iconBg: AppColors.isDark
+              ? _darkIconBackgrounds[2]
+              : _lightIconBackgrounds[2],
+          iconColor: _iconColors[2],
+        ),
+        _StatCard(
+          title: 'Categories',
+          value: '${stats.categories}',
+          icon: Icons.category_outlined,
+          iconBg: AppColors.isDark
+              ? _darkIconBackgrounds[3]
+              : _lightIconBackgrounds[3],
+          iconColor: _iconColors[3],
+        ),
+      ],
     );
   }
 }

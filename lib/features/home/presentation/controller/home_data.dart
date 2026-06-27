@@ -1,38 +1,67 @@
-List<String> periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+enum HomePeriod { daily, weekly, monthly, yearly }
 
-List<double> thisMonthData = [
-  4200,
-  7000,
-  9200,
-  11500,
-  13800,
-  14500,
-  15800,
-  16000,
-  15200,
-  14800,
-  14200,
-  13500,
-];
-List<double> lastMonthData = [
-  3500,
-  5800,
-  7500,
-  9000,
-  10200,
-  11000,
-  12000,
-  12500,
-  11800,
-  11200,
-  10500,
-  10000,
-];
+const periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
 
-List<(String, int)> topProducts = [
-  ('iPhone 15 Pro (256GB)', 128),
-  ('Samsung S24 Ultra', 97),
-  ('AirPods Pro 2', 86),
-  ('iPhone 14 (128GB)', 72),
-  ('Samsung A54', 61),
-];
+extension HomePeriodX on HomePeriod {
+  String get label => switch (this) {
+    HomePeriod.daily => 'Daily',
+    HomePeriod.weekly => 'Weekly',
+    HomePeriod.monthly => 'Monthly',
+    HomePeriod.yearly => 'Yearly',
+  };
+
+  String get currentLegend => switch (this) {
+    HomePeriod.daily => 'Today',
+    HomePeriod.weekly => 'This Week',
+    HomePeriod.monthly => 'This Month',
+    HomePeriod.yearly => 'This Year',
+  };
+
+  String get previousLegend => switch (this) {
+    HomePeriod.daily => 'Yesterday',
+    HomePeriod.weekly => 'Last Week',
+    HomePeriod.monthly => 'Last Month',
+    HomePeriod.yearly => 'Last Year',
+  };
+}
+
+HomePeriod homePeriodFromIndex(int index) {
+  return switch (index) {
+    0 => HomePeriod.daily,
+    1 => HomePeriod.weekly,
+    2 => HomePeriod.monthly,
+    _ => HomePeriod.yearly,
+  };
+}
+
+class HomeStatsSnapshot {
+  final int totalItems;
+  final int soldProducts;
+  final int repairRequests;
+  final int categories;
+
+  const HomeStatsSnapshot({
+    required this.totalItems,
+    required this.soldProducts,
+    required this.repairRequests,
+    required this.categories,
+  });
+}
+
+class SalesTrendData {
+  final String periodLabel;
+  final String currentLegend;
+  final String previousLegend;
+  final List<double> currentValues;
+  final List<double> previousValues;
+  final List<String> axisLabels;
+
+  const SalesTrendData({
+    required this.periodLabel,
+    required this.currentLegend,
+    required this.previousLegend,
+    required this.currentValues,
+    required this.previousValues,
+    required this.axisLabels,
+  });
+}

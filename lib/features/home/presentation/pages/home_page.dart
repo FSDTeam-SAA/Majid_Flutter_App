@@ -25,13 +25,68 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedPeriod = 2;
+  int _selectedPeriod = 0;
   late final HomeController homeCtrl;
 
   @override
   void initState() {
     super.initState();
     homeCtrl = Get.find<HomeController>();
+  }
+
+  void _selectPeriod(int index) {
+    setState(() => _selectedPeriod = index);
+  }
+
+  Future<void> _showPeriodPicker() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: AppColors.fieldBorder),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(periods.length, (index) {
+                final isSelected = index == _selectedPeriod;
+                return ListTile(
+                  onTap: () => Navigator.pop(context, index),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  tileColor: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.14)
+                      : Colors.transparent,
+                  title: Text(
+                    periods[index],
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? Icon(Icons.check, color: AppColors.primary)
+                      : null,
+                );
+              }),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      _selectPeriod(selected);
+    }
   }
 
   @override
@@ -47,40 +102,61 @@ class _HomePageState extends State<HomePage> {
               child: CircularProgressIndicator(color: AppColors.primary),
             );
           }
+          final selectedPeriod = homePeriodFromIndex(_selectedPeriod);
+          final stats = homeCtrl.statsForPeriod(selectedPeriod);
+          final salesTrend = homeCtrl.salesTrendForPeriod(selectedPeriod);
           return RefreshIndicator(
             color: AppColors.primary,
             backgroundColor: AppColors.cardBackground,
             onRefresh: homeCtrl.fetchAllData,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  _buildPeriodTabs(),
-                  const SizedBox(height: 16),
-                  const StatsGrid(),
-                  const SizedBox(height: 20),
-                  QuickActions(
-                    onAddRepair: () => widget.onOpenTab?.call(3),
-                    onCreateInvoice: () => widget.onOpenTab?.call(4),
-                    onAddItem: () => Get.to(() => const AddNewDevicePage()),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 20),
+                      _buildPeriodTabs(),
+                      const SizedBox(height: 16),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  SalesTrendChart(
-                    thisMonth: thisMonthData,
-                    lastMonth: lastMonthData,
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        StatsGrid(stats: stats),
+                        const SizedBox(height: 20),
+                        QuickActions(
+                          onAddRepair: () => widget.onOpenTab?.call(3),
+                          onCreateInvoice: () => widget.onOpenTab?.call(4),
+                          onAddItem: () => Get.to(() => const AddNewDevicePage()),
+                        ),
+                        const SizedBox(height: 20),
+                        SalesTrendChart(
+                          periodLabel: salesTrend.periodLabel,
+                          currentLegend: salesTrend.currentLegend,
+                          previousLegend: salesTrend.previousLegend,
+                          currentPeriod: salesTrend.currentValues,
+                          previousPeriod: salesTrend.previousValues,
+                          xLabels: salesTrend.axisLabels,
+                          onPeriodTap: _showPeriodPicker,
+                        ),
+                        const SizedBox(height: 20),
+                        const TopProductsList(),
+                        const SizedBox(height: 20),
+                        const AiInsightsCard(),
+                        const SizedBox(height: 100),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  const TopProductsList(),
-                  const SizedBox(height: 20),
-                  const AiInsightsCard(),
-                  const SizedBox(height: 100),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         }),
@@ -153,7 +229,7 @@ class _HomePageState extends State<HomePage> {
           final selected = i == _selectedPeriod;
           return Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _selectedPeriod = i),
+              onTap: () => _selectPeriod(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 8),

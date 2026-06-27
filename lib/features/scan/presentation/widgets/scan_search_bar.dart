@@ -3,8 +3,13 @@ import '../../../../core/utils/colors.dart';
 
 class ScanSearchBar extends StatelessWidget {
   final TextEditingController controller;
+  final VoidCallback? onScanTap;
 
-  const ScanSearchBar({super.key, required this.controller});
+  const ScanSearchBar({
+    super.key,
+    required this.controller,
+    this.onScanTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,18 +40,21 @@ class ScanSearchBar extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            margin: EdgeInsets.all(6),
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.qr_code_scanner_rounded,
-              color: Colors.black,
-              size: 22,
+          GestureDetector(
+            onTap: onScanTap,
+            child: Container(
+              margin: EdgeInsets.all(6),
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.qr_code_scanner_rounded,
+                color: Colors.black,
+                size: 22,
+              ),
             ),
           ),
         ],

@@ -107,27 +107,30 @@ class TimelineWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        step.title,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          step.title,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        step.subtitle,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
+                        SizedBox(height: 3),
+                        Text(
+                          step.subtitle,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  SizedBox(width: 8),
                   if (step.status == TimelineStatus.pending)
                     Text(
                       'Pending',

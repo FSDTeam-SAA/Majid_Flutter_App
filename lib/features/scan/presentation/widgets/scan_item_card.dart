@@ -26,6 +26,8 @@ class ScanItemCard extends StatelessWidget {
               children: [
                 Text(
                   item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
@@ -35,6 +37,8 @@ class ScanItemCard extends StatelessWidget {
                 SizedBox(height: 4),
                 Text(
                   item.imei,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -43,6 +47,7 @@ class ScanItemCard extends StatelessWidget {
               ],
             ),
           ),
+          SizedBox(width: 10),
           StatusBadge(label: item.status),
         ],
       ),

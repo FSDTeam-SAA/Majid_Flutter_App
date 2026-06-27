@@ -313,54 +313,66 @@ class _RepairPageState extends State<RepairPage> {
       color: AppColors.primary,
       backgroundColor: AppColors.cardBackground,
       onRefresh: _fetchRepairs,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            RepairStatsRow(
-              inProgress: inProgress,
-              completed: completed,
-              totalSales: totalSales,
-            ),
-            const SizedBox(height: 20),
-            AppButton(
-              label: 'Create Repair Request',
-              onPressed: _showCreateRepairSheet,
-            ),
-            const SizedBox(height: 24),
-            _buildSectionHeader(),
-            const SizedBox(height: 14),
-            if (_repairs.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 48),
-                  child: Text(
-                    'No repair requests yet',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              children: [
+                RepairStatsRow(
+                  inProgress: inProgress,
+                  completed: completed,
+                  totalSales: totalSales,
                 ),
-              )
-            else
-              ..._repairs.map(
-                (item) => RepairCard(
-                  item: item,
-                  onViewReport: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          RepairRequestDetailsPage(repair: item.raw),
+                const SizedBox(height: 20),
+                AppButton(
+                  label: 'Create Repair Request',
+                  onPressed: _showCreateRepairSheet,
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader(),
+                  const SizedBox(height: 14),
+                  if (_repairs.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 48),
+                        child: Text(
+                          'No repair requests yet',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    )
+                  else
+                    ..._repairs.map(
+                      (item) => RepairCard(
+                        item: item,
+                        onViewReport: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                RepairRequestDetailsPage(repair: item.raw),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  const SizedBox(height: 8),
+                  if (_totalPages > 1) _buildPagination(),
+                  const SizedBox(height: 110),
+                ],
               ),
-            const SizedBox(height: 8),
-            if (_totalPages > 1) _buildPagination(),
-            const SizedBox(height: 110),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

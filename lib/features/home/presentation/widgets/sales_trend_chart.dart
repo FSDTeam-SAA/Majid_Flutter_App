@@ -1,15 +1,26 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/colors.dart';
 
 class SalesTrendChart extends StatelessWidget {
-  final List<double> thisMonth;
-  final List<double> lastMonth;
+  final String periodLabel;
+  final String currentLegend;
+  final String previousLegend;
+  final List<double> currentPeriod;
+  final List<double> previousPeriod;
+  final List<String> xLabels;
+  final VoidCallback? onPeriodTap;
 
   const SalesTrendChart({
     super.key,
-    required this.thisMonth,
-    required this.lastMonth,
+    required this.periodLabel,
+    required this.currentLegend,
+    required this.previousLegend,
+    required this.currentPeriod,
+    required this.previousPeriod,
+    required this.xLabels,
+    this.onPeriodTap,
   });
 
   @override
@@ -35,28 +46,32 @@ class SalesTrendChart extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.fieldBorder),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Monthly',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12,
+              InkWell(
+                onTap: onPeriodTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.fieldBorder),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        periodLabel,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppColors.textPrimary,
-                      size: 16,
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        color: AppColors.textPrimary,
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -64,9 +79,9 @@ class SalesTrendChart extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _legendDot(AppColors.primary, 'This Month'),
+              _legendDot(AppColors.primary, currentLegend),
               const SizedBox(width: 16),
-              _legendDot(AppColors.textSecondary, 'Last Month'),
+              _legendDot(AppColors.textSecondary, previousLegend),
             ],
           ),
           const SizedBox(height: 16),
@@ -75,8 +90,9 @@ class SalesTrendChart extends StatelessWidget {
             child: CustomPaint(
               size: Size(double.infinity, 160),
               painter: _ChartPainter(
-                thisMonth: thisMonth,
-                lastMonth: lastMonth,
+                currentPeriod: currentPeriod,
+                previousPeriod: previousPeriod,
+                xLabels: xLabels,
                 isDark: AppColors.isDark,
               ),
             ),
@@ -84,24 +100,20 @@ class SalesTrendChart extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '1',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
-              ),
-              Text(
-                '7',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
-              ),
-              Text(
-                '14',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
-              ),
-              Text(
-                '18',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
-              ),
-            ],
+            children: xLabels
+                .map(
+                  (label) => Expanded(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -127,21 +139,24 @@ class SalesTrendChart extends StatelessWidget {
 }
 
 class _ChartPainter extends CustomPainter {
-  final List<double> thisMonth;
-  final List<double> lastMonth;
+  final List<double> currentPeriod;
+  final List<double> previousPeriod;
+  final List<String> xLabels;
   final bool isDark;
 
   const _ChartPainter({
-    required this.thisMonth,
-    required this.lastMonth,
+    required this.currentPeriod,
+    required this.previousPeriod,
+    required this.xLabels,
     required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final allValues = [...thisMonth, ...lastMonth];
-    final maxVal = allValues.reduce(max);
-    final minVal = allValues.reduce(min) * 0.8;
+    final allValues = [...currentPeriod, ...previousPeriod];
+    final safeValues = allValues.isEmpty ? [0.0] : allValues;
+    final maxVal = max(safeValues.reduce(max), 1).toDouble();
+    final minVal = 0.0;
 
     final gridPaint = Paint()
       ..color = AppColors.fieldBorder.withValues(alpha: AppColors.isDark ? 0.28 : 0.42)
@@ -151,7 +166,10 @@ class _ChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    const yLabels = ['18000', '13500', '9000', '4500', '0'];
+    final yLabels = List<String>.generate(
+      5,
+      (i) => _formatValue(maxVal * (4 - i) / 4),
+    );
     final textStyle = TextStyle(
       color: AppColors.textSecondary.withValues(alpha: 0.75),
       fontSize: 9,
@@ -167,7 +185,7 @@ class _ChartPainter extends CustomPainter {
     _drawLine(
       canvas,
       size,
-      lastMonth,
+      previousPeriod,
       AppColors.textSecondary.withValues(alpha: 0.85),
       minVal,
       maxVal,
@@ -175,7 +193,7 @@ class _ChartPainter extends CustomPainter {
     _drawLine(
       canvas,
       size,
-      thisMonth,
+      currentPeriod,
       AppColors.primary,
       minVal,
       maxVal,
@@ -192,6 +210,7 @@ class _ChartPainter extends CustomPainter {
     double maxVal, {
     bool drawDots = false,
   }) {
+    if (data.isEmpty) return;
     final paint = Paint()
       ..color = color
       ..strokeWidth = 2.5
@@ -227,6 +246,21 @@ class _ChartPainter extends CustomPainter {
     }
   }
 
+  String _formatValue(double value) {
+    if (value >= 1000) {
+      final inThousands = value / 1000;
+      return inThousands == inThousands.roundToDouble()
+          ? '${inThousands.toInt()}k'
+          : '${inThousands.toStringAsFixed(1)}k';
+    }
+    return value.toStringAsFixed(0);
+  }
+
   @override
-  bool shouldRepaint(_ChartPainter old) => old.isDark != isDark;
+  bool shouldRepaint(_ChartPainter old) {
+    return old.isDark != isDark ||
+        !listEquals(old.currentPeriod, currentPeriod) ||
+        !listEquals(old.previousPeriod, previousPeriod) ||
+        !listEquals(old.xLabels, xLabels);
+  }
 }

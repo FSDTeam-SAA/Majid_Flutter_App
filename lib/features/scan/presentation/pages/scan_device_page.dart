@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
@@ -7,6 +10,7 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../controller/scan_data.dart';
+import 'barcode_scanner_page.dart';
 import '../widgets/carrier_dropdown.dart';
 import '../widgets/scan_item_card.dart';
 import '../widgets/scan_search_bar.dart';
@@ -25,6 +29,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   bool _dropdownOpen = false;
   bool _isLoading = false;
   bool _isScanning = false;
+  bool _isExtractingImei = false;
   String _errorMessage = '';
   List<ScanItem> _recentScans = [];
   List<ScanDropdownOption> _services = [];
@@ -111,10 +116,14 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   }
 
   Future<void> _scanNow() async {
-    final imei = _controller.text.trim();
+    final imei = _normalizeImei(_controller.text);
     final serviceId = _selectedService?.serviceId;
     if (imei.isEmpty) {
       _showMessage('Please enter an IMEI number.');
+      return;
+    }
+    if (!_isValidImei(imei)) {
+      _showMessage('Please enter a valid 15-digit IMEI number.');
       return;
     }
     if (serviceId == null) {
@@ -122,6 +131,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       return;
     }
 
+    _controller.text = imei;
+    FocusScope.of(context).unfocus();
     setState(() => _isScanning = true);
     try {
       final res = await _api.post(
@@ -158,6 +169,102 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     }
   }
 
+  Future<void> _uploadImageAndExtractImei() async {
+    if (_isExtractingImei || _isScanning) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    final file = File(picked.path);
+    final fileSize = await file.length();
+    if (fileSize > 5 * 1024 * 1024) {
+      _showMessage('Please choose an image smaller than 5MB.');
+      return;
+    }
+
+    setState(() => _isExtractingImei = true);
+    try {
+      final payload = FormData.fromMap({
+        'image': await MultipartFile.fromFile(
+          picked.path,
+          filename: picked.name,
+        ),
+      });
+      final res = await _api.post(OcrEndpoints.extractImei, data: payload);
+      final responseData = res.data is Map ? res.data['data'] : null;
+      final imeiNumbers = _extractImeis(responseData);
+
+      if (imeiNumbers.isEmpty) {
+        _showMessage('No valid IMEI found in the selected image.');
+        return;
+      }
+
+      final firstImei = imeiNumbers.first;
+      _controller.text = firstImei;
+
+      if (imeiNumbers.length == 1) {
+        _showMessage('IMEI extracted successfully. Tap Scan Now to continue.');
+      } else {
+        _showMessage(
+          '${imeiNumbers.length} IMEIs found. The first one has been filled in.',
+        );
+      }
+    } on DioException catch (e) {
+      _showMessage(
+        e.response?.data?['message'] ?? 'Failed to extract IMEI from image.',
+      );
+    } catch (_) {
+      _showMessage('Failed to extract IMEI from image.');
+    } finally {
+      if (mounted) setState(() => _isExtractingImei = false);
+    }
+  }
+
+  Future<void> _openBarcodeScanner() async {
+    if (_isScanning || _isExtractingImei) return;
+
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+
+    if (!mounted || scannedValue == null || scannedValue.trim().isEmpty) {
+      return;
+    }
+
+    final trimmedValue = scannedValue.trim();
+    _controller.text = trimmedValue;
+
+    final normalizedImei = _normalizeImei(trimmedValue);
+    if (_isValidImei(normalizedImei)) {
+      _controller.text = normalizedImei;
+      _showMessage('IMEI scanned successfully. Tap Scan Now to continue.');
+      return;
+    }
+
+    await _lookupBarcode(trimmedValue);
+  }
+
+  Future<void> _lookupBarcode(String code) async {
+    FocusScope.of(context).unfocus();
+    setState(() => _isScanning = true);
+    try {
+      final res = await _api.get(BarcodeEndpoints.search(code));
+      final data = res.data is Map ? res.data['data'] : null;
+      if (data is! Map) {
+        throw const FormatException('Invalid barcode response');
+      }
+      if (!mounted) return;
+      await _showBarcodeResultSheet(Map<String, dynamic>.from(data));
+    } on DioException catch (e) {
+      _showMessage(e.response?.data?['message'] ?? 'Barcode lookup failed');
+    } catch (_) {
+      _showMessage('Barcode lookup failed');
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
@@ -170,12 +277,20 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                _floatingNavClearance(context),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 20),
-                  ScanSearchBar(controller: _controller),
+                  ScanSearchBar(
+                    controller: _controller,
+                    onScanTap: _openBarcodeScanner,
+                  ),
                   SizedBox(height: 12),
                   CarrierDropdown(
                     isOpen: _dropdownOpen,
@@ -237,11 +352,15 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     );
   }
 
+  double _floatingNavClearance(BuildContext context) {
+    return MediaQuery.paddingOf(context).bottom + 96;
+  }
+
   Widget _buildScanNowButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isScanning ? null : _scanNow,
+        onPressed: (_isScanning || _isExtractingImei) ? null : _scanNow,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.black,
@@ -272,27 +391,30 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Image upload will be connected when file picking is added.',
-              ),
-            ),
-          );
-        },
+        onPressed:
+            (_isExtractingImei || _isScanning) ? null : _uploadImageAndExtractImei,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
+          disabledForegroundColor: AppColors.textSecondary,
           side: BorderSide(color: AppColors.primary, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(50),
           ),
           padding: EdgeInsets.symmetric(vertical: 17),
         ),
-        child: Text(
-          'Upload Image',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        child: _isExtractingImei
+            ? SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: AppColors.primary,
+                ),
+              )
+            : Text(
+                'Upload Image',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
       ),
     );
   }
@@ -334,6 +456,164 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       imei: imei,
       status: item['status']?.toString() ?? 'Clean',
     );
+  }
+
+  Future<void> _showBarcodeResultSheet(Map<String, dynamic> data) {
+    final name = data['name']?.toString().trim();
+    final brand = data['brand']?.toString().trim();
+    final category = data['category']?.toString().trim();
+    final barcode = data['barcode']?.toString().trim();
+    final description = data['description']?.toString().trim();
+    final image = data['image']?.toString().trim();
+
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: AppColors.fieldBorder),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.fieldBorder,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  name?.isNotEmpty == true ? name! : 'Barcode Result',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (image?.isNotEmpty == true)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.network(
+                      image!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                if (image?.isNotEmpty == true) const SizedBox(height: 14),
+                _sheetField('Barcode', barcode ?? _controller.text.trim()),
+                _sheetField('Brand', brand ?? 'N/A'),
+                _sheetField('Category', category ?? 'N/A'),
+                _sheetField('Description', description ?? 'N/A'),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: BorderSide(color: AppColors.primary, width: 1.4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _sheetField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<String> _extractImeis(dynamic responseData) {
+    final imeis = <String>{};
+
+    void addCandidate(dynamic value) {
+      if (value == null) return;
+      final normalized = _normalizeImei(value.toString());
+      if (_isValidImei(normalized)) {
+        imeis.add(normalized);
+      }
+    }
+
+    if (responseData is Map) {
+      final directList = responseData['imeiNumbers'] ?? responseData['imeis'];
+      if (directList is List) {
+        for (final item in directList) {
+          addCandidate(item);
+        }
+      }
+
+      addCandidate(responseData['imei']);
+      addCandidate(responseData['imeiNumber']);
+
+      final rawText = responseData['rawText'];
+      if (rawText is String) {
+        for (final match in RegExp(r'\d{15}').allMatches(rawText)) {
+          addCandidate(match.group(0));
+        }
+      }
+    } else if (responseData is List) {
+      for (final item in responseData) {
+        addCandidate(item);
+      }
+    }
+
+    return imeis.toList();
+  }
+
+  String _normalizeImei(String value) {
+    return value.replaceAll(RegExp(r'\D'), '');
+  }
+
+  bool _isValidImei(String value) {
+    return RegExp(r'^\d{15}$').hasMatch(value);
   }
 
   void _showMessage(String message) {
