@@ -14,10 +14,10 @@ import 'features/stock/presentation/controller/stock_controller.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Get.put(AuthController());
-  Get.put(HomeController());
-  Get.put(ProfileController());
   Get.put(ProfileThemeController());
-  Get.put(StockController());
+  Get.lazyPut(() => HomeController());
+  Get.lazyPut(() => ProfileController());
+  Get.lazyPut(() => StockController());
   runApp(MyApp());
 }
 

@@ -189,49 +189,65 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Future<void> _openCategoryPicker() async {
     final selected = await showModalBottomSheet<String?>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Color(0xFF0D171C),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         final categories = _stockCtrl.categories;
+        final maxHeight = MediaQuery.of(context).size.height * 0.72;
+
         return SafeArea(
           top: false,
           child: Padding(
             padding: EdgeInsets.fromLTRB(20, 18, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Choose Category',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 14),
-                _CategoryOptionTile(
-                  title: 'All Categories',
-                  isSelected: _selectedCategoryId == null,
-                  onTap: () => Navigator.pop(context, null),
-                ),
-                SizedBox(height: 8),
-                ...categories.map(
-                  (category) => Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: _CategoryOptionTile(
-                      title: category['name']?.toString() ?? 'Unnamed',
-                      subtitle:
-                          '${category['itemCount'] ?? category['totalItems'] ?? 0} items',
-                      isSelected: _selectedCategoryId == category['_id'],
-                      onTap: () =>
-                          Navigator.pop(context, category['_id']?.toString()),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Choose Category',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: 14),
+                  Expanded(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        _CategoryOptionTile(
+                          title: 'All Categories',
+                          isSelected: _selectedCategoryId == null,
+                          onTap: () => Navigator.pop(context, null),
+                        ),
+                        SizedBox(height: 8),
+                        ...categories.map(
+                          (category) => Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: _CategoryOptionTile(
+                              title: category['name']?.toString() ?? 'Unnamed',
+                              subtitle:
+                                  '${category['itemCount'] ?? category['totalItems'] ?? 0} items',
+                              isSelected:
+                                  _selectedCategoryId == category['_id'],
+                              onTap: () => Navigator.pop(
+                                context,
+                                category['_id']?.toString(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

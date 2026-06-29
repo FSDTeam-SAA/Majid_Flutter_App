@@ -47,58 +47,66 @@ class StockPage extends StatelessWidget {
                   );
                 }
 
-                if (stockCtrl.categories.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.category_outlined,
-                          color: AppColors.textSecondary,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No categories yet',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
                 return RefreshIndicator(
                   color: AppColors.primary,
                   backgroundColor: AppColors.cardBackground,
                   onRefresh: stockCtrl.fetchCategories,
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.78,
-                        ),
-                    itemCount: stockCtrl.categories.length,
-                    itemBuilder: (context, i) => CategoryCard(
-                      category: stockCtrl.categories[i],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => InventoryScreen(
-                            initialCategoryId: stockCtrl.categories[i]['_id']
-                                ?.toString(),
-                            initialCategoryName: stockCtrl.categories[i]['name']
-                                ?.toString(),
+                  child: stockCtrl.categories.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 80, 16, 100),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.4,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.category_outlined,
+                                    color: AppColors.textSecondary,
+                                    size: 48,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No categories yet',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : GridView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.78,
+                              ),
+                          itemCount: stockCtrl.categories.length,
+                          itemBuilder: (context, i) => CategoryCard(
+                            category: stockCtrl.categories[i],
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => InventoryScreen(
+                                  initialCategoryId: stockCtrl.categories[i]
+                                      ['_id']
+                                      ?.toString(),
+                                  initialCategoryName: stockCtrl.categories[i]
+                                      ['name']
+                                      ?.toString(),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
                 );
               }),
             ),

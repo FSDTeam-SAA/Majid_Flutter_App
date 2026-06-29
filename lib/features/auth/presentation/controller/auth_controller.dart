@@ -5,6 +5,9 @@ import 'package:get/get.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/network/api_service/token_meneger.dart';
+import '../../../home/presentation/controller/home_controller.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../../stock/presentation/controller/stock_controller.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -221,6 +224,9 @@ class AuthController extends GetxController {
     await TokenManager.clearToken();
     user.value = null;
     _clearFields();
+    Get.delete<HomeController>(force: true);
+    Get.delete<ProfileController>(force: true);
+    Get.delete<StockController>(force: true);
   }
 
   Future<bool> _execute(Future<void> Function() action) async {

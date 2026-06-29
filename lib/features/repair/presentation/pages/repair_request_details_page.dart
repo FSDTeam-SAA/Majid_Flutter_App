@@ -33,7 +33,18 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     super.initState();
     _api = ApiClient(baseUrl);
     _repair = Map<String, dynamic>.from(widget.repair);
+  }
 
+  Future<void> _refreshRepair() async {
+    final id = _repair['_id']?.toString();
+    if (id == null || id.isEmpty) return;
+    try {
+      final res = await _api.get(RepairRequestEndpoints.byId(id));
+      final data = res.data['data'];
+      if (data is Map && mounted) {
+        setState(() => _repair = Map<String, dynamic>.from(data));
+      }
+    } catch (_) {}
   }
 
   @override
@@ -72,6 +83,102 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
   }
 
+  Future<void> _showWaitingForPartsDialog() async {
+    final daysCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Waiting for Parts', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: daysCtrl,
+              keyboardType: TextInputType.number,
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Estimated days',
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.fieldBackground,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
+              ),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: descCtrl,
+              maxLines: 3,
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Which parts are needed?',
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.fieldBackground,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary))),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final days = int.tryParse(daysCtrl.text.trim());
+    final desc = descCtrl.text.trim();
+
+    if (days == null || days <= 0) {
+      _showMessage('Please enter valid estimated days');
+      return;
+    }
+    if (desc.isEmpty) {
+      _showMessage('Please describe which parts are needed');
+      return;
+    }
+
+    final id = _repair['_id']?.toString();
+    if (id == null || id.isEmpty) return;
+
+    setState(() => _isUpdating = true);
+    try {
+      final res = await _api.put(
+        RepairRequestEndpoints.updateStatus(id),
+        data: {
+          'status': 'waiting-for-parts',
+          'waitingForPartsDays': days,
+          'waitingForPartsDescription': desc,
+        },
+      );
+      final data = res.data['data'];
+      if (data is Map) {
+        setState(() => _repair = Map<String, dynamic>.from(data));
+      } else {
+        setState(() => _repair['status'] = 'waiting-for-parts');
+      }
+      _showMessage('Status updated to Waiting for Parts');
+    } on DioException catch (e) {
+      _showMessage(e.response?.data?['message'] ?? 'Failed to update status');
+    } catch (e) {
+      _showMessage('Failed to update status');
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +197,12 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 ? Center(
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
-                : SingleChildScrollView(
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.cardBackground,
+                    onRefresh: _refreshRepair,
+                    child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,6 +231,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       ],
                     ),
                   ),
+                ),
           ),
         ],
       ),
@@ -248,6 +361,48 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
   }
 
   Widget _buildActions(BuildContext context) {
+    final actions = [
+      _RepairActionSpec(
+        label: 'Order Assigned',
+        tone: _RepairActionTone.orderAssigned,
+        activeStatuses: const {'inProgress', 'order-assigned'},
+        onTap: () => _updateStatus('inProgress'),
+      ),
+      _RepairActionSpec(
+        label: 'Diagnosing Device',
+        tone: _RepairActionTone.diagnosing,
+        activeStatuses: const {'diagnosing', 'inReview'},
+        onTap: () => _updateStatus('diagnosing'),
+      ),
+      _RepairActionSpec(
+        label: 'Repairing Device',
+        tone: _RepairActionTone.repairing,
+        activeStatuses: const {'repairing', 'start-work'},
+        onTap: () => _updateStatus('repairing'),
+      ),
+      _RepairActionSpec(
+        label: 'Waiting for Parts',
+        tone: _RepairActionTone.waiting,
+        activeStatuses: const {'waiting-for-parts'},
+        onTap: _showWaitingForPartsDialog,
+      ),
+      _RepairActionSpec(
+        label: 'Completed',
+        tone: _RepairActionTone.completed,
+        activeStatuses: const {'completed'},
+        onTap: () => _updateStatus('completed'),
+      ),
+      _RepairActionSpec(
+        label: 'Check Out',
+        tone: _RepairActionTone.checkOut,
+        activeStatuses: const {'checkout'},
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CheckoutPage(repair: _repair)),
+        ),
+      ),
+    ];
+
     return AppCard(
       padding: EdgeInsets.all(16),
       child: Column(
@@ -262,108 +417,59 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
             ),
           ),
           SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _actionBtn(
-                  'In Progress',
-                  Color(0xFF8B1A1A),
-                  Color(0xFFFF6B6B),
-                  onTap: () => _updateStatus('inProgress'),
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _actionBtn(
-                  'Diagnosing Device',
-                  AppColors.fieldBackground,
-                  AppColors.primary,
-                  onTap: () => _updateStatus('diagnosing'),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _actionBtn(
-                  'Repairing Device',
-                  Color(0xFF2A1A00),
-                  Color(0xFFFFA500),
-                  onTap: () => _updateStatus('repairing'),
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _actionBtn(
-                  'Waiting for Parts',
-                  Color(0xFF0D1A2E),
-                  Color(0xFF4DB8FF),
-                  onTap: () => _updateStatus('waiting-for-parts'),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _actionBtn(
-                  'Completed',
-                  AppColors.fieldBackground,
-                  AppColors.primary,
-                  onTap: () => _updateStatus('completed'),
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: _actionBtn(
-                  'Check Out',
-                  AppColors.fieldBackground,
-                  AppColors.primary,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CheckoutPage(repair: _repair),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = (constraints.maxWidth - 12) / 2;
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final action in actions)
+                    SizedBox(
+                      width: itemWidth,
+                      child: _actionBtn(action),
                     ),
-                  ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _actionBtn(
-    String label,
-    Color bg,
-    Color textColor, {
-    VoidCallback? onTap,
-  }) {
-    final isCurrentStatus =
-        _formatStatus(_repair['status']?.toString()) == label ||
-        _repair['status']?.toString() == _statusKey(label);
+  Widget _actionBtn(_RepairActionSpec action) {
+    final isCurrentStatus = action.activeStatuses.contains(
+      _repair['status']?.toString(),
+    );
+    final visual = _actionVisual(action.tone, isCurrentStatus);
 
     return GestureDetector(
-      onTap: _isUpdating ? null : onTap,
+      onTap: _isUpdating ? null : action.onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 13),
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isCurrentStatus ? AppColors.primary.withValues(alpha: 0.2) : bg,
-          borderRadius: BorderRadius.circular(50),
-          border: isCurrentStatus
-              ? Border.all(color: AppColors.primary, width: 1.5)
-              : null,
+          gradient: visual.gradient,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: isCurrentStatus
+                ? visual.borderColor.withValues(alpha: 0.95)
+                : visual.borderColor.withValues(alpha: 0.4),
+            width: isCurrentStatus ? 2 : 1,
+          ),
+          boxShadow: isCurrentStatus ? visual.shadows : [],
         ),
-        child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
           child: Text(
-            label,
+            action.label,
+            maxLines: 1,
             style: TextStyle(
-              color: textColor,
-              fontSize: 13,
+              color: visual.textColor,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -372,21 +478,151 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  String _statusKey(String label) {
-    switch (label) {
-      case 'In Progress':
-        return 'inProgress';
-      case 'Diagnosing Device':
-        return 'diagnosing';
-      case 'Repairing Device':
-        return 'repairing';
-      case 'Waiting for Parts':
-        return 'waiting-for-parts';
-      case 'Completed':
-        return 'completed';
-      default:
-        return '';
+  _ActionVisual _actionVisual(_RepairActionTone tone, bool isCurrentStatus) {
+    if (AppColors.isDark) {
+      return _darkActionVisual(tone, isCurrentStatus);
     }
+
+    return _lightActionVisual(tone, isCurrentStatus);
+  }
+
+  _ActionVisual _darkActionVisual(
+    _RepairActionTone tone,
+    bool isCurrentStatus,
+  ) {
+    final (start, end, border, text, glow) = switch (tone) {
+      _RepairActionTone.orderAssigned => (
+        const Color(0xFF32151A),
+        const Color(0xFF291217),
+        const Color(0xFF6E202C),
+        const Color(0xFFFF474F),
+        const Color(0xFFFF474F),
+      ),
+      _RepairActionTone.diagnosing => (
+        const Color(0xFF10302B),
+        const Color(0xFF0C2622),
+        const Color(0xFF0E6650),
+        const Color(0xFF22F0B6),
+        const Color(0xFF22F0B6),
+      ),
+      _RepairActionTone.repairing => (
+        const Color(0xFF392414),
+        const Color(0xFF2B1C11),
+        const Color(0xFF7A4215),
+        const Color(0xFFFFA034),
+        const Color(0xFFFFA034),
+      ),
+      _RepairActionTone.waiting => (
+        const Color(0xFF182A46),
+        const Color(0xFF142137),
+        const Color(0xFF214A8E),
+        const Color(0xFF3D95FF),
+        const Color(0xFF3D95FF),
+      ),
+      _RepairActionTone.completed => (
+        const Color(0xFF1C3421),
+        const Color(0xFF16281A),
+        const Color(0xFF325E36),
+        const Color(0xFF85FF79),
+        const Color(0xFF85FF79),
+      ),
+      _RepairActionTone.checkOut => (
+        const Color(0xFF10271C),
+        const Color(0xFF0B1F16),
+        const Color(0xFF2B5635),
+        const Color(0xFF85FF79),
+        const Color(0xFF85FF79),
+      ),
+    };
+
+    return _ActionVisual(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          start,
+          end,
+          end.withValues(alpha: 0.98),
+        ],
+      ),
+      borderColor: border.withValues(alpha: isCurrentStatus ? 0.95 : 0.7),
+      textColor: text,
+      shadows: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.26),
+          blurRadius: 22,
+          offset: const Offset(0, 14),
+        ),
+        BoxShadow(
+          color: glow.withValues(alpha: isCurrentStatus ? 0.2 : 0.1),
+          blurRadius: isCurrentStatus ? 34 : 24,
+          spreadRadius: isCurrentStatus ? 1.5 : 0,
+        ),
+      ],
+    );
+  }
+
+  _ActionVisual _lightActionVisual(
+    _RepairActionTone tone,
+    bool isCurrentStatus,
+  ) {
+    final (fill, border, glow) = switch (tone) {
+      _RepairActionTone.orderAssigned => (
+        const Color(0xFFFF2B31),
+        const Color(0xFFFF2B31),
+        const Color(0xFFFF5F69),
+      ),
+      _RepairActionTone.diagnosing => (
+        const Color(0xFF10C184),
+        const Color(0xFF10C184),
+        const Color(0xFF46D6A7),
+      ),
+      _RepairActionTone.repairing => (
+        const Color(0xFFFF7A00),
+        const Color(0xFFFF7A00),
+        const Color(0xFFFFB05A),
+      ),
+      _RepairActionTone.waiting => (
+        const Color(0xFF3A7DF2),
+        const Color(0xFF3A7DF2),
+        const Color(0xFF71A4FF),
+      ),
+      _RepairActionTone.completed => (
+        const Color(0xFF1B56EA),
+        const Color(0xFF1B56EA),
+        const Color(0xFF6E9BFF),
+      ),
+      _RepairActionTone.checkOut => (
+        const Color(0xFFFF2B31),
+        const Color(0xFFFF2B31),
+        const Color(0xFFFF6870),
+      ),
+    };
+
+    return _ActionVisual(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          fill,
+          Color.lerp(fill, Colors.white, 0.06)!,
+        ],
+      ),
+      borderColor: border.withValues(alpha: isCurrentStatus ? 1 : 0.88),
+      textColor: Colors.white,
+      shadows: [
+        BoxShadow(
+          color: glow.withValues(alpha: isCurrentStatus ? 0.28 : 0.18),
+          blurRadius: isCurrentStatus ? 30 : 22,
+          offset: const Offset(0, 12),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 14,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
   }
 
   Widget _buildCustomerDetails() {
@@ -447,4 +683,41 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     final period = local.hour >= 12 ? 'PM' : 'AM';
     return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year} · $hour:$minute $period';
   }
+}
+
+enum _RepairActionTone {
+  orderAssigned,
+  diagnosing,
+  repairing,
+  waiting,
+  completed,
+  checkOut,
+}
+
+class _RepairActionSpec {
+  final String label;
+  final _RepairActionTone tone;
+  final Set<String> activeStatuses;
+  final VoidCallback onTap;
+
+  const _RepairActionSpec({
+    required this.label,
+    required this.tone,
+    required this.activeStatuses,
+    required this.onTap,
+  });
+}
+
+class _ActionVisual {
+  final LinearGradient gradient;
+  final Color borderColor;
+  final Color textColor;
+  final List<BoxShadow> shadows;
+
+  const _ActionVisual({
+    required this.gradient,
+    required this.borderColor,
+    required this.textColor,
+    required this.shadows,
+  });
 }

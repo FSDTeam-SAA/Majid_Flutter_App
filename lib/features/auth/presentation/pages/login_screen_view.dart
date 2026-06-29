@@ -32,76 +32,64 @@ class LoginScreenView extends StatelessWidget {
                   child: IntrinsicHeight(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 64),
-                          Text(
-                            'Welcome Back to',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                      child: Center(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(height: 64),
+                            Text(
+                              'Welcome Back to',
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
                             ),
-                          ),
-                          ImoscanTitle(),
-                          SizedBox(height: 40),
-                          AppTextField(
-                            hint: 'Enter your email',
-                            controller: auth.emailController,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          SizedBox(height: 16),
-                          AppTextField(
-                            hint: 'Enter your password',
-                            controller: auth.passwordController,
-                            isPassword: true,
-                          ),
-                          SizedBox(height: 24),
-                          Obx(
-                            () => AppButton(
-                              label: 'Sign In',
-                              isLoading: auth.isLoading.value,
-                              onPressed: () async {
-                                final success = await auth.login();
-                                if (success) {
-                                  Get.offAll(() => AppGroundView());
-                                } else if (auth.isEmailNotVerified.value) {
-                                  showErrorSnackbar(
-                                    'Email not verified. Check your inbox for the OTP or register again.',
-                                  );
-                                  Get.to(() => OtpVerificationScreenView());
-                                } else if (auth.errorMessage.isNotEmpty) {
-                                  showErrorSnackbar(auth.errorMessage.value);
-                                }
-                              },
+                            ImoscanTitle(),
+                            SizedBox(height: 40),
+                            AppTextField(
+                              hint: 'Enter your email',
+                              controller: auth.emailController,
+                              keyboardType: TextInputType.emailAddress,
                             ),
-                          ),
-                          SizedBox(height: 20),
-                          Center(
-                            child: GestureDetector(
-                              onTap: () =>
-                                  Get.to(() => ForgotPasswordScreenView()),
-                              child: Text(
-                                'Forgot Password?',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                            SizedBox(height: 16),
+                            AppTextField(hint: 'Enter your password', controller: auth.passwordController, isPassword: true),
+                            SizedBox(height: 24),
+                            Obx(
+                              () => AppButton(
+                                label: 'Sign In',
+                                isLoading: auth.isLoading.value,
+                                onPressed: () async {
+                                  final success = await auth.login();
+                                  if (success) {
+                                    Get.offAll(() => AppGroundView());
+                                  } else if (auth.isEmailNotVerified.value) {
+                                    showErrorSnackbar('Email not verified. Check your inbox for the OTP or register again.');
+                                    Get.to(() => OtpVerificationScreenView());
+                                  } else if (auth.errorMessage.isNotEmpty) {
+                                    showErrorSnackbar(auth.errorMessage.value);
+                                  }
+                                },
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Center(
+                              child: GestureDetector(
+                                onTap: () => Get.to(() => ForgotPasswordScreenView()),
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ),
-                          ),
-                          Spacer(),
-                          Center(
-                            child: AuthLink(
-                              text: "Don't have an account? ",
-                              linkText: 'Register Now',
-                              onTap: () => Get.to(() => SignupScreenView()),
+                            SizedBox(height: 200),
+                            Center(
+                              child: AuthLink(
+                                text: "Don't have an account? ",
+                                linkText: 'Register Now',
+                                onTap: () => Get.to(() => SignupScreenView()),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 24),
-                        ],
+                            SizedBox(height: 24),
+                          ],
+                        ),
                       ),
                     ),
                   ),

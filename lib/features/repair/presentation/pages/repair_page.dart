@@ -9,8 +9,10 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../controller/repair_data.dart';
+import '../utils/repair_request_formatter.dart';
 import '../widgets/repair_card.dart';
 import '../widgets/repair_stats_row.dart';
+import 'all_repair_requests_page.dart';
 import 'repair_request_details_page.dart';
 
 class RepairPage extends StatefulWidget {
@@ -22,8 +24,6 @@ class RepairPage extends StatefulWidget {
 
 class _RepairPageState extends State<RepairPage> {
   late final ApiClient _api;
-  int _currentPage = 1;
-  int _totalPages = 1;
   int _totalRecords = 0;
   bool _isLoading = true;
   String _errorMessage = '';
@@ -36,8 +36,18 @@ class _RepairPageState extends State<RepairPage> {
     _fetchRepairs();
   }
 
-  Future<void> _fetchRepairs({int? page}) async {
-    final nextPage = page ?? _currentPage;
+  List<RepairItem> get _recentRepairs {
+    final sortedRepairs = [..._repairs]
+      ..sort((a, b) {
+        final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+
+    return sortedRepairs.take(5).toList();
+  }
+
+  Future<void> _fetchRepairs() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -46,7 +56,7 @@ class _RepairPageState extends State<RepairPage> {
     try {
       final res = await _api.get(
         RepairRequestEndpoints.myHistory,
-        query: {'page': nextPage, 'limit': 10},
+        query: {'page': 1, 'limit': 10},
       );
       final data = res.data['data'];
       if (data is! List) {
@@ -54,17 +64,13 @@ class _RepairPageState extends State<RepairPage> {
       }
       final meta = res.data['meta'];
       setState(() {
-        _currentPage = nextPage;
         _repairs = data
             .whereType<Map>()
-            .map((item) => _repairFromJson(Map<String, dynamic>.from(item)))
+            .map((item) => repairItemFromJson(Map<String, dynamic>.from(item)))
             .toList();
         _totalRecords = meta is Map
             ? ((meta['total'] as num?)?.toInt() ?? _repairs.length)
             : _repairs.length;
-        _totalPages = meta is Map
-            ? ((meta['totalPage'] as num?)?.toInt() ?? 1)
-            : 1;
       });
     } on DioException catch (e) {
       setState(() {
@@ -118,17 +124,35 @@ class _RepairPageState extends State<RepairPage> {
                       ),
                     ),
                     SizedBox(height: 16),
-                    _sheetField(deviceCtrl, 'Device Model', 'e.g. iPhone 14 Pro'),
+                    _sheetField(
+                      deviceCtrl,
+                      'Device Model',
+                      'e.g. iPhone 14 Pro',
+                    ),
                     SizedBox(height: 10),
-                    _sheetField(descCtrl, 'Issue Description', 'Describe the problem...', maxLines: 3),
+                    _sheetField(
+                      descCtrl,
+                      'Issue Description',
+                      'Describe the problem...',
+                      maxLines: 3,
+                    ),
                     SizedBox(height: 10),
                     _sheetField(firstNameCtrl, 'Customer Name', 'First name'),
                     SizedBox(height: 10),
-                    _sheetField(emailCtrl, 'Customer Email', 'email@example.com'),
+                    _sheetField(
+                      emailCtrl,
+                      'Customer Email',
+                      'email@example.com',
+                    ),
                     SizedBox(height: 10),
                     _sheetField(phoneCtrl, 'Phone Number', '+44...'),
                     SizedBox(height: 10),
-                    _sheetField(priceCtrl, 'Repair Price', '0.00', keyboard: TextInputType.number),
+                    _sheetField(
+                      priceCtrl,
+                      'Repair Price',
+                      '0.00',
+                      keyboard: TextInputType.number,
+                    ),
                     SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
@@ -139,7 +163,11 @@ class _RepairPageState extends State<RepairPage> {
                                 if (deviceCtrl.text.trim().isEmpty ||
                                     descCtrl.text.trim().isEmpty) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(content: Text('Device and description are required')),
+                                    SnackBar(
+                                      content: Text(
+                                        'Device and description are required',
+                                      ),
+                                    ),
                                   );
                                   return;
                                 }
@@ -153,7 +181,11 @@ class _RepairPageState extends State<RepairPage> {
                                       'firstName': firstNameCtrl.text.trim(),
                                       'email': emailCtrl.text.trim(),
                                       'phoneNumber': phoneCtrl.text.trim(),
-                                      'price': double.tryParse(priceCtrl.text.trim()) ?? 0,
+                                      'price':
+                                          double.tryParse(
+                                            priceCtrl.text.trim(),
+                                          ) ??
+                                          0,
                                     },
                                   );
                                   if (ctx.mounted) Navigator.pop(ctx, true);
@@ -162,7 +194,8 @@ class _RepairPageState extends State<RepairPage> {
                                     ScaffoldMessenger.of(ctx).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          e.response?.data?['message'] ?? 'Failed to create repair request',
+                                          e.response?.data?['message'] ??
+                                              'Failed to create repair request',
                                         ),
                                       ),
                                     );
@@ -170,11 +203,17 @@ class _RepairPageState extends State<RepairPage> {
                                 } catch (e) {
                                   if (ctx.mounted) {
                                     ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(content: Text('Failed to create repair request')),
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to create repair request',
+                                        ),
+                                      ),
                                     );
                                   }
                                 } finally {
-                                  if (ctx.mounted) setSheetState(() => isSaving = false);
+                                  if (ctx.mounted) {
+                                    setSheetState(() => isSaving = false);
+                                  }
                                 }
                               },
                         style: ElevatedButton.styleFrom(
@@ -189,9 +228,17 @@ class _RepairPageState extends State<RepairPage> {
                             ? SizedBox(
                                 width: 22,
                                 height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
                               )
-                            : Text('Submit', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            : Text(
+                                'Submit',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -204,7 +251,7 @@ class _RepairPageState extends State<RepairPage> {
     );
 
     if (created == true) {
-      _fetchRepairs(page: 1);
+      _fetchRepairs();
     }
   }
 
@@ -224,7 +271,10 @@ class _RepairPageState extends State<RepairPage> {
         labelText: label,
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         hintText: hint,
-        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 13),
+        hintStyle: TextStyle(
+          color: AppColors.textSecondary.withValues(alpha: 0.5),
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: Color(0xFF101A22),
         border: OutlineInputBorder(
@@ -240,19 +290,6 @@ class _RepairPageState extends State<RepairPage> {
           borderSide: BorderSide(color: AppColors.primary),
         ),
       ),
-    );
-  }
-
-  RepairItem _repairFromJson(Map<String, dynamic> item) {
-    return RepairItem(
-      name: item['firstName']?.toString() ?? 'Customer',
-      brand: item['deviceModel']?.toString() ?? 'Unknown device',
-      issueLabel: 'Issue Summary',
-      issueDesc: item['description']?.toString() ?? 'No description provided',
-      date: _formatDate(item['createdAt']?.toString()),
-      status: _formatStatus(item['status']?.toString()),
-      price: (item['price'] as num?)?.toDouble() ?? 0,
-      raw: item,
     );
   }
 
@@ -353,7 +390,7 @@ class _RepairPageState extends State<RepairPage> {
                       ),
                     )
                   else
-                    ..._repairs.map(
+                    ..._recentRepairs.map(
                       (item) => RepairCard(
                         item: item,
                         onViewReport: () => Navigator.push(
@@ -365,8 +402,6 @@ class _RepairPageState extends State<RepairPage> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  if (_totalPages > 1) _buildPagination(),
                   const SizedBox(height: 110),
                 ],
               ),
@@ -389,134 +424,21 @@ class _RepairPageState extends State<RepairPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          '$_totalRecords Records',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPagination() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
         GestureDetector(
-          onTap: _currentPage > 1
-              ? () => _fetchRepairs(page: _currentPage - 1)
-              : null,
-          child: Row(
-            children: [
-              Icon(
-                Icons.chevron_left,
-                color: _currentPage > 1
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-                size: 18,
-              ),
-              Text(
-                'PREVIOUS',
-                style: TextStyle(
-                  color: _currentPage > 1
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AllRepairRequestsPage()),
           ),
-        ),
-        const SizedBox(width: 12),
-        _buildPageNumber(_currentPage),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: _currentPage < _totalPages
-              ? () => _fetchRepairs(page: _currentPage + 1)
-              : null,
-          child: Row(
-            children: [
-              Text(
-                'NEXT',
-                style: TextStyle(
-                  color: _currentPage < _totalPages
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: _currentPage < _totalPages
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-                size: 18,
-              ),
-            ],
+          child: Text(
+            'See All ($_totalRecords)',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
     );
-  }
-
-  Widget _buildPageNumber(int page) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          '$page',
-          style: TextStyle(
-            color: AppColors.surfaceForeground,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatStatus(String? status) {
-    return switch (status) {
-      'completed' => 'Completed',
-      'inProgress' ||
-      'quote_sent' ||
-      'approved' ||
-      'inReview' ||
-      'start-work' ||
-      'waiting-for-parts' ||
-      'order-assigned' ||
-      'diagnosing' ||
-      'repairing' => 'In Progress',
-      'rejected' => 'Rejected',
-      _ => status ?? 'In Progress',
-    };
-  }
-
-  String _formatDate(String? value) {
-    final parsed = DateTime.tryParse(value ?? '');
-    if (parsed == null) return '';
-    final local = parsed.toLocal();
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year}';
   }
 }

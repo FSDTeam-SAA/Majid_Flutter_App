@@ -158,36 +158,38 @@ class _OnboardingScreenViewState extends State<OnboardingScreenView> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 14),
-                    GestureDetector(
-                      onTap: _openLogin,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4),
-                        child: RichText(
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Already have an account? ',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.35),
-                                  fontSize: 12,
+                    if (isLast) ...[
+                      SizedBox(height: 14),
+                      GestureDetector(
+                        onTap: _openLogin,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Already have an account? ',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.35),
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                              TextSpan(
-                                text: 'Login',
-                                style: TextStyle(
-                                  color: Color(0xFF8EFC7C),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
+                                TextSpan(
+                                  text: 'Login',
+                                  style: TextStyle(
+                                    color: Color(0xFF8EFC7C),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

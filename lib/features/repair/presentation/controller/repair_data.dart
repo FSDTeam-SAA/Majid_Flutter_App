@@ -6,6 +6,7 @@ class RepairItem {
   final String date;
   final String status;
   final double price;
+  final DateTime? createdAt;
   final Map<String, dynamic> raw;
 
   RepairItem({
@@ -16,6 +17,7 @@ class RepairItem {
     required this.date,
     required this.status,
     this.price = 0,
+    this.createdAt,
     this.raw = const {},
   });
 }

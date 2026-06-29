@@ -14,6 +14,7 @@ import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/app_bottom_nav_bar.dart';
 import '../../../home/presentation/controller/home_controller.dart';
 import '../controller/stock_controller.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 
 class AddNewDevicePage extends StatefulWidget {
   final String? initialCategoryId;
@@ -95,6 +96,15 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
     if (_stockCtrl.categories.isNotEmpty) return;
     await _stockCtrl.fetchCategories();
     if (mounted) setState(() {});
+  }
+
+  Future<void> _openScanner(TextEditingController target) async {
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (!mounted || scannedValue == null || scannedValue.trim().isEmpty) return;
+    target.text = scannedValue.trim();
+    setState(() {});
   }
 
   @override
@@ -538,7 +548,7 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         _ScanInputField(
           controller: _itemNameCtrl,
           hint: 'Enter product name',
-          onScanTap: () => showErrorSnackbar('Scanner integration coming soon'),
+          onScanTap: () => _openScanner(_itemNameCtrl),
         ),
         SizedBox(height: 14),
         Row(
@@ -657,7 +667,7 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         _ScanInputField(
           controller: row.barcodeCtrl,
           hint: 'Scan or type device ID...',
-          onScanTap: () => showErrorSnackbar('Scanner integration coming soon'),
+          onScanTap: () => _openScanner(row.barcodeCtrl),
         ),
         SizedBox(height: 14),
         const _FieldLabel('Supplier Name'),
@@ -665,7 +675,7 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         _ScanInputField(
           controller: row.supplierCtrl,
           hint: 'Scan or type supplier...',
-          onScanTap: () => showErrorSnackbar('Scanner integration coming soon'),
+          onScanTap: () => _openScanner(row.supplierCtrl),
         ),
         SizedBox(height: 14),
         Row(
@@ -828,8 +838,7 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                 controller: _imeiCtrl,
                 label: 'IMEI / Serial Number',
                 hint: 'Scan or enter',
-                onScanTap: () =>
-                    showErrorSnackbar('Scanner integration coming soon'),
+                onScanTap: () => _openScanner(_imeiCtrl),
               ),
             ),
           ],

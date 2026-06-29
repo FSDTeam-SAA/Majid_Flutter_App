@@ -2,7 +2,17 @@ class ScanItem {
   final String name;
   final String imei;
   final String status;
-  ScanItem({required this.name, required this.imei, required this.status});
+  final int? serviceId;
+  final DateTime? createdAt;
+  final Map<String, dynamic> report;
+  ScanItem({
+    required this.name,
+    required this.imei,
+    required this.status,
+    this.serviceId,
+    this.createdAt,
+    this.report = const {},
+  });
 }
 
 class ScanDropdownOption {

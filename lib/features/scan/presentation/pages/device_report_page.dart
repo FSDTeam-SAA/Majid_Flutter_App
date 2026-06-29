@@ -189,6 +189,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
   Map<String, String> get _providerFields {
     final data = _data;
+    final report = widget.report;
     final result = <String, String>{};
 
     for (final key in [
@@ -208,6 +209,31 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         }
       }
     }
+
+    if (result.isEmpty) {
+      final deviceName = report['deviceName']?.toString() ?? data['deviceName']?.toString();
+      if (deviceName != null && deviceName.isNotEmpty && deviceName != 'Unknown Device') {
+        result['device_name'] = deviceName;
+      }
+      final imei = report['imei']?.toString() ?? data['imei']?.toString();
+      if (imei != null && imei.isNotEmpty) result['imei'] = imei;
+      final status = report['deviceStatus']?.toString() ?? data['deviceStatus']?.toString();
+      if (status != null && status.isNotEmpty && status != 'unknown') {
+        result['device_status'] = status;
+      }
+      final marketValue = report['marketValue'] ?? data['marketValue'];
+      if (marketValue is Map) {
+        final amount = marketValue['amount']?.toString();
+        final currency = marketValue['currency']?.toString() ?? 'USD';
+        if (amount != null) result['market_value'] = '$amount $currency';
+      }
+      final riskMeter = report['riskMeter'] ?? data['riskMeter'];
+      if (riskMeter is Map) {
+        final label = riskMeter['label']?.toString();
+        if (label != null) result['risk_level'] = label;
+      }
+    }
+
     return result;
   }
 
@@ -263,21 +289,18 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     }
 
     // --- common fields for ALL devices ---
-    fields.add(_DisplayField(
-      'DEVICE NAME',
-      resolve([
-        'model',
-        'marketing_name',
-        'model_description',
-        'device_name',
-        'product',
-      ]),
-      fullWidth: true,
-    ));
+    final deviceName = resolve([
+      'model',
+      'marketing_name',
+      'model_description',
+      'device_name',
+      'product',
+      'description',
+    ]);
 
     fields.add(_DisplayField(
-      'DEVICE DESCRIPTION',
-      resolve(['description', 'model_description', 'marketing_name']),
+      'DEVICE NAME',
+      deviceName,
       fullWidth: true,
     ));
 

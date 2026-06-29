@@ -10,6 +10,8 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../controller/scan_data.dart';
+import '../utils/scan_item_mapper.dart';
+import 'all_scan_history_page.dart';
 import 'barcode_scanner_page.dart';
 import '../widgets/carrier_dropdown.dart';
 import '../widgets/scan_item_card.dart';
@@ -22,6 +24,8 @@ class ScanDevicePage extends StatefulWidget {
   @override
   State<ScanDevicePage> createState() => _ScanDevicePageState();
 }
+
+final List<ScanItem> sessionScans = [];
 
 class _ScanDevicePageState extends State<ScanDevicePage> {
   final _controller = TextEditingController();
@@ -109,10 +113,32 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     if (data is! List) {
       throw const FormatException('Invalid scan history response');
     }
-    _recentScans = data
+    final scans = data
         .whereType<Map>()
-        .map((item) => _scanItemFromJson(Map<String, dynamic>.from(item)))
+        .map((item) => scanItemFromJson(Map<String, dynamic>.from(item)))
         .toList();
+
+    scans.sort((a, b) {
+      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+
+    final apiScans = scans
+        .where((s) => s.name != 'Unknown Device' && s.name != 'IMEI Check')
+        .toList();
+
+    final apiImeis = apiScans.map((s) => s.imei).toSet();
+    final extraSessionScans = sessionScans
+        .where((s) => !apiImeis.contains(s.imei))
+        .toList();
+
+    _recentScans = [...extraSessionScans, ...apiScans];
+    _recentScans.sort((a, b) {
+      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
   }
 
   Future<void> _scanNow() async {
@@ -151,13 +177,27 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
         _showMessage(first['message']?.toString() ?? 'IMEI check failed');
         return;
       }
-      await _fetchRecentScans();
+      final scanResult = Map<String, dynamic>.from(first);
+      final scanData = scanResult['data'];
+      final hasDeviceData = _hasValidDeviceData(scanData);
+      if (!hasDeviceData) {
+        _showMessage('No device information found for this IMEI. Please check the IMEI and selected service.');
+        return;
+      }
+      final newScan = _buildScanItemFromResponse(scanResult, imei);
+      if (newScan != null) {
+        sessionScans.removeWhere((s) => s.imei == imei);
+        sessionScans.insert(0, newScan);
+        setState(() {
+          _recentScans.removeWhere((s) => s.imei == imei);
+          _recentScans.insert(0, newScan);
+        });
+      }
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              DeviceReportPage(report: Map<String, dynamic>.from(first)),
+          builder: (_) => DeviceReportPage(report: scanResult),
         ),
       );
     } on DioException catch (e) {
@@ -267,6 +307,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
 
   @override
   Widget build(BuildContext context) {
+    final recentPreview = _recentScans.take(5).toList();
+
     return GradientScaffold(
       child: Column(
         children: [
@@ -276,74 +318,107 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
             showBackButton: false,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                0,
-                16,
-                _floatingNavClearance(context),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 20),
-                  ScanSearchBar(
-                    controller: _controller,
-                    onScanTap: _openBarcodeScanner,
-                  ),
-                  SizedBox(height: 12),
-                  CarrierDropdown(
-                    isOpen: _dropdownOpen,
-                    options: _services.isEmpty
-                        ? verificationOptions
-                        : _services,
-                    selected: _selectedService,
-                    onToggle: () =>
-                        setState(() => _dropdownOpen = !_dropdownOpen),
-                    onSelect: (option) => setState(() {
-                      _selectedService = option;
-                      _dropdownOpen = false;
-                    }),
-                  ),
-                  SizedBox(height: 24),
-                  _buildScanNowButton(),
-                  SizedBox(height: 12),
-                  _buildUploadButton(),
-                  SizedBox(height: 32),
-                  Text(
-                    'Recent Scans',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              backgroundColor: AppColors.cardBackground,
+              onRefresh: _loadScanData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  _floatingNavClearance(context),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 20),
+                    ScanSearchBar(
+                      controller: _controller,
+                      onScanTap: _openBarcodeScanner,
                     ),
-                  ),
-                  SizedBox(height: 14),
-                  if (_isLoading)
-                    Center(
-                      child: Padding(
+                    SizedBox(height: 12),
+                    CarrierDropdown(
+                      isOpen: _dropdownOpen,
+                      options: _services.isEmpty
+                          ? verificationOptions
+                          : _services,
+                      selected: _selectedService,
+                      onToggle: () =>
+                          setState(() => _dropdownOpen = !_dropdownOpen),
+                      onSelect: (option) => setState(() {
+                        _selectedService = option;
+                        _dropdownOpen = false;
+                      }),
+                    ),
+                    SizedBox(height: 24),
+                    _buildScanNowButton(),
+                    SizedBox(height: 12),
+                    _buildUploadButton(),
+                    SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Recent Scans',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AllScanHistoryPage(),
+                            ),
+                          ),
+                          child: Text(
+                            'See All (${_recentScans.length})',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 14),
+                    if (_isLoading) ...[
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ] else if (_errorMessage.isNotEmpty) ...[
+                      _buildError(),
+                    ] else if (_recentScans.isEmpty) ...[
+                      Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
+                        child: Center(
+                          child: Text(
+                            'No scans yet',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
                         ),
                       ),
-                    )
-                  else if (_errorMessage.isNotEmpty)
-                    _buildError()
-                  else if (_recentScans.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Text(
-                          'No scans yet',
-                          style: TextStyle(color: AppColors.textSecondary),
+                    ] else ...[
+                      ...recentPreview.map(
+                        (item) => ScanItemCard(
+                          item: item,
+                          onTap: () => _openRecentScan(item),
                         ),
                       ),
-                    )
-                  else
-                    ..._recentScans.map((item) => ScanItemCard(item: item)),
-                  SizedBox(height: 20),
-                ],
+                    ],
+                    SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -360,7 +435,15 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: (_isScanning || _isExtractingImei) ? null : _scanNow,
+        onPressed: (_isScanning || _isExtractingImei)
+            ? null
+            : () {
+                if (_selectedService == null) {
+                  _showMessage('Please select a verification service first.');
+                  return;
+                }
+                _scanNow();
+              },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.black,
@@ -391,8 +474,9 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed:
-            (_isExtractingImei || _isScanning) ? null : _uploadImageAndExtractImei,
+        onPressed: (_isExtractingImei || _isScanning)
+            ? null
+            : _uploadImageAndExtractImei,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
           disabledForegroundColor: AppColors.textSecondary,
@@ -438,23 +522,6 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
           ],
         ),
       ),
-    );
-  }
-
-  ScanItem _scanItemFromJson(Map<String, dynamic> item) {
-    final imei = item['imei']?.toString() ?? item['IMEI']?.toString() ?? '';
-    final providerData = item['providerData'];
-    final data = item['data'];
-    final name =
-        item['deviceName']?.toString() ??
-        item['model']?.toString() ??
-        (providerData is Map ? providerData['model']?.toString() : null) ??
-        (data is Map ? data['deviceName']?.toString() : null) ??
-        'IMEI Check';
-    return ScanItem(
-      name: name,
-      imei: imei,
-      status: item['status']?.toString() ?? 'Clean',
     );
   }
 
@@ -560,10 +627,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
             ),
             TextSpan(
               text: value,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
             ),
           ],
         ),
@@ -606,6 +670,181 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     }
 
     return imeis.toList();
+  }
+
+  int? _detectServiceId(ScanItem item) {
+    if (item.serviceId != null) return item.serviceId;
+
+    final text = [
+      item.name,
+      item.report['deviceName']?.toString() ?? '',
+      item.report['deviceModel']?.toString() ?? '',
+      item.report['description']?.toString() ?? '',
+    ].join(' ').toLowerCase();
+
+    final keywordMap = {
+      'iphone': ['apple', 'iphone'],
+      'ipad': ['apple', 'iphone'],
+      'macbook': ['apple', 'iphone'],
+      'samsung': ['samsung'],
+      'galaxy': ['samsung'],
+      'pixel': ['pixel', 'google'],
+      'redmi': ['xiaomi', 'redmi', 'basic'],
+      'xiaomi': ['xiaomi', 'redmi', 'basic'],
+      'poco': ['xiaomi', 'poco', 'basic'],
+      'infinix': ['basic', 'info'],
+      'tecno': ['basic', 'info'],
+      'oppo': ['basic', 'info'],
+      'vivo': ['basic', 'info'],
+      'realme': ['basic', 'info'],
+      'oneplus': ['basic', 'info'],
+      'huawei': ['basic', 'info'],
+      'nokia': ['basic', 'info'],
+      'motorola': ['basic', 'info'],
+    };
+
+    List<String> matchKeywords = [];
+    for (final entry in keywordMap.entries) {
+      if (text.contains(entry.key)) {
+        matchKeywords = entry.value;
+        break;
+      }
+    }
+
+    if (matchKeywords.isEmpty) return _services.firstOrNull?.serviceId;
+
+    for (final keyword in matchKeywords) {
+      for (final service in _services) {
+        if (service.label.toLowerCase().contains(keyword)) {
+          return service.serviceId;
+        }
+      }
+    }
+
+    return _services.firstOrNull?.serviceId;
+  }
+
+  Future<void> _openRecentScan(ScanItem item) async {
+    if (item.report.containsKey('ok')) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: item.report)));
+      return;
+    }
+
+    if (item.imei.isEmpty) return;
+    final serviceId = _detectServiceId(item);
+    if (serviceId == null) {
+      _showMessage('No service available. Please try again.');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text('Loading report...', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final res = await _api.post(ImeiEndpoints.checkV2, data: {'imei': item.imei, 'serviceId': serviceId});
+      if (!mounted) return;
+      Navigator.pop(context);
+      final data = res.data['data'];
+      if (data is! List || data.isEmpty) {
+        _showMessage('Failed to load device report.');
+        return;
+      }
+      final first = data.first;
+      if (first is! Map || first['ok'] != true) {
+        _showMessage(first is Map ? first['message']?.toString() ?? 'Device data not found.' : 'Device data not found.');
+        return;
+      }
+      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: Map<String, dynamic>.from(first))));
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showMessage('Failed to load device report.');
+      }
+    }
+  }
+
+  bool _hasValidDeviceData(dynamic data) {
+    if (data is! Map) return false;
+    for (final key in ['parsedProviderData', 'providerResults']) {
+      final parsed = data[key];
+      if (parsed is Map && parsed.isNotEmpty) {
+        final allValues = parsed.values.join(' ').toLowerCase();
+        if (allValues.contains('not found') || allValues.contains('error')) return false;
+
+        for (final nameKey in [
+          'model', 'model_name',
+          'description', 'device_description',
+          'device_name', 'full_name',
+        ]) {
+          final value = parsed[nameKey]?.toString();
+          if (value != null && value.isNotEmpty) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  ScanItem? _buildScanItemFromResponse(
+    Map<String, dynamic> response,
+    String imei,
+  ) {
+    final data = response['data'];
+    final parsed = <String, dynamic>{};
+    if (data is Map) {
+      final providerResults = data['providerResults'];
+      final parsedProviderData = data['parsedProviderData'];
+      if (providerResults is Map) parsed.addAll(Map<String, dynamic>.from(providerResults));
+      if (parsedProviderData is Map) parsed.addAll(Map<String, dynamic>.from(parsedProviderData));
+    }
+
+    String? name;
+    for (final key in [
+      'model_name',
+      'marketing_name',
+      'full_name',
+      'device_description',
+      'description',
+      'manufacturer',
+    ]) {
+      final value = parsed[key]?.toString();
+      if (value != null && value.isNotEmpty && value != 'Unknown Device') {
+        name = value;
+        break;
+      }
+    }
+
+    if (name == null || name.isEmpty) return null;
+
+    final rawStatus = response['data'] is Map
+        ? response['data']['deviceStatus']?.toString()
+        : null;
+    final status = (rawStatus == null || rawStatus.isEmpty || rawStatus == 'unknown')
+        ? 'Clean'
+        : rawStatus[0].toUpperCase() + rawStatus.substring(1);
+
+    return ScanItem(
+      name: name,
+      imei: imei,
+      status: status,
+      createdAt: DateTime.now(),
+      report: response,
+    );
   }
 
   String _normalizeImei(String value) {

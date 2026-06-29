@@ -5,7 +5,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_outlined_button.dart';
@@ -458,7 +457,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
 
   String get _qrData {
     final id = widget.repair['_id']?.toString() ?? '';
-    return '$baseUrl/api/v1/repair-requests/status-page/$id';
+    return 'http://187.77.187.56:4897/my-invoice/$id';
   }
 
   Widget _buildQrCode() {

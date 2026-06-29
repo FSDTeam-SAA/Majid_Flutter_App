@@ -47,6 +47,17 @@ class _InvoicePageState extends State<InvoicePage> {
   List<Map<String, dynamic>> _customers = [];
   bool _isSendingInvoice = false;
 
+  // Purchase Invoice
+  final _pFirstNameCtrl = TextEditingController();
+  final _pLastNameCtrl = TextEditingController();
+  final _pEmailCtrl = TextEditingController();
+  final _pPhoneCtrl = TextEditingController();
+  final _pAddressCtrl = TextEditingController();
+  final _pIdNumberCtrl = TextEditingController();
+  final _pCustomerNameCtrl = TextEditingController();
+  final List<_PurchaseItem> _purchaseItems = [_PurchaseItem()];
+  bool _isSendingPurchase = false;
+
   double get _totalAmount =>
       _products.where((product) => _selectedProductIds.contains(product.id)).fold(0, (sum, product) => sum + product.price);
 
@@ -86,6 +97,16 @@ class _InvoicePageState extends State<InvoicePage> {
     _addressCtrl.dispose();
     _customerIdCtrl.dispose();
     _searchCtrl.dispose();
+    _pFirstNameCtrl.dispose();
+    _pLastNameCtrl.dispose();
+    _pEmailCtrl.dispose();
+    _pPhoneCtrl.dispose();
+    _pAddressCtrl.dispose();
+    _pIdNumberCtrl.dispose();
+    _pCustomerNameCtrl.dispose();
+    for (final item in _purchaseItems) {
+      item.dispose();
+    }
     super.dispose();
   }
 
@@ -379,12 +400,7 @@ class _InvoicePageState extends State<InvoicePage> {
                   else if (_tabIndex == 0)
                     _buildCreateInvoiceTab(),
                   if (_tabIndex == 1)
-                    Center(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: 60),
-                        child: Text('Purchase Invoice', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-                      ),
-                    ),
+                    _buildPurchaseInvoiceTab(),
                   SizedBox(height: 100),
                 ],
               ),
@@ -812,6 +828,292 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
+  double get _purchaseGrandTotal {
+    double total = 0;
+    for (final item in _purchaseItems) {
+      final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
+      final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+      total += qty * price;
+    }
+    return total;
+  }
+
+  Widget _buildPurchaseInvoiceTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Customer Information', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
+        SizedBox(height: 4),
+        Text('Identity validation framework controls', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        SizedBox(height: 14),
+        Row(children: [
+          Expanded(child: InvoiceInputField(hint: 'First Name', controller: _pFirstNameCtrl)),
+          SizedBox(width: 10),
+          Expanded(child: InvoiceInputField(hint: 'Last Name', controller: _pLastNameCtrl)),
+        ]),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Email', controller: _pEmailCtrl),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Phone Number', controller: _pPhoneCtrl),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Billing Address', controller: _pAddressCtrl),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer ID Number', controller: _pIdNumberCtrl),
+        SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: InvoiceInputField(hint: 'Customer Name', controller: _pCustomerNameCtrl)),
+          SizedBox(width: 10),
+          OutlinedButton(
+            onPressed: () => showErrorSnackbar('NID capture coming soon'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.primary),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            child: Text('Capture NID'),
+          ),
+        ]),
+        SizedBox(height: 14),
+        ShopInfoCard(),
+        SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Purchase Items', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
+              SizedBox(height: 4),
+              Text('Configure specifications and accumulate tracking logs', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            ]),
+            OutlinedButton(
+              onPressed: () => setState(() => _purchaseItems.add(_PurchaseItem())),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: Text('Add Item', style: TextStyle(fontSize: 13)),
+            ),
+          ],
+        ),
+        SizedBox(height: 14),
+        ...List.generate(_purchaseItems.length, (i) => _buildPurchaseItemCard(i)),
+        SizedBox(height: 20),
+        _buildReceiptSummary(),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseItemCard(int index) {
+    final item = _purchaseItems[index];
+    final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
+    final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+    final subTotal = qty * price;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('DEVICE #${index + 1}', style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1)),
+            GestureDetector(
+              onTap: () {
+                if (_purchaseItems.length > 1) {
+                  setState(() {
+                    _purchaseItems[index].dispose();
+                    _purchaseItems.removeAt(index);
+                  });
+                } else {
+                  setState(() {
+                    _purchaseItems[index].nameCtrl.clear();
+                    _purchaseItems[index].storageCtrl.clear();
+                    _purchaseItems[index].colorCtrl.clear();
+                    _purchaseItems[index].conditionCtrl.clear();
+                    _purchaseItems[index].quantityCtrl.text = '1';
+                    _purchaseItems[index].priceCtrl.text = '0';
+                  });
+                }
+              },
+              child: Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+            ),
+          ]),
+          SizedBox(height: 12),
+          InvoiceInputField(hint: 'Item Name*', controller: item.nameCtrl),
+          SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: InvoiceInputField(hint: 'Storage', controller: item.storageCtrl)),
+            SizedBox(width: 10),
+            Expanded(child: InvoiceInputField(hint: 'Color', controller: item.colorCtrl)),
+          ]),
+          SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: InvoiceInputField(hint: 'Condition', controller: item.conditionCtrl)),
+            SizedBox(width: 10),
+            Expanded(child: InvoiceInputField(hint: 'Quantity', controller: item.quantityCtrl, keyboardType: TextInputType.number)),
+          ]),
+          SizedBox(height: 10),
+          InvoiceInputField(hint: 'Price per Unit', controller: item.priceCtrl, keyboardType: TextInputType.number),
+          SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.fieldBackground,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: AppColors.fieldBorder),
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Item Calculation Sub Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+              Text('£${subTotal.toStringAsFixed(2)}', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReceiptSummary() {
+    final grandTotal = _purchaseGrandTotal;
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Receipt Summary', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 4),
+          Text('Purchase overview parameter logging', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          SizedBox(height: 16),
+          Row(children: [
+            Expanded(child: _summaryStatBox('TOTAL UNIQUE\nDEVICES', '${_purchaseItems.length}')),
+            SizedBox(width: 10),
+            Expanded(child: _summaryStatBox('AGGREGATED\nSCANNED\nIDENTIFIERS', '0')),
+            SizedBox(width: 10),
+            Expanded(child: _summaryStatBox('GRAND TOTAL', '£${grandTotal.toStringAsFixed(2)}', isHighlighted: true)),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryStatBox(String label, String value, {bool isHighlighted = false}) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          SizedBox(height: 8),
+          Text(value, style: TextStyle(color: isHighlighted ? AppColors.primary : AppColors.textPrimary, fontSize: isHighlighted ? 18 : 22, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createPurchaseInvoice() async {
+    if (_pFirstNameCtrl.text.trim().isEmpty) {
+      showErrorSnackbar('Please enter customer first name');
+      return;
+    }
+    final hasItems = _purchaseItems.any((item) => item.nameCtrl.text.trim().isNotEmpty);
+    if (!hasItems) {
+      showErrorSnackbar('Please add at least one item');
+      return;
+    }
+    final grandTotal = _purchaseGrandTotal;
+
+    setState(() => _isSendingPurchase = true);
+    try {
+      var shopkeeperId = _profileCtrl.userId;
+      if (shopkeeperId.isEmpty) {
+        await _profileCtrl.fetchProfile();
+        shopkeeperId = _profileCtrl.userId;
+      }
+
+      final now = DateTime.now();
+      final customerName = [_pFirstNameCtrl.text.trim(), _pLastNameCtrl.text.trim()].where((v) => v.isNotEmpty).join(' ');
+
+      final pdfItems = _purchaseItems
+          .where((item) => item.nameCtrl.text.trim().isNotEmpty)
+          .map((item) => InvoicePdfItem(
+                name: item.nameCtrl.text.trim(),
+                code: [item.storageCtrl.text.trim(), item.colorCtrl.text.trim(), item.conditionCtrl.text.trim()].where((v) => v.isNotEmpty).join(' / '),
+                quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
+                unitPrice: double.tryParse(item.priceCtrl.text.trim()) ?? 0,
+              ))
+          .toList();
+
+      final pdfFile = await InvoicePdfBuilder.build(
+        fileNamePrefix: 'purchase_invoice',
+        invoiceTitle: 'PURCHASE INVOICE',
+        invoiceNumber: now.millisecondsSinceEpoch.toString(),
+        createdAt: now,
+        shopName: _profileCtrl.shopName,
+        shopAddress: _profileCtrl.shopAddress,
+        shopEmail: _profileCtrl.email,
+        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty ? _profileCtrl.whatsappNumber : _profileCtrl.phone,
+        customerName: customerName,
+        customerEmail: _pEmailCtrl.text.trim(),
+        customerPhone: _pPhoneCtrl.text.trim(),
+        customerAddress: _pAddressCtrl.text.trim(),
+        paymentType: 'cash',
+        items: pdfItems,
+        totalAmount: grandTotal,
+        footerNote: 'Purchase invoice generated from iMoScan.',
+      );
+
+      final payload = FormData();
+      payload.fields.addAll([
+        MapEntry('shopkeeperId', shopkeeperId),
+        MapEntry('type', 'purchase'),
+        MapEntry('totalAmount', grandTotal.toString()),
+        MapEntry('paymentMethod', 'cash'),
+      ]);
+      payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
+
+      await _api.post(InvoiceEndpoints.create, data: payload);
+      if (!mounted) return;
+      showSuccessSnackbar('Purchase receipt created successfully!');
+      setState(() {
+        _pFirstNameCtrl.clear();
+        _pLastNameCtrl.clear();
+        _pEmailCtrl.clear();
+        _pPhoneCtrl.clear();
+        _pAddressCtrl.clear();
+        _pIdNumberCtrl.clear();
+        _pCustomerNameCtrl.clear();
+        for (final item in _purchaseItems) { item.dispose(); }
+        _purchaseItems.clear();
+        _purchaseItems.add(_PurchaseItem());
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to create purchase receipt');
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar('Failed to create purchase receipt');
+    } finally {
+      if (mounted) setState(() => _isSendingPurchase = false);
+    }
+  }
+
   Widget _buildBottomBar() {
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -834,7 +1136,7 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    '£${_totalAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                    '£${(_tabIndex == 0 ? _totalAmount : _purchaseGrandTotal).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
                     style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -852,7 +1154,14 @@ class _InvoicePageState extends State<InvoicePage> {
             ],
           ),
           SizedBox(height: 12),
-          AppButton(label: _isSendingInvoice ? 'Creating...' : 'Create Invoice', onPressed: _isSendingInvoice ? null : _createInvoice),
+          AppButton(
+            label: _tabIndex == 0
+                ? (_isSendingInvoice ? 'Creating...' : 'Create Invoice')
+                : (_isSendingPurchase ? 'Creating...' : 'Create Purchase Receipt'),
+            onPressed: _tabIndex == 0
+                ? (_isSendingInvoice ? null : _createInvoice)
+                : (_isSendingPurchase ? null : _createPurchaseInvoice),
+          ),
         ],
       ),
     );
@@ -1099,5 +1408,23 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
         ),
       ),
     );
+  }
+}
+
+class _PurchaseItem {
+  final nameCtrl = TextEditingController();
+  final storageCtrl = TextEditingController();
+  final colorCtrl = TextEditingController();
+  final conditionCtrl = TextEditingController();
+  final quantityCtrl = TextEditingController(text: '1');
+  final priceCtrl = TextEditingController(text: '0');
+
+  void dispose() {
+    nameCtrl.dispose();
+    storageCtrl.dispose();
+    colorCtrl.dispose();
+    conditionCtrl.dispose();
+    quantityCtrl.dispose();
+    priceCtrl.dispose();
   }
 }
