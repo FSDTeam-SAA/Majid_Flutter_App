@@ -1,6 +1,7 @@
 // String baseUrl = "http://10.10.26.117:5001";
 
 String baseUrl = "http://187.77.187.56:4896";
+String localBaseUrl = "http://localhost:5001";
 
 String apiVersion = "api/v1";
 String get baseApiUrl => "$baseUrl/$apiVersion";
@@ -42,14 +43,12 @@ class InventoryEndpoints {
   static String soldItems = "$baseApiUrl/inventory/sold-items";
   static String grouped = "$baseApiUrl/inventory/grouped";
   static String createFromBarcode = "$baseApiUrl/inventory/create-from-barcode";
-  static String createFromBarcodeBulk =
-      "$baseApiUrl/inventory/create-from-barcode/bulk";
+  static String createFromBarcodeBulk = "$baseApiUrl/inventory/create-from-barcode/bulk";
   static String importCsv = "$baseApiUrl/inventory/import-csv";
   static String importCsvTemplate = "$baseApiUrl/inventory/import-csv/template";
   static String byId(String id) => "$baseApiUrl/inventory/$id";
   static String byUserId(String userId) => "$baseApiUrl/inventory/user/$userId";
-  static String byStatus(String status) =>
-      "$baseApiUrl/inventory/status/$status";
+  static String byStatus(String status) => "$baseApiUrl/inventory/status/$status";
 }
 
 class CategoryEndpoints {
@@ -65,31 +64,24 @@ class RepairRequestEndpoints {
   static String completed = "$baseApiUrl/repair-requests/completed";
   static String myHistory = "$baseApiUrl/repair-requests/my-history";
   static String byId(String id) => "$baseApiUrl/repair-requests/$id";
-  static String updateStatus(String id) =>
-      "$baseApiUrl/repair-requests/update-status/$id";
-  static String addNote(String id) =>
-      "$baseApiUrl/repair-requests/add-note/$id";
-  static String technicianNote(String id) =>
-      "$baseApiUrl/repair-requests/tech-note/$id";
-  static String technicianFeedback(String id) =>
-      "$baseApiUrl/repair-requests/technician-feedback/$id";
-  static String userDescriptions(String userId) =>
-      "$baseApiUrl/repair-requests/user/$userId/descriptions";
+  static String updateStatus(String id) => "$baseApiUrl/repair-requests/update-status/$id";
+  static String addNote(String id) => "$baseApiUrl/repair-requests/add-note/$id";
+  static String technicianNote(String id) => "$baseApiUrl/repair-requests/tech-note/$id";
+  static String technicianFeedback(String id) => "$baseApiUrl/repair-requests/technician-feedback/$id";
+  static String userDescriptions(String userId) => "$baseApiUrl/repair-requests/user/$userId/descriptions";
 }
 
 class InvoiceEndpoints {
   static String create = "$baseApiUrl/invoices/create";
   static String all = "$baseApiUrl/invoices/all";
-  static String byShopkeeper(String shopkeeperId) =>
-      "$baseApiUrl/invoices/shopkeeper/$shopkeeperId";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/invoices/shopkeeper/$shopkeeperId";
   static String byId(String id) => "$baseApiUrl/invoices/$id";
 }
 
 class CustomerEndpoints {
   static String create = "$baseApiUrl/customer/create";
   static String all = "$baseApiUrl/customer/all";
-  static String byShopkeeper(String shopkeeperId) =>
-      "$baseApiUrl/customer/shopkeeper/$shopkeeperId";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/customer/shopkeeper/$shopkeeperId";
   static String update(String id) => "$baseApiUrl/customer/update/$id";
   static String delete(String id) => "$baseApiUrl/customer/delete/$id";
 }
@@ -121,8 +113,7 @@ class NotificationEndpoints {
 
 class ReviewEndpoints {
   static String create = "$baseApiUrl/review/create";
-  static String byShopkeeper(String shopkeeperId) =>
-      "$baseApiUrl/review/shopkeeper/$shopkeeperId";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/review/shopkeeper/$shopkeeperId";
   static String delete(String reviewId) => "$baseApiUrl/review/$reviewId";
 }
 
@@ -132,24 +123,18 @@ class BarcodeEndpoints {
 
 class BankDetailsEndpoints {
   static String create = "$baseApiUrl/bank-details/create";
-  static String byInvoice(String invoiceId) =>
-      "$baseApiUrl/bank-details/invoice/$invoiceId";
-  static String byAddedBy(String addedBy) =>
-      "$baseApiUrl/bank-details/added-by/$addedBy";
+  static String byInvoice(String invoiceId) => "$baseApiUrl/bank-details/invoice/$invoiceId";
+  static String byAddedBy(String addedBy) => "$baseApiUrl/bank-details/added-by/$addedBy";
   static String update(String id) => "$baseApiUrl/bank-details/update/$id";
   static String delete(String id) => "$baseApiUrl/bank-details/delete/$id";
 }
 
 class CartEndpoints {
   static String create = "$baseApiUrl/add-to-cart/create";
-  static String byShopkeeper(String shopkeeperId) =>
-      "$baseApiUrl/add-to-cart/shopkeeper/$shopkeeperId";
-  static String update(String cartId) =>
-      "$baseApiUrl/add-to-cart/update/$cartId";
-  static String delete(String cartId) =>
-      "$baseApiUrl/add-to-cart/delete/$cartId";
-  static String deleteAll(String shopkeeperId) =>
-      "$baseApiUrl/add-to-cart/delete-all/shopkeeper/$shopkeeperId";
+  static String byShopkeeper(String shopkeeperId) => "$baseApiUrl/add-to-cart/shopkeeper/$shopkeeperId";
+  static String update(String cartId) => "$baseApiUrl/add-to-cart/update/$cartId";
+  static String delete(String cartId) => "$baseApiUrl/add-to-cart/delete/$cartId";
+  static String deleteAll(String shopkeeperId) => "$baseApiUrl/add-to-cart/delete-all/shopkeeper/$shopkeeperId";
 }
 
 class OcrEndpoints {
