@@ -5,7 +5,6 @@ import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../../../core/widgets/app_outlined_button.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/info_field.dart';
 import '../controller/repair_data.dart';
@@ -208,19 +207,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: 14),
-                        _buildDeviceCard(),
-                        SizedBox(height: 12),
-                        _buildInfoCard(),
-                        SizedBox(height: 14),
-                        AppOutlinedButton(
-                          label: 'Make a Receipt',
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReceiptPage(repair: _repair),
-                            ),
-                          ),
-                        ),
+                        _buildDeviceAndInfoCard(),
                         SizedBox(height: 20),
                         TimelineWidget(steps: _buildTimelineSteps()),
                         SizedBox(height: 20),
@@ -276,28 +263,52 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     ];
   }
 
-  Widget _buildDeviceCard() {
+  Widget _buildDeviceAndInfoCard() {
+    final isDark = AppColors.isDark;
     final status = _formatStatus(_repair['status']?.toString());
+    final innerCardColor = isDark
+        ? AppColors.fieldBackground
+        : Colors.white;
+    final innerBorderColor = isDark
+        ? AppColors.fieldBorder
+        : const Color(0xFFE4E7EC);
+
     return AppCard(
-      padding: EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InfoField(
-                    label: 'DEVICE INFORMATION',
-                    value:
-                        _repair['deviceModel']?.toString() ?? 'Unknown device',
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DEVICE INFORMATION',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _repair['deviceModel']?.toString() ?? 'Unknown device',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.primary),
                   borderRadius: BorderRadius.circular(20),
@@ -313,13 +324,13 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
               ),
             ],
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.fieldBackground,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               _repair['description']?.toString() ?? 'No description provided',
@@ -330,30 +341,54 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard() {
-    return AppCard(
-      padding: EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InfoField(
-            label: 'REQUEST ID',
-            value: '#${_repair['_id']?.toString() ?? 'N/A'}',
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: innerCardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: innerBorderColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InfoField(
+                  label: 'REQUEST ID',
+                  value: '#${_repair['_id']?.toString() ?? 'N/A'}',
+                ),
+                const SizedBox(height: 12),
+                InfoField(
+                  label: 'SUBMITTED',
+                  value: _formatDateTime(_repair['createdAt']?.toString()),
+                ),
+                const SizedBox(height: 12),
+                InfoField(
+                  label: 'SHOP',
+                  value: _repair['shopName']?.toString() ?? 'Your Shop',
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 12),
-          InfoField(
-            label: 'SUBMITTED',
-            value: _formatDateTime(_repair['createdAt']?.toString()),
-          ),
-          SizedBox(height: 12),
-          InfoField(
-            label: 'SHOP',
-            value: _repair['shopName']?.toString() ?? 'Your Shop',
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ReceiptPage(repair: _repair)),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: BorderSide(color: AppColors.primary, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Make a Receipt',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),
@@ -626,26 +661,53 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
   }
 
   Widget _buildCustomerDetails() {
+    final isDark = AppColors.isDark;
+    final innerCardColor = isDark ? AppColors.fieldBackground : Colors.white;
+    final innerBorderColor = isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC);
+
     return AppCard(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InfoField(label: 'CUSTOMER DETAILS', value: ''),
-          SizedBox(height: 14),
-          InfoField(
-            label: 'NAME',
-            value: _repair['firstName']?.toString() ?? '',
+          Text(
+            'CUSTOMER DETAILS',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
           ),
-          SizedBox(height: 12),
-          InfoField(
-            label: 'EMAIL ADDRESS',
-            value: _repair['email']?.toString() ?? '',
-          ),
-          SizedBox(height: 12),
-          InfoField(
-            label: 'PHONE NUMBER',
-            value: _repair['phoneNumber']?.toString() ?? '',
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: innerCardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: innerBorderColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InfoField(
+                  label: 'NAME',
+                  value: _repair['firstName']?.toString() ?? '',
+                ),
+                const SizedBox(height: 14),
+                InfoField(
+                  label: 'EMAIL ADDRESS',
+                  value: _repair['email']?.toString() ?? '',
+                ),
+                const SizedBox(height: 14),
+                InfoField(
+                  label: 'PHONE NUMBER',
+                  value: _repair['phoneNumber']?.toString() ?? '',
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,1 +1,233 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
+import '../../../../app_ground_view.dart';
+import '../../../../core/network/api_service/token_meneger.dart';
+import '../../../../core/utils/colors.dart';
+import '../../../auth/presentation/pages/login_screen_view.dart';
+import 'onboarding_screen_view.dart';
+
+class SplashScreenView extends StatefulWidget {
+  const SplashScreenView({super.key});
+
+  @override
+  State<SplashScreenView> createState() => _SplashScreenViewState();
+}
+
+class _SplashScreenViewState extends State<SplashScreenView>
+    with SingleTickerProviderStateMixin {
+  static const _minimumSplashDuration = Duration(milliseconds: 2200);
+
+  late final AnimationController _controller;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _logoOpacity;
+  late final Animation<double> _logoFloat;
+  late final Animation<double> _textOpacity;
+  late final Animation<double> _haloScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..forward();
+
+    _logoScale = Tween<double>(begin: 0.72, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.08, 0.52, curve: Curves.easeOutBack),
+      ),
+    );
+    _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.36, curve: Curves.easeOut),
+      ),
+    );
+    _logoFloat = Tween<double>(begin: 20, end: 0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.12, 0.6, curve: Curves.easeOutCubic),
+      ),
+    );
+    _textOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.42, 0.82, curve: Curves.easeOut),
+      ),
+    );
+    _haloScale = Tween<double>(begin: 0.86, end: 1.18).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.1, 0.72, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    final results = await Future.wait([
+      TokenManager.isLoggedIn(),
+      TokenManager.hasSeenOnboarding(),
+      Future<void>.delayed(_minimumSplashDuration),
+    ]);
+    final isLoggedIn = results.first as bool;
+    final hasSeenOnboarding = results[1] as bool;
+
+    if (!mounted) return;
+
+    Get.offAll(
+      () =>
+          isLoggedIn
+              ? const AppGroundView()
+              : hasSeenOnboarding
+              ? const LoginScreenView()
+              : const OnboardingScreenView(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: DecoratedBox(
+        decoration: BoxDecoration(gradient: AppColors.pageGradient),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: Center(
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Transform.translate(
+                        offset: Offset(0, _logoFloat.value),
+                        child: Opacity(
+                          opacity: _logoOpacity.value,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Transform.scale(
+                                scale: _haloScale.value,
+                                child: Container(
+                                  width: 170,
+                                  height: 170,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        AppColors.primary.withValues(
+                                          alpha: 0.34,
+                                        ),
+                                        AppColors.primary.withValues(
+                                          alpha: 0.04,
+                                        ),
+                                        Colors.transparent,
+                                      ],
+                                      stops: const [0.0, 0.62, 1.0],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Transform.scale(
+                                scale: _logoScale.value,
+                                child: Container(
+                                  width: 118,
+                                  height: 118,
+                                  padding: const EdgeInsets.all(18),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardBackground.withValues(
+                                      alpha: AppColors.isDark ? 0.88 : 0.94,
+                                    ),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.primary.withValues(
+                                        alpha: AppColors.isDark ? 0.44 : 0.28,
+                                      ),
+                                      width: 1.4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: AppColors.isDark
+                                              ? 0.22
+                                              : 0.08,
+                                        ),
+                                        blurRadius: 24,
+                                        offset: const Offset(0, 14),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Image.asset(
+                                    'assets/images/imoscan_logo.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Opacity(
+                        opacity: _textOpacity.value,
+                        child: Text(
+                          'iMoScan',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Opacity(
+                        opacity: _textOpacity.value,
+                        child: Text(
+                          'Scan smarter. Sell with confidence.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 34),
+                      SizedBox(
+                        width: 120,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            minHeight: 5,
+                            backgroundColor: AppColors.fieldBorder.withValues(
+                              alpha: 0.4,
+                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

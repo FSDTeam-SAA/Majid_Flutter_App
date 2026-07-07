@@ -672,58 +672,6 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return imeis.toList();
   }
 
-  int? _detectServiceId(ScanItem item) {
-    if (item.serviceId != null) return item.serviceId;
-
-    final text = [
-      item.name,
-      item.report['deviceName']?.toString() ?? '',
-      item.report['deviceModel']?.toString() ?? '',
-      item.report['description']?.toString() ?? '',
-    ].join(' ').toLowerCase();
-
-    final keywordMap = {
-      'iphone': ['apple', 'iphone'],
-      'ipad': ['apple', 'iphone'],
-      'macbook': ['apple', 'iphone'],
-      'samsung': ['samsung'],
-      'galaxy': ['samsung'],
-      'pixel': ['pixel', 'google'],
-      'redmi': ['xiaomi', 'redmi', 'basic'],
-      'xiaomi': ['xiaomi', 'redmi', 'basic'],
-      'poco': ['xiaomi', 'poco', 'basic'],
-      'infinix': ['basic', 'info'],
-      'tecno': ['basic', 'info'],
-      'oppo': ['basic', 'info'],
-      'vivo': ['basic', 'info'],
-      'realme': ['basic', 'info'],
-      'oneplus': ['basic', 'info'],
-      'huawei': ['basic', 'info'],
-      'nokia': ['basic', 'info'],
-      'motorola': ['basic', 'info'],
-    };
-
-    List<String> matchKeywords = [];
-    for (final entry in keywordMap.entries) {
-      if (text.contains(entry.key)) {
-        matchKeywords = entry.value;
-        break;
-      }
-    }
-
-    if (matchKeywords.isEmpty) return _services.firstOrNull?.serviceId;
-
-    for (final keyword in matchKeywords) {
-      for (final service in _services) {
-        if (service.label.toLowerCase().contains(keyword)) {
-          return service.serviceId;
-        }
-      }
-    }
-
-    return _services.firstOrNull?.serviceId;
-  }
-
   Future<void> _openRecentScan(ScanItem item) async {
     if (item.report.containsKey('ok')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: item.report)));
@@ -731,9 +679,9 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     }
 
     if (item.imei.isEmpty) return;
-    final serviceId = _detectServiceId(item);
+    final serviceId = item.serviceId;
     if (serviceId == null) {
-      _showMessage('No service available. Please try again.');
+      _showMessage('No service info available for this scan. Please scan again.');
       return;
     }
 

@@ -33,6 +33,7 @@ class TimelineWidget extends StatelessWidget {
   }
 
   Widget _buildStep(TimelineStep step, bool isLast) {
+    final isDark = AppColors.isDark;
     Widget icon;
     if (step.status == TimelineStatus.done) {
       icon = Container(
@@ -42,7 +43,7 @@ class TimelineWidget extends StatelessWidget {
           color: AppColors.primary,
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.check, color: Colors.black, size: 18),
+        child: Icon(Icons.check, color: AppColors.surfaceForeground, size: 18),
       );
     } else if (step.status == TimelineStatus.inProgress) {
       icon = Container(
@@ -50,32 +51,34 @@ class TimelineWidget extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Color(0xFF4DB8FF), width: 3),
-          color: Color(0xFF0D1F2D),
+          color: const Color(0xFF4DB8FF),
         ),
-        child: Center(
+        child: const Center(
           child: SizedBox(
             width: 18,
             height: 18,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
-              color: Color(0xFF4DB8FF),
+              color: Colors.white,
             ),
           ),
         ),
       );
     } else {
+      final pendingBg = isDark ? AppColors.fieldBackground : const Color(0xFFF2F4F7);
+      final pendingBorder = isDark ? const Color(0xFF2A3A4A) : const Color(0xFFD0D5DD);
+      final pendingIcon = isDark ? const Color(0xFF3A4A5A) : const Color(0xFF667085);
       icon = Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Color(0xFF2A3A4A)),
-          color: AppColors.fieldBackground,
+          border: Border.all(color: pendingBorder),
+          color: pendingBg,
         ),
         child: Icon(
           Icons.access_time_rounded,
-          color: Color(0xFF3A4A5A),
+          color: pendingIcon,
           size: 18,
         ),
       );

@@ -24,43 +24,12 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   List<ScanItem> _scans = [];
-  List<ScanDropdownOption> _services = [];
 
   @override
   void initState() {
     super.initState();
     _api = ApiClient(baseUrl);
     _fetchScans();
-    _fetchServices();
-  }
-
-  Future<void> _fetchServices() async {
-    try {
-      final res = await _api.get(ImeiEndpoints.services);
-      final data = res.data['data'];
-      if (data is! List) return;
-      final services = <ScanDropdownOption>[];
-      for (final group in data) {
-        if (group is! Map) continue;
-        final groupServices = group['services'];
-        if (groupServices is! List) continue;
-        for (final service in groupServices) {
-          if (service is! Map) continue;
-          final id = (service['serviceId'] as num?)?.toInt();
-          final ids = service['serviceIds'];
-          final fallbackId = ids is List && ids.isNotEmpty ? (ids.first as num?)?.toInt() : null;
-          final serviceId = id ?? fallbackId;
-          if (serviceId == null || serviceId <= 0) continue;
-          final isFree = service['isFree'] == true;
-          services.add(ScanDropdownOption(
-            service['name']?.toString() ?? 'IMEI Check',
-            isFree ? 'Free' : service['priceLabel']?.toString() ?? 'Premium',
-            serviceId: serviceId,
-          ));
-        }
-      }
-      _services = services;
-    } catch (_) {}
   }
 
   Future<void> _fetchScans() async {
@@ -116,57 +85,6 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
     }
   }
 
-  int? _detectServiceId(ScanItem item) {
-    if (item.serviceId != null) return item.serviceId;
-
-    final text = [
-      item.name,
-      item.report['deviceName']?.toString() ?? '',
-      item.report['deviceModel']?.toString() ?? '',
-      item.report['description']?.toString() ?? '',
-    ].join(' ').toLowerCase();
-
-    final keywordMap = {
-      'iphone': ['apple', 'iphone'],
-      'ipad': ['apple', 'iphone'],
-      'samsung': ['samsung'],
-      'galaxy': ['samsung'],
-      'pixel': ['pixel', 'google'],
-      'redmi': ['xiaomi', 'redmi', 'basic'],
-      'xiaomi': ['xiaomi', 'redmi', 'basic'],
-      'poco': ['xiaomi', 'poco', 'basic'],
-      'infinix': ['basic', 'info'],
-      'tecno': ['basic', 'info'],
-      'oppo': ['basic', 'info'],
-      'vivo': ['basic', 'info'],
-      'realme': ['basic', 'info'],
-      'oneplus': ['basic', 'info'],
-      'huawei': ['basic', 'info'],
-      'nokia': ['basic', 'info'],
-      'motorola': ['basic', 'info'],
-    };
-
-    List<String> matchKeywords = [];
-    for (final entry in keywordMap.entries) {
-      if (text.contains(entry.key)) {
-        matchKeywords = entry.value;
-        break;
-      }
-    }
-
-    if (matchKeywords.isEmpty) return _services.firstOrNull?.serviceId;
-
-    for (final keyword in matchKeywords) {
-      for (final service in _services) {
-        if (service.label.toLowerCase().contains(keyword)) {
-          return service.serviceId;
-        }
-      }
-    }
-
-    return _services.firstOrNull?.serviceId;
-  }
-
   Future<void> _openScan(ScanItem item) async {
     if (item.report.containsKey('ok')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: item.report)));
@@ -175,11 +93,9 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
     if (item.imei.isEmpty) return;
 
-    if (_services.isEmpty) await _fetchServices();
-
-    final serviceId = _detectServiceId(item);
+    final serviceId = item.serviceId;
     if (serviceId == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No service available. Please try again.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No service info available for this scan. Please scan again.')));
       return;
     }
 

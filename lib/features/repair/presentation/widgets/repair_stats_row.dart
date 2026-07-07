@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/colors.dart';
 
 class RepairStatsRow extends StatelessWidget {
+  static const _iconAssetScale = 1.9;
+
   final int inProgress;
   final int completed;
   final double totalSales;
 
-  const RepairStatsRow({
-    super.key,
-    this.inProgress = 0,
-    this.completed = 0,
-    this.totalSales = 0,
-  });
+  const RepairStatsRow({super.key, this.inProgress = 0, this.completed = 0, this.totalSales = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -19,31 +16,28 @@ class RepairStatsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _buildCard(
-            Icons.build_rounded,
-            Color(0xFF1A2A6C),
-            Color(0xFF5B8DEF),
+            'assets/icons/inprogress.png',
             '$inProgress',
             'In Progress',
+            glowColor: const Color(0xFF3B82F6),
           ),
         ),
         SizedBox(width: 10),
         Expanded(
           child: _buildCard(
-            Icons.check_circle_outline_rounded,
-            AppColors.fieldBackground,
-            AppColors.primary,
+            'assets/icons/completed.png',
             '$completed',
             'Completed',
+            glowColor: const Color(0xFF6BF36B),
           ),
         ),
         SizedBox(width: 10),
         Expanded(
           child: _buildCard(
-            Icons.bar_chart_rounded,
-            AppColors.fieldBackground,
-            AppColors.primary,
+            'assets/icons/totalsal.png',
             _formatCurrency(totalSales),
             'Total Sales',
+            glowColor: const Color(0xFF6BF36B),
           ),
         ),
       ],
@@ -58,14 +52,28 @@ class RepairStatsRow extends StatelessWidget {
   }
 
   Widget _buildCard(
-    IconData icon,
-    Color iconBg,
-    Color iconColor,
+    String assetPath,
     String value,
-    String label,
-  ) {
+    String label, {
+    required Color glowColor,
+  }) {
+    final valueStyle = TextStyle(
+      color: AppColors.textPrimary,
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      height: 1.08,
+      letterSpacing: -0.35,
+    );
+    final labelStyle = TextStyle(
+      color: AppColors.textSecondary,
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      height: 1.25,
+      letterSpacing: 0.1,
+    );
+
     return Container(
-      padding: EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
@@ -74,31 +82,23 @@ class RepairStatsRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          ),
+          _buildIconBadge(assetPath, glowColor: glowColor),
+          const SizedBox(height: 16),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: valueStyle),
+          const SizedBox(height: 6),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: labelStyle),
         ],
       ),
+    );
+  }
+
+  Widget _buildIconBadge(
+    String assetPath, {
+    required Color glowColor,
+  }) {
+    return Transform.scale(
+      scale: _iconAssetScale,
+      child: Image.asset(assetPath, fit: BoxFit.cover, height: 36, width: 36),
     );
   }
 }

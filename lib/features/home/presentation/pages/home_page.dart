@@ -34,8 +34,17 @@ class _HomePageState extends State<HomePage> {
     homeCtrl = Get.find<HomeController>();
   }
 
+  String _periodToFilter(HomePeriod p) => switch (p) {
+        HomePeriod.daily => 'daily',
+        HomePeriod.weekly => 'monthly',
+        HomePeriod.monthly => 'monthly',
+        HomePeriod.yearly => 'yearly',
+      };
+
   void _selectPeriod(int index) {
     setState(() => _selectedPeriod = index);
+    homeCtrl.fetchDashboardForFilter(
+        _periodToFilter(homePeriodFromIndex(index)));
   }
 
   Future<void> _showPeriodPicker() async {
@@ -103,7 +112,6 @@ class _HomePageState extends State<HomePage> {
             );
           }
           final selectedPeriod = homePeriodFromIndex(_selectedPeriod);
-          final stats = homeCtrl.statsForPeriod(selectedPeriod);
           final salesTrend = homeCtrl.salesTrendForPeriod(selectedPeriod);
           return RefreshIndicator(
             color: AppColors.primary,
@@ -130,7 +138,15 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        StatsGrid(stats: stats),
+                        Obx(() {
+                          final d = homeCtrl.dashboardStats.value;
+                          return StatsGrid(
+                            totalSales: (d?['totalSales'] as num?)?.toDouble() ?? 0,
+                            totalProfit: (d?['totalProfit'] as num?)?.toDouble() ?? 0,
+                            totalOrders: (d?['totalOrders'] as num?)?.toInt() ?? 0,
+                            avgOrderValue: (d?['avgOrderValue'] as num?)?.toDouble() ?? 0,
+                          );
+                        }),
                         const SizedBox(height: 20),
                         QuickActions(
                           onAddRepair: () => widget.onOpenTab?.call(3),

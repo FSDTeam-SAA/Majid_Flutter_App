@@ -38,6 +38,9 @@ class HomeController extends GetxController {
   // Invoices
   final invoices = <Map<String, dynamic>>[].obs;
 
+  // Dashboard stats (for health summary section)
+  final dashboardStats = Rx<Map<String, dynamic>?>(null);
+
   @override
   void onInit() {
     super.onInit();
@@ -57,6 +60,8 @@ class HomeController extends GetxController {
         _fetchCategories(),
         _fetchInvoices(),
       ]);
+      // fetch dashboard after profile so userId is available
+      await _fetchDashboardStats();
     } catch (e) {
       debugPrint('HomeController error: $e');
     } finally {
@@ -124,8 +129,17 @@ class HomeController extends GetxController {
   }
 
   Future<void> _fetchCategories() async {
+    final id = userId.value.trim();
+    if (id.isEmpty) {
+      categories.clear();
+      totalCategories.value = 0;
+      return;
+    }
+
     try {
-      final res = await _api.get(CategoryEndpoints.withCount);
+      final res = await _api.get(
+        '${CategoryEndpoints.withCount}?shopkeeperId=$id',
+      );
       final data = res.data['data'];
       if (data is List) {
         categories.value = List<Map<String, dynamic>>.from(data);
@@ -135,6 +149,23 @@ class HomeController extends GetxController {
       debugPrint('Categories fetch error: $e');
     }
   }
+
+  Future<void> _fetchDashboardStats({String filter = 'monthly'}) async {
+    final id = userId.value.trim();
+    if (id.isEmpty) return;
+    try {
+      final res = await _api.get('${DashboardEndpoints.stats}?filter=$filter&shopkeeperId=$id');
+      final data = res.data['data'];
+      if (data is Map) {
+        dashboardStats.value = Map<String, dynamic>.from(data);
+      }
+    } on DioException catch (e) {
+      debugPrint('Dashboard stats fetch error: $e');
+    }
+  }
+
+  Future<void> fetchDashboardForFilter(String filter) =>
+      _fetchDashboardStats(filter: filter);
 
   Future<void> _fetchInvoices() async {
     final shopkeeperId = userId.value.trim();
@@ -155,6 +186,13 @@ class HomeController extends GetxController {
       debugPrint('Invoices fetch error: $e');
     }
   }
+
+  double get totalInventoryValue => inventoryItems.fold(0.0, (sum, item) {
+        final price = (item['sellingPrice'] as num?)?.toDouble() ??
+            (item['price'] as num?)?.toDouble() ?? 0;
+        final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+        return sum + price * qty;
+      });
 
   HomeStatsSnapshot statsForPeriod(HomePeriod period) {
     return HomeStatsSnapshot(

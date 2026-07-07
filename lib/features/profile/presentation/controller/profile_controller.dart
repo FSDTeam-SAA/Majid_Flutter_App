@@ -23,9 +23,13 @@ class ProfileController extends GetxController {
   final subscriptions = <Map<String, dynamic>>[].obs;
   final isSubscriptionsLoading = true.obs;
 
-  // Repair stats for business health
+  // Repair stats for business health (legacy - kept for fallback)
   final totalRepairs = 0.obs;
   final totalInventoryItems = 0.obs;
+
+  // Dashboard stats
+  final dashboardStats = Rx<Map<String, dynamic>?>(null);
+  final isDashboardLoading = false.obs;
 
   @override
   void onInit() {
@@ -218,6 +222,25 @@ class ProfileController extends GetxController {
       }
     } on DioException catch (e) {
       debugPrint('Business health fetch error: $e');
+    }
+  }
+
+  Future<void> fetchDashboardStats({String filter = 'monthly'}) async {
+    isDashboardLoading.value = true;
+    try {
+      final id = userId;
+      final query = id.isNotEmpty
+          ? '?filter=$filter&shopkeeperId=$id'
+          : '?filter=$filter';
+      final res = await _api.get('${DashboardEndpoints.stats}$query');
+      final data = res.data['data'];
+      if (data is Map) {
+        dashboardStats.value = Map<String, dynamic>.from(data);
+      }
+    } on DioException catch (e) {
+      debugPrint('Dashboard stats fetch error: $e');
+    } finally {
+      isDashboardLoading.value = false;
     }
   }
 }

@@ -95,7 +95,7 @@ class _RepairPageState extends State<RepairPage> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Color(0xFF0D171C),
+      backgroundColor: AppColors.cardBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -218,7 +218,7 @@ class _RepairPageState extends State<RepairPage> {
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.black,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50),
                           ),
@@ -230,11 +230,13 @@ class _RepairPageState extends State<RepairPage> {
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
+                                  color: Colors.white,
                                 ),
                               )
                             : Text(
                                 'Submit',
                                 style: TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 16,
                                 ),
@@ -270,13 +272,18 @@ class _RepairPageState extends State<RepairPage> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        floatingLabelStyle: TextStyle(
+          color: AppColors.primary,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
         hintText: hint,
         hintStyle: TextStyle(
           color: AppColors.textSecondary.withValues(alpha: 0.5),
           fontSize: 13,
         ),
         filled: true,
-        fillColor: Color(0xFF101A22),
+        fillColor: AppColors.fieldBackground,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: AppColors.fieldBorder),
@@ -287,7 +294,13 @@ class _RepairPageState extends State<RepairPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.primary),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.3),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.fieldBorder.withValues(alpha: 0.7),
+          ),
         ),
       ),
     );

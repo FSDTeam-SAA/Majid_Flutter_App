@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
 import 'ai_home_preview_screen.dart';
@@ -13,6 +14,12 @@ class OnboardingScreenView extends StatefulWidget {
 class _OnboardingScreenViewState extends State<OnboardingScreenView> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    TokenManager.markOnboardingSeen();
+  }
 
   static const _pages = [
     _OnboardingData(

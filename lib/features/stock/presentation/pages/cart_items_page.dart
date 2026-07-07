@@ -133,15 +133,24 @@ class _CartItemsPageState extends State<CartItemsPage> {
       body: Container(
         decoration: BoxDecoration(gradient: AppColors.pageGradient),
         child: SafeArea(
-          child: Column(
+          bottom: false,
+          child: Stack(
             children: [
-              _buildHeader(context),
-              _buildSearchBar(),
-              _buildSummaryHeader(),
-              _buildStatsRow(),
-              SizedBox(height: 8),
-              Expanded(child: _buildBody()),
-              _buildBottomButton(context),
+              Column(
+                children: [
+                  _buildHeader(context),
+                  _buildSearchBar(),
+                  _buildSummaryHeader(),
+                  _buildStatsRow(),
+                  SizedBox(height: 8),
+                  Expanded(child: _buildBody()),
+                ],
+              ),
+              if (_filteredItems.isNotEmpty)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: _buildBottomBar(context),
+                ),
             ],
           ),
         ),
@@ -179,11 +188,15 @@ class _CartItemsPageState extends State<CartItemsPage> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        height: 56,
+        height: 52,
         decoration: BoxDecoration(
-          color: Color(0x0CFFFFFF),
+          color: AppColors.fieldBackground,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: AppColors.primary),
+          border: Border.all(
+            color: AppColors.primary.withValues(
+              alpha: AppColors.isDark ? 0.6 : 0.72,
+            ),
+          ),
         ),
         child: TextField(
           controller: _searchCtrl,
@@ -194,7 +207,7 @@ class _CartItemsPageState extends State<CartItemsPage> {
             hintText: 'Search cart items...',
             hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           ),
         ),
       ),
@@ -209,9 +222,11 @@ class _CartItemsPageState extends State<CartItemsPage> {
         child: Text(
           '$_totalUnits units in cart (${_filteredItems.length} models)',
           style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary.withValues(
+              alpha: AppColors.isDark ? 0.92 : 0.78,
+            ),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -267,7 +282,7 @@ class _CartItemsPageState extends State<CartItemsPage> {
                 onPressed: fetchCartItems,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
+                  foregroundColor: AppColors.surfaceForeground,
                 ),
                 child: Text('Retry'),
               ),
@@ -325,30 +340,27 @@ class _CartItemsPageState extends State<CartItemsPage> {
     );
   }
 
-  Widget _buildBottomButton(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: SizedBox(
-          width: double.infinity,
-          height: 58,
-          child: ElevatedButton(
-            onPressed: _filteredItems.isEmpty
-                ? null
-                : () => Get.to(() => InvoicePage()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-              disabledBackgroundColor: Color(0xFF314437),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
+  Widget _buildBottomBar(BuildContext context) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: () => Get.to(() => InvoicePage()),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.surfaceForeground,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
             ),
-            child: Text(
-              'Preview Invoice',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
+          ),
+          child: Text(
+            'Preview Invoice',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
         ),
       ),
@@ -389,12 +401,31 @@ class _CartItemCard extends StatelessWidget {
     final totalPrice = unitPrice * quantity;
     final createdAt = DateTime.tryParse(entry['createdAt']?.toString() ?? '');
 
+    final isDark = AppColors.isDark;
+    final cardBackground = isDark
+        ? AppColors.cardBackground
+        : const Color(0x80FFFFFF);
+    final cardBorder = isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC);
+    final lightMetaColor = const Color(0xFF6C7892);
+    final lightMutedColor = const Color(0xFF7E889F);
+    final lightDateColor = const Color(0xFF1FC16B);
+    final detailTextColor = isDark
+        ? AppColors.textSecondary
+        : const Color(0xFF667085);
+    final lightShadowColor = const Color(0xFF111827).withValues(alpha: 0.04);
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 18),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.fieldBorder),
+        color: cardBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cardBorder),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: lightShadowColor,
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -402,7 +433,7 @@ class _CartItemCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _CartImage(imageUrl: imageUrl),
-              SizedBox(width: 14),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,12 +444,12 @@ class _CartItemCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         height: 1.2,
                       ),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 6),
                     Text(
                       [
                         brand,
@@ -426,30 +457,36 @@ class _CartItemCard extends StatelessWidget {
                         color,
                       ].where((e) => e.isNotEmpty).join(' • '),
                       style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
+                        color: detailTextColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        height: 1.25,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    SizedBox(height: 4),
                     Text(
                       'IMEI:  $imei',
-                      style: TextStyle(color: Color(0xFFA8B4C5), fontSize: 12),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFFA8B4C5) : lightMetaColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     SizedBox(height: 10),
                     Row(
                       children: [
                         _MetaPill(
                           label: condition,
-                          color: Color(0xFF5D88FF),
-                          background: Color(0x131B48FF),
+                          color: AppColors.primary,
+                          background: AppColors.primary.withValues(alpha: 0.12),
                         ),
                         SizedBox(width: 8),
                         if (createdAt != null)
                           Text(
                             _formatDate(createdAt),
                             style: TextStyle(
-                              color: Color(0xFF2ED970),
-                              fontSize: 13,
+                              color: lightDateColor,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -458,11 +495,15 @@ class _CartItemCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.more_vert, color: Color(0xFF8895A7)),
+              Icon(
+                Icons.more_vert,
+                color: isDark ? const Color(0xFF8895A7) : lightMutedColor,
+                size: 20,
+              ),
             ],
           ),
           SizedBox(height: 16),
-          Divider(color: AppColors.fieldBorder, height: 1),
+          Divider(color: cardBorder, height: 1),
           SizedBox(height: 16),
           Row(
             children: [
@@ -485,10 +526,13 @@ class _CartItemCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: Color(0xFF0B131B),
+                  color: isDark
+                      ? AppColors.fieldBackground
+                      : const Color(0xFFF7F9FD),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: cardBorder),
                 ),
                 child: Text(
                   'Qty: $quantity',
@@ -507,12 +551,20 @@ class _CartItemCard extends StatelessWidget {
                   height: 50,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.fieldBorder),
-                    color: Color(0xFF171E26),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.fieldBorder
+                          : const Color(0xFFF0D7D7),
+                    ),
+                    color: isDark
+                        ? AppColors.fieldBackground
+                        : const Color(0xFFFFF6F6),
                   ),
                   child: Icon(
                     Icons.delete_outline_rounded,
-                    color: Colors.white,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : const Color(0xFFE05A5A),
                     size: 24,
                   ),
                 ),
@@ -540,12 +592,15 @@ class _StatBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
     return Container(
       height: 84,
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.fieldBorder),
+        color: isDark ? AppColors.cardBackground : const Color(0x80FFFFFF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -554,8 +609,9 @@ class _StatBox extends StatelessWidget {
             label,
             style: TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
           ),
           SizedBox(height: 6),
@@ -563,7 +619,7 @@ class _StatBox extends StatelessWidget {
             value,
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -581,12 +637,15 @@ class _PriceBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Color(0xFF121821),
+        color: isDark ? AppColors.fieldBackground : const Color(0x66FFFFFF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.fieldBorder),
+        border: Border.all(
+          color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,9 +653,10 @@ class _PriceBox extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF6C7892),
+              fontSize: 10,
               fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
           ),
           SizedBox(height: 6),
@@ -604,7 +664,7 @@ class _PriceBox extends StatelessWidget {
             value,
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -638,8 +698,10 @@ class _MetaPill extends StatelessWidget {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          height: 1,
         ),
       ),
     );
@@ -653,15 +715,19 @@ class _CartImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
     return Container(
-      width: 92,
-      height: 100,
+      width: 76,
+      height: 92,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC),
+        ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: imageUrl != null && imageUrl!.isNotEmpty
             ? Image.network(
                 imageUrl!,
@@ -675,10 +741,10 @@ class _CartImage extends StatelessWidget {
 
   Widget _fallback() {
     return Container(
-      color: Color(0xFFF0F5FA),
+      color: const Color(0xFFF7FAFD),
       child: Icon(
         Icons.phone_iphone_rounded,
-        color: Color(0xFF7C8AA0),
+        color: const Color(0xFF7C8AA0),
         size: 42,
       ),
     );
@@ -699,11 +765,11 @@ class _CircleActionButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: AppColors.fieldBorder,
+          color: AppColors.fieldBackground,
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.fieldBorder),
         ),
-        child: Icon(icon, color: Colors.white, size: 21),
+        child: Icon(icon, color: AppColors.textPrimary, size: 21),
       ),
     );
   }

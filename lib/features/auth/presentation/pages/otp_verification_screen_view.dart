@@ -37,6 +37,10 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
+    final destinationEmail = auth.emailController.text.trim();
+    final otpDescription = destinationEmail.isEmpty
+        ? 'Enter the verification code we just sent to your email address.'
+        : 'Enter the verification code we just sent to $destinationEmail';
 
     return AuthPageScaffold(
       child: Column(
@@ -55,7 +59,7 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
           ),
           SizedBox(height: 10),
           Text(
-            'Enter the verification code we just sent to your email address.',
+            otpDescription,
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,

@@ -19,9 +19,12 @@ class InvoiceInputField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: AppColors.primary, width: 1.2),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72),
+          width: 1.2,
+        ),
       ),
       child: TextField(
         controller: controller,

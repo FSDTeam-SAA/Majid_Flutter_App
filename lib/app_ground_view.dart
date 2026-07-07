@@ -46,6 +46,7 @@ class _AppGroundViewState extends State<AppGroundView> {
 
     return Obx(() {
       themeCtrl.selectedTheme.value;
+      final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -59,13 +60,22 @@ class _AppGroundViewState extends State<AppGroundView> {
           body: Stack(
             children: [
               Positioned.fill(child: pages[_selectedIndex]),
-              Positioned(
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
                 left: 0,
                 right: 0,
-                bottom: 0,
-                child: AppBottomNavBar(
-                  selectedIndex: _selectedIndex,
-                  onTap: _selectTab,
+                bottom: isKeyboardOpen ? -120 : 0,
+                child: IgnorePointer(
+                  ignoring: isKeyboardOpen,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    opacity: isKeyboardOpen ? 0 : 1,
+                    child: AppBottomNavBar(
+                      selectedIndex: _selectedIndex,
+                      onTap: _selectTab,
+                    ),
+                  ),
                 ),
               ),
             ],

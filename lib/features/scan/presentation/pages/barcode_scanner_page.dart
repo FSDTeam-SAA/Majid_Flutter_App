@@ -12,20 +12,55 @@ class BarcodeScannerPage extends StatefulWidget {
   State<BarcodeScannerPage> createState() => _BarcodeScannerPageState();
 }
 
-class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
+class _BarcodeScannerPageState extends State<BarcodeScannerPage>
+    with WidgetsBindingObserver {
+  // autoStart is off and cameraResolution is capped: on some Android devices
+  // CameraX crashes natively (null object reference deep in its obfuscated
+  // internals) when the plugin auto-starts at full/unsupported resolution.
+  // Starting manually with a modest resolution and retrying on failure
+  // avoids that crash on the affected devices.
   final MobileScannerController _scannerController = MobileScannerController(
-    formats: const [
-      BarcodeFormat.all,
-    ],
+    formats: const [BarcodeFormat.all],
     detectionSpeed: DetectionSpeed.noDuplicates,
+    cameraResolution: const Size(1280, 720),
+    autoStart: false,
   );
 
   bool _hasDetectedCode = false;
+  String? _startError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startCamera();
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_scannerController.value.isInitialized) return;
+    if (state == AppLifecycleState.resumed) {
+      _startCamera();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _scannerController.stop();
+    }
+  }
+
+  Future<void> _startCamera() async {
+    try {
+      await _scannerController.start();
+      if (mounted) setState(() => _startError = null);
+    } catch (e) {
+      if (mounted) setState(() => _startError = e.toString());
+    }
   }
 
   void _handleDetection(BarcodeCapture capture) {
@@ -60,25 +95,23 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          MobileScanner(
-                            controller: _scannerController,
-                            onDetect: _handleDetection,
-                            errorBuilder: (context, error) {
-                              return Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24),
-                                  child: Text(
-                                    'Camera error: ${error.errorDetails?.message ?? error.errorCode.name}',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                          if (_startError != null)
+                            _CameraErrorView(
+                              message: _startError!,
+                              onRetry: _startCamera,
+                            )
+                          else
+                            MobileScanner(
+                              controller: _scannerController,
+                              onDetect: _handleDetection,
+                              errorBuilder: (context, error) {
+                                return _CameraErrorView(
+                                  message: error.errorDetails?.message ??
+                                      error.errorCode.name,
+                                  onRetry: _startCamera,
+                                );
+                              },
+                            ),
                           IgnorePointer(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
@@ -142,6 +175,44 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CameraErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _CameraErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Camera error: $message',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: onRetry,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: BorderSide(color: AppColors.primary, width: 1.4),
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }

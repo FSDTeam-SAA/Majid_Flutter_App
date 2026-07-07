@@ -7,6 +7,7 @@ import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
+import '../../../home/presentation/controller/home_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/stock_controller.dart';
 import 'add_new_device_page.dart';
@@ -47,7 +48,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _stockCtrl = Get.find<StockController>();
     _profileCtrl = Get.find<ProfileController>();
     _selectedCategoryId = widget.initialCategoryId;
-    _primeCategories();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _primeCategories());
     fetchInventory();
   }
 
@@ -82,7 +83,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
 
     try {
-      final res = await _api.get(InventoryEndpoints.myInventory);
+      final shopkeeperId = await _resolveShopkeeperId();
+      final res = await _api.get(
+        shopkeeperId != null
+            ? InventoryEndpoints.byUserId(shopkeeperId)
+            : InventoryEndpoints.myInventory,
+      );
       final data = res.data['data'];
       final List<Map<String, dynamic>> items = data is List
           ? List<Map<String, dynamic>>.from(data)
@@ -110,8 +116,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
   List<Map<String, dynamic>> get _filteredItems {
     return _items.where((item) {
       final itemCategoryId = _categoryIdOf(item);
+      final selectedCategoryName = _normalizedCategoryName(
+        _selectedCategoryLabel(),
+      );
+      final itemCategoryName = _normalizedCategoryName(_categoryNameOf(item));
       final matchesCategory =
-          _selectedCategoryId == null || itemCategoryId == _selectedCategoryId;
+          _selectedCategoryId == null ||
+          itemCategoryId == _selectedCategoryId ||
+          (selectedCategoryName.isNotEmpty &&
+              itemCategoryName.isNotEmpty &&
+              selectedCategoryName == itemCategoryName);
 
       final haystack = [
         item['itemName'],
@@ -180,17 +194,54 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   String _categoryNameOf(Map<String, dynamic> item) {
+    final directCategoryName = _categoryNameFromItem(item);
+    if (directCategoryName != null) return directCategoryName;
+
     final categoryId = _categoryIdOf(item);
     if (categoryId == null) return 'Uncategorized';
     final category = _findCategoryById(categoryId);
     return category?['name']?.toString() ?? 'Uncategorized';
   }
 
+  String? _categoryNameFromItem(Map<String, dynamic> item) {
+    final categoryName = item['categoryName'];
+    if (categoryName is String && categoryName.trim().isNotEmpty) {
+      return categoryName.trim();
+    }
+
+    final categoryId = item['categoryId'];
+    if (categoryId is Map) {
+      final nestedName = categoryId['name'];
+      if (nestedName is String && nestedName.trim().isNotEmpty) {
+        return nestedName.trim();
+      }
+    }
+
+    final category = item['category'];
+    if (category is Map) {
+      final nestedName = category['name'];
+      if (nestedName is String && nestedName.trim().isNotEmpty) {
+        return nestedName.trim();
+      }
+    }
+
+    if (category is String && category.trim().isNotEmpty) {
+      return category.trim();
+    }
+
+    return null;
+  }
+
+  String _normalizedCategoryName(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'category' ? '' : normalized;
+  }
+
   Future<void> _openCategoryPicker() async {
     final selected = await showModalBottomSheet<String?>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Color(0xFF0D171C),
+      backgroundColor: AppColors.cardBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -289,6 +340,98 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+  Future<void> _editInventoryItem(Map<String, dynamic> item) async {
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddNewDevicePage(
+          initialCategoryId: _categoryIdOf(item),
+          initialCategoryName: _categoryNameOf(item),
+          initialItem: item,
+        ),
+      ),
+    );
+
+    if (!mounted || created != true) return;
+    await fetchInventory();
+  }
+
+  Future<void> _deleteInventoryItem(Map<String, dynamic> item) async {
+    final itemId = item['_id']?.toString() ?? item['id']?.toString();
+    if (itemId == null || itemId.isEmpty) {
+      showErrorSnackbar('Invalid inventory item');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Device',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete ${item['itemName']?.toString() ?? 'this device'}?',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.dangerColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _api.delete(InventoryEndpoints.byId(itemId));
+      _items.removeWhere(
+        (entry) =>
+            entry['_id']?.toString() == itemId ||
+            entry['id']?.toString() == itemId,
+      );
+      await _stockCtrl.fetchCategories();
+      if (Get.isRegistered<HomeController>()) {
+        await Get.find<HomeController>().fetchAllData();
+      }
+      if (!mounted) return;
+      setState(() {});
+      showSuccessSnackbar('Device deleted successfully');
+    } on DioException catch (e) {
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to delete inventory item',
+      );
+    } catch (_) {
+      showErrorSnackbar('Failed to delete inventory item');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,6 +487,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildFilters() {
+    final isDark = AppColors.isDark;
+    final searchBackground = AppColors.cardBackground.withValues(
+      alpha: isDark ? 0.08 : 0.56,
+    );
+    final searchBorder = AppColors.primary.withValues(
+      alpha: isDark ? 0.8 : 0.6,
+    );
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
@@ -352,9 +503,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: Container(
               height: 58,
               decoration: BoxDecoration(
-                color: Color(0x0CFFFFFF),
+                color: searchBackground,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: AppColors.primary, width: 1.5),
+                border: Border.all(color: searchBorder, width: 1.4),
               ),
               child: TextField(
                 controller: _searchCtrl,
@@ -367,7 +518,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     color: AppColors.primary,
                   ),
                   hintText: 'Search items...',
-                  hintStyle: TextStyle(color: AppColors.primary, fontSize: 15),
+                  hintStyle: TextStyle(
+                    color: AppColors.primary.withValues(alpha: 0.88),
+                    fontSize: 15,
+                  ),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 17),
                 ),
@@ -396,7 +550,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   Text(
                     _selectedCategoryLabel(),
                     style: TextStyle(
-                      color: Colors.black,
+                      color: AppColors.surfaceForeground,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
@@ -404,7 +558,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   SizedBox(width: 8),
                   Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Colors.black,
+                    color: AppColors.surfaceForeground,
                     size: 22,
                   ),
                 ],
@@ -417,6 +571,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildSummary() {
+    final isDark = AppColors.isDark;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
       child: Align(
@@ -424,7 +580,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
         child: Text(
           '$_totalUnitsInStock Units in Stock (${_filteredItems.length} Models) - ${_formatCurrency(_totalRevenuePotential)} Total Revenue Potential',
           style: TextStyle(
-            color: Color(0xFFD8E1E8),
+            color: AppColors.textSecondary.withValues(
+              alpha: isDark ? 0.92 : 0.78,
+            ),
             fontSize: 13,
             fontWeight: FontWeight.w700,
             height: 1.4,
@@ -462,7 +620,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onPressed: fetchInventory,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
+                  foregroundColor: AppColors.buttonText,
                 ),
                 child: Text('Retry'),
               ),
@@ -524,13 +682,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
+                  foregroundColor: AppColors.buttonText,
                   padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 ),
                 icon: Icon(Icons.add_rounded),
                 label: Text(
                   'Add New Device',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.buttonText,
+                  ),
                 ),
               ),
             ),
@@ -553,6 +714,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
             item: item,
             categoryName: _categoryNameOf(item),
             onAddToCart: () => _addItemToCart(item),
+            onEdit: () => _editInventoryItem(item),
+            onDelete: () => _deleteInventoryItem(item),
           );
         },
       ),
@@ -570,15 +733,46 @@ class _InventoryCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final String categoryName;
   final VoidCallback onAddToCart;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _InventoryCard({
     required this.item,
     required this.categoryName,
     required this.onAddToCart,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
+    final cardBackground = isDark
+        ? AppColors.cardBackground
+        : const Color(0x80FFFFFF);
+    final cardBorder = isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC);
+    final cardShadow = Color(
+      0xFF111827,
+    ).withValues(alpha: isDark ? 0.18 : 0.04);
+    final metaTextColor = AppColors.textSecondary.withValues(
+      alpha: isDark ? 0.9 : 0.82,
+    );
+    final detailTextColor = AppColors.textSecondary.withValues(
+      alpha: isDark ? 0.88 : 0.9,
+    );
+    final qtyBackground = isDark
+        ? const Color(0xFF0A131C)
+        : AppColors.fieldBackground;
+    final qtyTextColor = isDark
+        ? const Color(0xFFD9E3EE)
+        : AppColors.textPrimary;
+    final actionBackground = isDark
+        ? const Color(0xFF252F40)
+        : AppColors.cardBackground;
+    final actionIconColor = isDark
+        ? const Color(0xFFE6EEF8)
+        : AppColors.textPrimary;
+
     final title = item['itemName']?.toString().trim().isNotEmpty == true
         ? item['itemName'].toString()
         : 'Unnamed Item';
@@ -598,17 +792,13 @@ class _InventoryCard extends StatelessWidget {
     final status = item['status']?.toString() ?? 'inventory';
 
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 18),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.fieldBorder),
+        color: cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cardBorder),
         boxShadow: [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 24,
-            offset: Offset(0, 10),
-          ),
+          BoxShadow(color: cardShadow, blurRadius: 16, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -617,7 +807,7 @@ class _InventoryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _InventoryImage(imageUrl: imageUrl),
-              SizedBox(width: 16),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,12 +818,12 @@ class _InventoryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
                       ),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 6),
                     Text(
                       [
                         brand,
@@ -641,23 +831,26 @@ class _InventoryCard extends StatelessWidget {
                         color,
                       ].where((e) => e.isNotEmpty).join(' • '),
                       style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
+                        color: detailTextColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        height: 1.25,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    SizedBox(height: 4),
                     Text(
                       imei,
                       style: TextStyle(
-                        color: Color(0xFFA8B4C5),
-                        fontSize: 12,
-                        letterSpacing: 0.2,
+                        color: metaTextColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1,
                       ),
                     ),
-                    SizedBox(height: 12),
+                    SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
-                      runSpacing: 8,
+                      runSpacing: 6,
                       children: [
                         if (currentState.isNotEmpty)
                           _StatusPill(
@@ -674,8 +867,8 @@ class _InventoryCard extends StatelessWidget {
                         ),
                         _StatusPill(
                           label: categoryName.toUpperCase(),
-                          color: Color(0xFFA4B4BE),
-                          background: Color(0x142E3B46),
+                          color: metaTextColor,
+                          background: AppColors.fieldBackground,
                         ),
                       ],
                     ),
@@ -683,33 +876,99 @@ class _InventoryCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 8),
-              Icon(Icons.more_vert, color: Color(0xFF8895A7)),
+              PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                color: cardBackground,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: cardBorder),
+                ),
+                icon: Icon(
+                  Icons.more_vert,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    onEdit();
+                  } else if (value == 'delete') {
+                    onDelete();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.edit_outlined,
+                          color: AppColors.textPrimary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Edit',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppColors.dangerColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: AppColors.dangerColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          SizedBox(height: 18),
-          Divider(color: AppColors.fieldBorder, height: 1),
-          SizedBox(height: 14),
+          SizedBox(height: 16),
+          Divider(color: cardBorder, height: 1),
+          SizedBox(height: 12),
           Row(
             children: [
               Text(
                 _formatPrice(price),
                 style: TextStyle(
                   color: AppColors.primary,
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
+                  height: 1,
                 ),
               ),
-              SizedBox(width: 12),
+              SizedBox(width: 10),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: Color(0xFF0A131C),
+                  color: qtyBackground,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cardBorder),
                 ),
                 child: Text(
                   'Qty: $quantity',
                   style: TextStyle(
-                    color: Color(0xFFD9E3EE),
+                    color: qtyTextColor,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
@@ -719,23 +978,26 @@ class _InventoryCard extends StatelessWidget {
               GestureDetector(
                 onTap: onAddToCart,
                 child: Container(
-                  width: 54,
-                  height: 54,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: Color(0xFF252F40),
+                    color: actionBackground,
                     shape: BoxShape.circle,
+                    border: Border.all(color: cardBorder),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 18,
-                        offset: Offset(0, 8),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.18 : 0.08,
+                        ),
+                        blurRadius: 14,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Icon(
                     Icons.shopping_cart_checkout_outlined,
-                    color: Color(0xFFE6EEF8),
-                    size: 28,
+                    color: actionIconColor,
+                    size: 24,
                   ),
                 ),
               ),
@@ -785,15 +1047,23 @@ class _InventoryImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
+    final borderColor = isDark
+        ? AppColors.fieldBorder
+        : const Color(0xFFE4E7EC);
+
     return Container(
-      width: 92,
-      height: 118,
+      width: 76,
+      height: 92,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark
+            ? AppColors.fieldBackground
+            : Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: imageUrl != null && imageUrl!.isNotEmpty
             ? Image.network(
                 imageUrl!,
@@ -807,10 +1077,10 @@ class _InventoryImage extends StatelessWidget {
 
   Widget _buildFallback() {
     return Container(
-      color: Color(0xFFF0F5FA),
+      color: AppColors.fieldBackground,
       child: Icon(
         Icons.phone_iphone_rounded,
-        color: Color(0xFF7C8AA0),
+        color: AppColors.textSecondary,
         size: 42,
       ),
     );
@@ -831,18 +1101,20 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.28)),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          height: 1,
         ),
       ),
     );
@@ -864,17 +1136,24 @@ class _CategoryOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
+    final backgroundColor = isSelected
+        ? AppColors.primary.withValues(alpha: isDark ? 0.14 : 0.1)
+        : AppColors.cardBackground;
+    final borderColor = isSelected ? AppColors.primary : AppColors.fieldBorder;
+    final titleColor = isSelected
+        ? (isDark ? AppColors.primary : AppColors.textPrimary)
+        : AppColors.textPrimary;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Ink(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? Color(0xFF12211B) : Color(0xFF101A22),
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Color(0xFF23313A),
-          ),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
@@ -885,9 +1164,7 @@ class _CategoryOptionTile extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textPrimary,
+                      color: titleColor,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
@@ -922,17 +1199,35 @@ class _CircleActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
+    final backgroundColor = isDark
+        ? AppColors.fieldBackground
+        : AppColors.fieldBackground.withValues(alpha: 0.96);
+    final borderColor = isDark
+        ? AppColors.fieldBorder
+        : AppColors.fieldBorder.withValues(alpha: 0.82);
+    final iconColor = AppColors.textPrimary.withValues(
+      alpha: isDark ? 0.95 : 0.82,
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: AppColors.fieldBorder,
+          color: backgroundColor,
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.fieldBorder),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.06),
+              blurRadius: 16,
+              offset: Offset(0, 6),
+            ),
+          ],
         ),
-        child: Icon(icon, color: Colors.white, size: 21),
+        child: Icon(icon, color: iconColor, size: 21),
       ),
     );
   }

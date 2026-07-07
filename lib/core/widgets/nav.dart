@@ -8,11 +8,11 @@ class CustomBottomNavBar extends StatefulWidget {
 }
 
 class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
-  int _selectedIndex = 1; // Stock is selected by default
+  int _selectedIndex = 1; // Checkout is selected by default
 
   final List<IconData> _icons = [
     Icons.grid_view_rounded, // Dashboard
-    Icons.inventory_2_rounded, // Stock
+    Icons.inventory_2_rounded, // Checkout
     Icons.qr_code_scanner_rounded, // Scan
     Icons.build_rounded, // Repair
     Icons.description_rounded, // Invoice
@@ -20,7 +20,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
 
   final List<String> _labels = [
     "Dashboard",
-    "Stock",
+    "Checkout",
     "Scan",
     "Repair",
     "Invoice",
@@ -48,7 +48,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(5, (index) {
-              bool isCenter = index == 2; // Center position for Stock
+              bool isCenter = index == 2; // Center position for Checkout
               return GestureDetector(
                 onTap: () {
                   setState(() => _selectedIndex = index);
@@ -82,7 +82,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
             }),
           ),
 
-          // Highlighted Center Stock Button
+          // Highlighted Center Checkout Button
           Positioned(
             top: -25,
             left: MediaQuery.of(context).size.width / 2 - 35,

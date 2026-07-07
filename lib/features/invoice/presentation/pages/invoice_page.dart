@@ -24,6 +24,9 @@ class InvoicePage extends StatefulWidget {
 }
 
 class _InvoicePageState extends State<InvoicePage> {
+  static const double _pageLoaderSize = 28;
+  static const double _dropdownLoaderSize = 22;
+
   late final ApiClient _api;
   late final ProfileController _profileCtrl;
   final TextEditingController _firstNameCtrl = TextEditingController();
@@ -392,23 +395,25 @@ class _InvoicePageState extends State<InvoicePage> {
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 48),
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: SizedBox(
+                          width: _pageLoaderSize,
+                          height: _pageLoaderSize,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.6,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
                     )
                   else if (_errorMessage.isNotEmpty)
                     _buildLoadError()
                   else if (_tabIndex == 0)
                     _buildCreateInvoiceTab(),
-                  if (_tabIndex == 1)
-                    _buildPurchaseInvoiceTab(),
-                  SizedBox(height: 100),
+                  if (_tabIndex == 1) _buildPurchaseInvoiceTab(),
+                  if (_tabIndex == 0) SizedBox(height: 100),
                 ],
               ),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(bottom: _floatingNavClearance(context)),
-            child: _buildBottomBar(),
           ),
         ],
       ),
@@ -420,12 +425,17 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Widget _buildTabBar() {
+    final isDark = AppColors.isDark;
+    final tabBg = isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.5);
+    final glowColor = AppColors.primary.withValues(alpha: 0.15);
+
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: AppColors.fieldBorder),
+        color: tabBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: isDark ? AppColors.fieldBorder : AppColors.primary.withValues(alpha: 0.18)),
+        boxShadow: [BoxShadow(color: glowColor, blurRadius: 50, spreadRadius: 0, offset: Offset(0, 0))],
       ),
       child: Row(
         children: [
@@ -541,6 +551,8 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
             ),
           ),
+
+        _buildBottomBar(),
       ],
     );
   }
@@ -578,9 +590,9 @@ class _InvoicePageState extends State<InvoicePage> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: AppColors.cardBackground,
+            color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: AppColors.primary, width: 1.2),
+            border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(26),
@@ -632,8 +644,17 @@ class _InvoicePageState extends State<InvoicePage> {
   Widget _buildCustomerDropdownMenu() {
     if (_isCustomersLoading) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: SizedBox(
+            width: _dropdownLoaderSize,
+            height: _dropdownLoaderSize,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
       );
     }
 
@@ -700,9 +721,9 @@ class _InvoicePageState extends State<InvoicePage> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.cardBackground,
+          color: AppColors.fieldBackground,
           borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: AppColors.primary, width: 1.2),
+          border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -792,9 +813,9 @@ class _InvoicePageState extends State<InvoicePage> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
+              color: AppColors.fieldBackground,
               borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: AppColors.primary, width: 1.2),
+              border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
             ),
             child: TextField(
               controller: _searchCtrl,
@@ -842,15 +863,24 @@ class _InvoicePageState extends State<InvoicePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Customer Information', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
+        Text(
+          'Customer Information',
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+        ),
         SizedBox(height: 4),
         Text('Identity validation framework controls', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         SizedBox(height: 14),
-        Row(children: [
-          Expanded(child: InvoiceInputField(hint: 'First Name', controller: _pFirstNameCtrl)),
-          SizedBox(width: 10),
-          Expanded(child: InvoiceInputField(hint: 'Last Name', controller: _pLastNameCtrl)),
-        ]),
+        Row(
+          children: [
+            Expanded(
+              child: InvoiceInputField(hint: 'First Name', controller: _pFirstNameCtrl),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: InvoiceInputField(hint: 'Last Name', controller: _pLastNameCtrl),
+            ),
+          ],
+        ),
         SizedBox(height: 10),
         InvoiceInputField(hint: 'Customer Email', controller: _pEmailCtrl),
         SizedBox(height: 10),
@@ -860,31 +890,44 @@ class _InvoicePageState extends State<InvoicePage> {
         SizedBox(height: 10),
         InvoiceInputField(hint: 'Customer ID Number', controller: _pIdNumberCtrl),
         SizedBox(height: 10),
-        Row(children: [
-          Expanded(child: InvoiceInputField(hint: 'Customer Name', controller: _pCustomerNameCtrl)),
-          SizedBox(width: 10),
-          OutlinedButton(
-            onPressed: () => showErrorSnackbar('NID capture coming soon'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.primary),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        Row(
+          children: [
+            Expanded(
+              child: InvoiceInputField(hint: 'Customer Name', controller: _pCustomerNameCtrl),
             ),
-            child: Text('Capture NID'),
-          ),
-        ]),
+            SizedBox(width: 10),
+            OutlinedButton(
+              onPressed: () => showErrorSnackbar('NID capture coming soon'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              child: Text('Capture NID'),
+            ),
+          ],
+        ),
         SizedBox(height: 14),
         ShopInfoCard(),
         SizedBox(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Purchase Items', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text('Configure specifications and accumulate tracking logs', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-            ]),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Purchase Items',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Configure specifications and accumulate tracking logs',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
             OutlinedButton(
               onPressed: () => setState(() => _purchaseItems.add(_PurchaseItem())),
               style: OutlinedButton.styleFrom(
@@ -900,7 +943,11 @@ class _InvoicePageState extends State<InvoicePage> {
         SizedBox(height: 14),
         ...List.generate(_purchaseItems.length, (i) => _buildPurchaseItemCard(i)),
         SizedBox(height: 20),
-        _buildReceiptSummary(),
+        AppButton(
+          label: _isSendingPurchase ? 'Creating...' : 'Create Purchase Receipt',
+          onPressed: _isSendingPurchase ? null : _createPurchaseInvoice,
+        ),
+        SizedBox(height: 100),
       ],
     );
   }
@@ -911,54 +958,76 @@ class _InvoicePageState extends State<InvoicePage> {
     final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
     final subTotal = qty * price;
 
+    final isDark = AppColors.isDark;
     return Container(
       margin: EdgeInsets.only(bottom: 14),
       padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.fieldBorder),
+        border: Border.all(color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC)),
+        boxShadow: isDark
+            ? null
+            : [BoxShadow(color: const Color(0xFF6BA0C8).withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('DEVICE #${index + 1}', style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1)),
-            GestureDetector(
-              onTap: () {
-                if (_purchaseItems.length > 1) {
-                  setState(() {
-                    _purchaseItems[index].dispose();
-                    _purchaseItems.removeAt(index);
-                  });
-                } else {
-                  setState(() {
-                    _purchaseItems[index].nameCtrl.clear();
-                    _purchaseItems[index].storageCtrl.clear();
-                    _purchaseItems[index].colorCtrl.clear();
-                    _purchaseItems[index].conditionCtrl.clear();
-                    _purchaseItems[index].quantityCtrl.text = '1';
-                    _purchaseItems[index].priceCtrl.text = '0';
-                  });
-                }
-              },
-              child: Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
-            ),
-          ]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'DEVICE #${index + 1}',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (_purchaseItems.length > 1) {
+                    setState(() {
+                      _purchaseItems[index].dispose();
+                      _purchaseItems.removeAt(index);
+                    });
+                  } else {
+                    setState(() {
+                      _purchaseItems[index].nameCtrl.clear();
+                      _purchaseItems[index].storageCtrl.clear();
+                      _purchaseItems[index].colorCtrl.clear();
+                      _purchaseItems[index].conditionCtrl.clear();
+                      _purchaseItems[index].quantityCtrl.text = '1';
+                      _purchaseItems[index].priceCtrl.text = '0';
+                    });
+                  }
+                },
+                child: Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+              ),
+            ],
+          ),
           SizedBox(height: 12),
           InvoiceInputField(hint: 'Item Name*', controller: item.nameCtrl),
           SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: InvoiceInputField(hint: 'Storage', controller: item.storageCtrl)),
-            SizedBox(width: 10),
-            Expanded(child: InvoiceInputField(hint: 'Color', controller: item.colorCtrl)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: InvoiceInputField(hint: 'Storage', controller: item.storageCtrl),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: InvoiceInputField(hint: 'Color', controller: item.colorCtrl),
+              ),
+            ],
+          ),
           SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: InvoiceInputField(hint: 'Condition', controller: item.conditionCtrl)),
-            SizedBox(width: 10),
-            Expanded(child: InvoiceInputField(hint: 'Quantity', controller: item.quantityCtrl, keyboardType: TextInputType.number)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: InvoiceInputField(hint: 'Condition', controller: item.conditionCtrl),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: InvoiceInputField(hint: 'Quantity', controller: item.quantityCtrl, keyboardType: TextInputType.number),
+              ),
+            ],
+          ),
           SizedBox(height: 10),
           InvoiceInputField(hint: 'Price per Unit', controller: item.priceCtrl, keyboardType: TextInputType.number),
           SizedBox(height: 10),
@@ -970,58 +1039,17 @@ class _InvoicePageState extends State<InvoicePage> {
               borderRadius: BorderRadius.circular(50),
               border: Border.all(color: AppColors.fieldBorder),
             ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Item Calculation Sub Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-              Text('£${subTotal.toStringAsFixed(2)}', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600)),
-            ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Item Calculation Sub Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                Text(
+                  '£${subTotal.toStringAsFixed(2)}',
+                  style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReceiptSummary() {
-    final grandTotal = _purchaseGrandTotal;
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.fieldBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Receipt Summary', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(height: 4),
-          Text('Purchase overview parameter logging', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: _summaryStatBox('TOTAL UNIQUE\nDEVICES', '${_purchaseItems.length}')),
-            SizedBox(width: 10),
-            Expanded(child: _summaryStatBox('AGGREGATED\nSCANNED\nIDENTIFIERS', '0')),
-            SizedBox(width: 10),
-            Expanded(child: _summaryStatBox('GRAND TOTAL', '£${grandTotal.toStringAsFixed(2)}', isHighlighted: true)),
-          ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryStatBox(String label, String value, {bool isHighlighted = false}) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.fieldBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-          SizedBox(height: 8),
-          Text(value, style: TextStyle(color: isHighlighted ? AppColors.primary : AppColors.textPrimary, fontSize: isHighlighted ? 18 : 22, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -1052,12 +1080,18 @@ class _InvoicePageState extends State<InvoicePage> {
 
       final pdfItems = _purchaseItems
           .where((item) => item.nameCtrl.text.trim().isNotEmpty)
-          .map((item) => InvoicePdfItem(
-                name: item.nameCtrl.text.trim(),
-                code: [item.storageCtrl.text.trim(), item.colorCtrl.text.trim(), item.conditionCtrl.text.trim()].where((v) => v.isNotEmpty).join(' / '),
-                quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
-                unitPrice: double.tryParse(item.priceCtrl.text.trim()) ?? 0,
-              ))
+          .map(
+            (item) => InvoicePdfItem(
+              name: item.nameCtrl.text.trim(),
+              code: [
+                item.storageCtrl.text.trim(),
+                item.colorCtrl.text.trim(),
+                item.conditionCtrl.text.trim(),
+              ].where((v) => v.isNotEmpty).join(' / '),
+              quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
+              unitPrice: double.tryParse(item.priceCtrl.text.trim()) ?? 0,
+            ),
+          )
           .toList();
 
       final pdfFile = await InvoicePdfBuilder.build(
@@ -1099,7 +1133,9 @@ class _InvoicePageState extends State<InvoicePage> {
         _pAddressCtrl.clear();
         _pIdNumberCtrl.clear();
         _pCustomerNameCtrl.clear();
-        for (final item in _purchaseItems) { item.dispose(); }
+        for (final item in _purchaseItems) {
+          item.dispose();
+        }
         _purchaseItems.clear();
         _purchaseItems.add(_PurchaseItem());
       });
@@ -1118,7 +1154,8 @@ class _InvoicePageState extends State<InvoicePage> {
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(10),
+        color: AppColors.cardBackground.withValues(alpha: 0.9),
         border: Border(top: BorderSide(color: AppColors.fieldBorder)),
       ),
       child: Column(
@@ -1158,10 +1195,9 @@ class _InvoicePageState extends State<InvoicePage> {
             label: _tabIndex == 0
                 ? (_isSendingInvoice ? 'Creating...' : 'Create Invoice')
                 : (_isSendingPurchase ? 'Creating...' : 'Create Purchase Receipt'),
-            onPressed: _tabIndex == 0
-                ? (_isSendingInvoice ? null : _createInvoice)
-                : (_isSendingPurchase ? null : _createPurchaseInvoice),
+            onPressed: _tabIndex == 0 ? (_isSendingInvoice ? null : _createInvoice) : (_isSendingPurchase ? null : _createPurchaseInvoice),
           ),
+          SizedBox(height: 30),
         ],
       ),
     );

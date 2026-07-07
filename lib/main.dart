@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'app_ground_view.dart';
 import 'core/network/api_service/token_meneger.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'features/auth/presentation/controller/auth_controller.dart';
 import 'features/home/presentation/controller/home_controller.dart';
-import 'features/onboarding/presentation/pages/onboarding_screen_view.dart';
+import 'features/onboarding/presentation/pages/splash_screen_view.dart';
 import 'features/profile/presentation/controller/profile_controller.dart';
 import 'features/stock/presentation/controller/stock_controller.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await TokenManager.clearPersistedSessionOnFreshInstall();
   Get.put(AuthController());
   Get.put(ProfileThemeController());
-  Get.lazyPut(() => HomeController());
-  Get.lazyPut(() => ProfileController());
-  Get.lazyPut(() => StockController());
+  Get.lazyPut(() => HomeController(), fenix: true);
+  Get.lazyPut(() => ProfileController(), fenix: true);
+  Get.lazyPut(() => StockController(), fenix: true);
   runApp(MyApp());
 }
 
@@ -41,21 +41,7 @@ class MyApp extends StatelessWidget {
             brightness: palette.brightness,
           ),
         ),
-        home: FutureBuilder<bool>(
-          future: TokenManager.isLoggedIn(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return Scaffold(
-                backgroundColor: AppColors.background,
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            return snapshot.data == true
-                ? AppGroundView()
-                : OnboardingScreenView();
-          },
-        ),
+        home: const SplashScreenView(),
       );
     });
   }

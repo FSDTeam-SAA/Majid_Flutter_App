@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/info_field.dart';
 
 class DeviceFieldFull extends StatelessWidget {
@@ -13,9 +14,9 @@ class DeviceFieldFull extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: InfoField(label: label, value: value),
     );
@@ -55,9 +56,9 @@ class DeviceFieldRow extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Color(0xFF111A24),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Color(0xFF1A2840)),
+        border: Border.all(color: AppColors.fieldBorder),
       ),
       child: InfoField(label: label, value: value, valueColor: valueColor),
     );

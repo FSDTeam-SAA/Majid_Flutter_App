@@ -1,7 +1,8 @@
 // String baseUrl = "http://10.10.26.117:5001";
 
-String baseUrl = "http://187.77.187.56:4896";
-String localBaseUrl = "http://localhost:5001";
+String baseUrl = "https://api.imoscan.com";
+//String localBaseUrl = "http://localhost:5001";
+final String localBaseUrl = "https://api.imoscan.com";
 
 String apiVersion = "api/v1";
 String get baseApiUrl => "$baseUrl/$apiVersion";

@@ -1,35 +1,51 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/colors.dart';
-import '../controller/home_data.dart';
 
 class StatsGrid extends StatelessWidget {
-  final HomeStatsSnapshot stats;
+  final double totalSales;
+  final double totalProfit;
+  final int totalOrders;
+  final double avgOrderValue;
 
-  const StatsGrid({super.key, required this.stats});
+  const StatsGrid({super.key, required this.totalSales, required this.totalProfit, required this.totalOrders, required this.avgOrderValue});
 
-  static const _lightIconBackgrounds = [
-    Color(0xFFE6F4EA),
-    Color(0xFFF1EBFF),
-    Color(0xFFE8F1FF),
-    Color(0xFFFFEFE2),
+  static const _iconColors = [Color(0xFF2D8A57), Color(0xFF6D55C8), Color(0xFF2E76C4), Color(0xFFC77638)];
+  static const _lightModeIcons = [
+    'assets/lightmodeicon/TSL.png',
+    'assets/lightmodeicon/tPL.png',
+    'assets/lightmodeicon/toL.png',
+    'assets/lightmodeicon/avgL.png',
   ];
-
-  static const _darkIconBackgrounds = [
-    Color(0xFF1A3020),
-    Color(0xFF1F1A35),
-    Color(0xFF182232),
-    Color(0xFF2A1E12),
+  static const _darkModeIcons = [
+    'assets/darkmodeicon/tsd.png',
+    'assets/darkmodeicon/tpd.png',
+    'assets/darkmodeicon/tod.png',
+    'assets/darkmodeicon/aov.png',
   ];
+  static const _iconAssetScale = 1.9;
 
-  static const _iconColors = [
-    Color(0xFF2D8A57),
-    Color(0xFF6D55C8),
-    Color(0xFF2E76C4),
-    Color(0xFFC77638),
-  ];
+  String _fmtCurrency(double v) {
+    if (v >= 1000000) return '£${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '£${(v / 1000).toStringAsFixed(1)}k';
+    return '£${v.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final items = [
+      (Icons.bar_chart_rounded, 'Total Sales', _fmtCurrency(totalSales), _iconColors[0], _lightModeIcons[0], _darkModeIcons[0]),
+      (
+        Icons.account_balance_wallet_outlined,
+        'Total Profit',
+        _fmtCurrency(totalProfit),
+        _iconColors[1],
+        _lightModeIcons[1],
+        _darkModeIcons[1],
+      ),
+      (Icons.shopping_bag_outlined, 'Total Orders', '$totalOrders', _iconColors[2], _lightModeIcons[2], _darkModeIcons[2]),
+      (Icons.adjust_rounded, 'Avg Order Value', _fmtCurrency(avgOrderValue), _iconColors[3], _lightModeIcons[3], _darkModeIcons[3]),
+    ];
+
     return GridView.count(
       key: ValueKey(AppColors.isDark),
       crossAxisCount: 2,
@@ -37,101 +53,98 @@ class StatsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.3,
-      children: [
-        _StatCard(
-          title: 'Total Items',
-          value: '${stats.totalItems}',
-          icon: Icons.inventory_2_outlined,
-          iconBg: AppColors.isDark
-              ? _darkIconBackgrounds[0]
-              : _lightIconBackgrounds[0],
-          iconColor: _iconColors[0],
-        ),
-        _StatCard(
-          title: 'Sold Products',
-          value: '${stats.soldProducts}',
-          icon: Icons.shopping_cart_outlined,
-          iconBg: AppColors.isDark
-              ? _darkIconBackgrounds[1]
-              : _lightIconBackgrounds[1],
-          iconColor: _iconColors[1],
-        ),
-        _StatCard(
-          title: 'Repair Requests',
-          value: '${stats.repairRequests}',
-          icon: Icons.build_outlined,
-          iconBg: AppColors.isDark
-              ? _darkIconBackgrounds[2]
-              : _lightIconBackgrounds[2],
-          iconColor: _iconColors[2],
-        ),
-        _StatCard(
-          title: 'Categories',
-          value: '${stats.categories}',
-          icon: Icons.category_outlined,
-          iconBg: AppColors.isDark
-              ? _darkIconBackgrounds[3]
-              : _lightIconBackgrounds[3],
-          iconColor: _iconColors[3],
-        ),
-      ],
+      childAspectRatio: 1.25,
+      children: items
+          .map((e) => _StatCard(icon: e.$1, title: e.$2, value: e.$3, iconColor: e.$4, lightModeAsset: e.$5, darkModeAsset: e.$6))
+          .toList(),
     );
   }
 }
 
 class _StatCard extends StatelessWidget {
+  final IconData icon;
   final String title;
   final String value;
-  final IconData icon;
-  final Color iconBg;
   final Color iconColor;
+  final String lightModeAsset;
+  final String darkModeAsset;
 
   const _StatCard({
+    required this.icon,
     required this.title,
     required this.value,
-    required this.icon,
-    required this.iconBg,
     required this.iconColor,
+    required this.lightModeAsset,
+    required this.darkModeAsset,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark;
+
+    final cardColor = isDark ? const Color(0xFF12161D).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.5);
+    final borderColor = isDark ? const Color(0xFF232A36) : const Color(0xFFE4E7EC);
+    final titleColor = isDark ? const Color(0xFF8A96A8) : const Color(0xFF667085);
+    final valueColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      height: 145,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.fieldBorder),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          if (isDark)
+            BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 58, offset: const Offset(0, 8))
+          else
+            BoxShadow(color: const Color(0xFFB8C7DE).withValues(alpha: 0.12), blurRadius: 50, offset: const Offset(0, 8)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: iconColor.withValues(alpha: 0.4)),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const Spacer(),
+          _buildIconBadge(isDark),
+          const SizedBox(height: 14),
           Text(
             title,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: titleColor, fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.1),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: valueColor, fontSize: 20, fontWeight: FontWeight.w700, height: 1.2),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIconBadge(bool isDark) {
+    final asset = isDark ? darkModeAsset : lightModeAsset;
+    final glowColor = iconColor.withValues(alpha: isDark ? 0.28 : 0.22);
+
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          boxShadow: [BoxShadow(color: glowColor, blurRadius: 18, offset: const Offset(0, 0))],
+        ),
+        child: ClipRect(
+          child: Transform.scale(
+            scale: StatsGrid._iconAssetScale,
+            child: Image.asset(
+              asset,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => Icon(icon, color: isDark ? Colors.white : iconColor, size: 22),
+            ),
+          ),
+        ),
       ),
     );
   }

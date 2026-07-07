@@ -27,17 +27,39 @@ class StockPage extends StatelessWidget {
           children: [
             _buildHeader(context),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Obx(
-                () => Text(
-                  '${stockCtrl.categories.length} Categories Available',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+              child: Obx(() {
+                final totalItems = stockCtrl.inventoryCategoryCards.fold<int>(
+                  0,
+                  (sum, category) =>
+                      sum +
+                      ((category['itemCount'] ?? category['totalItems'] ?? 0)
+                              as num)
+                          .toInt(),
+                );
+
+                return Row(
+                  children: [
+                    Text(
+                      'Inventory Categories',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '$totalItems Items',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ),
             Expanded(
               child: Obx(() {
@@ -51,7 +73,7 @@ class StockPage extends StatelessWidget {
                   color: AppColors.primary,
                   backgroundColor: AppColors.cardBackground,
                   onRefresh: stockCtrl.fetchCategories,
-                  child: stockCtrl.categories.isEmpty
+                  child: stockCtrl.inventoryCategoryCards.isEmpty
                       ? ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 80, 16, 100),
@@ -81,26 +103,26 @@ class StockPage extends StatelessWidget {
                         )
                       : GridView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 108),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: 0.78,
+                                childAspectRatio: 184 / 229,
                               ),
-                          itemCount: stockCtrl.categories.length,
+                          itemCount: stockCtrl.inventoryCategoryCards.length,
                           itemBuilder: (context, i) => CategoryCard(
-                            category: stockCtrl.categories[i],
+                            category: stockCtrl.inventoryCategoryCards[i],
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => InventoryScreen(
-                                  initialCategoryId: stockCtrl.categories[i]
-                                      ['_id']
+                                  initialCategoryId: stockCtrl
+                                      .inventoryCategoryCards[i]['_id']
                                       ?.toString(),
-                                  initialCategoryName: stockCtrl.categories[i]
-                                      ['name']
+                                  initialCategoryName: stockCtrl
+                                      .inventoryCategoryCards[i]['name']
                                       ?.toString(),
                                 ),
                               ),
@@ -253,14 +275,14 @@ class StockPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          SizedBox(width: 40),
+          const SizedBox(width: 40),
           Expanded(
             child: Text(
               'Categories',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
             ),

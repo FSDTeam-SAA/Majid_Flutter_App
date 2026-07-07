@@ -22,43 +22,34 @@ class SignupScreenView extends StatelessWidget {
           SizedBox(height: 16),
           AuthBackButton(),
           SizedBox(height: 36),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Create Your ',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Text(
+                    'Create Your',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                  ImoscanTitle(width: 126, height: 32),
+                ],
+              ),
+              Text(
+                'Account',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
                 ),
-                TextSpan(
-                  text: 'Imo',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextSpan(
-                  text: 'scan',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextSpan(
-                  text: '\nAccount',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           SizedBox(height: 32),
           AppTextField(

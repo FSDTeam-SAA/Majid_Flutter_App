@@ -5,10 +5,12 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_outlined_button.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../widgets/dashed_divider.dart';
 
 class ReceiptPage extends StatefulWidget {
@@ -22,19 +24,55 @@ class ReceiptPage extends StatefulWidget {
 
 class _ReceiptPageState extends State<ReceiptPage> {
   bool _isGenerating = false;
+  late final ProfileController _profileCtrl;
+  String _profileShopName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _profileCtrl = Get.find<ProfileController>();
+    _profileShopName = _profileCtrl.shopName.trim();
+    if (_profileShopName.isEmpty) {
+      _primeProfileShopName();
+    }
+  }
 
   String get _orderId => widget.repair['_id']?.toString() ?? 'N/A';
   String get _deviceModel =>
       widget.repair['deviceModel']?.toString() ?? 'Unknown Device';
   String get _customerName {
+    final customerInfo = widget.repair['customerInfo'];
+    if (customerInfo is Map) {
+      final first = customerInfo['firstName']?.toString() ?? '';
+      final last = customerInfo['lastName']?.toString() ?? '';
+      final fullName = '$first $last'.trim();
+      if (fullName.isNotEmpty) return fullName;
+
+      final directName = customerInfo['name']?.toString().trim() ?? '';
+      if (directName.isNotEmpty) return directName;
+    }
+
+    final directCustomerName =
+        widget.repair['customerName']?.toString().trim() ?? '';
+    if (directCustomerName.isNotEmpty) return directCustomerName;
+
     final first = widget.repair['firstName']?.toString() ?? '';
     final last = widget.repair['lastName']?.toString() ?? '';
     final name = '$first $last'.trim();
-    return name.isEmpty ? 'Customer' : name;
+    if (name.isNotEmpty) return name;
+
+    final fallbackName = widget.repair['name']?.toString().trim() ?? '';
+    if (fallbackName.isNotEmpty) return fallbackName;
+
+    return 'Customer';
   }
 
-  String get _shopName =>
-      widget.repair['shopName']?.toString() ?? 'Your Shop';
+  String get _shopName {
+    final repairShopName = widget.repair['shopName']?.toString().trim() ?? '';
+    if (repairShopName.isNotEmpty) return repairShopName;
+    if (_profileShopName.isNotEmpty) return _profileShopName;
+    return 'Your Shop';
+  }
 
   double get _price =>
       (widget.repair['price'] as num?)?.toDouble() ?? 0;
@@ -71,7 +109,14 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return 'IMS-$short';
   }
 
-  String get _email => widget.repair['email']?.toString() ?? 'N/A';
+  String get _email {
+    final customerInfo = widget.repair['customerInfo'];
+    if (customerInfo is Map) {
+      final customerEmail = customerInfo['email']?.toString().trim() ?? '';
+      if (customerEmail.isNotEmpty) return customerEmail;
+    }
+    return widget.repair['email']?.toString() ?? 'N/A';
+  }
   String get _techFeedback => widget.repair['technicianFeedback']?.toString() ?? '';
 
   List<Map<String, String>> get _techNotes {
@@ -84,6 +129,14 @@ class _ReceiptPageState extends State<ReceiptPage> {
         'time': '${n['time']?.toString() ?? '-'}h',
       };
     }).toList();
+  }
+
+  Future<void> _primeProfileShopName() async {
+    await _profileCtrl.fetchProfile();
+    if (!mounted) return;
+    setState(() {
+      _profileShopName = _profileCtrl.shopName.trim();
+    });
   }
 
   Future<void> _generateAndSharePdf() async {

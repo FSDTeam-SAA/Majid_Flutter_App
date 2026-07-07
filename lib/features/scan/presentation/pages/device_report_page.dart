@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../../app_ground_view.dart';
-import '../../../../core/utils/colors.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_outlined_button.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../utils/device_certificate_pdf.dart';
@@ -22,74 +18,32 @@ class DeviceReportPage extends StatefulWidget {
 }
 
 class _DeviceReportPageState extends State<DeviceReportPage> {
-  final _searchController = TextEditingController();
-  String _searchQuery = '';
   bool _isGeneratingPdf = false;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final allFields = _buildDisplayFields();
-    final filtered = _searchQuery.isEmpty
-        ? allFields
-        : allFields.where((f) {
-            final q = _searchQuery;
-            return f.label.toLowerCase().contains(q) ||
-                f.value.toLowerCase().contains(q);
-          }).toList();
 
     return GradientScaffold(
       child: Column(
         children: [
           AppHeader(title: 'Device Report'),
-          // ── search bar (fixed) ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: _buildSearchBar(),
-          ),
-          // ── scrollable content ──
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                4,
-                16,
-                MediaQuery.paddingOf(context).bottom + 24,
-              ),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.paddingOf(context).bottom + 24),
               children: [
-                ..._buildFieldWidgets(filtered),
-                if (filtered.isEmpty && _searchQuery.isNotEmpty) ...[
-                  SizedBox(height: 32),
-                  Center(
-                    child: Text(
-                      'No fields match "$_searchQuery"',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 32),
-                ],
+                ..._buildFieldWidgets(allFields),
                 SizedBox(height: 12),
-                AiRiskCard(
-                  percentage: _riskScore,
-                  description: _riskDescription,
-                ),
+                AiRiskCard(percentage: _riskScore, description: _riskDescription),
                 SizedBox(height: 16),
-                AppButton(
+                /*  AppButton(
                   label: _isGeneratingPdf
                       ? 'Generating...'
                       : 'Download PDF Certificate',
                   onPressed: _isGeneratingPdf ? null : _generatePdf,
-                ),
+                ), */
                 SizedBox(height: 10),
-                AppOutlinedButton(
+                /*  AppOutlinedButton(
                   label: 'Create Smart Invoice',
                   onPressed: () => Navigator.pushReplacement(
                     context,
@@ -97,55 +51,12 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                       builder: (_) => AppGroundView(initialIndex: 4),
                     ),
                   ),
-                ),
+                ), */
                 SizedBox(height: 16),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      height: 46,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: AppColors.fieldBorder),
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (value) => setState(() {
-          _searchQuery = value.trim().toLowerCase();
-        }),
-        style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'Search fields...',
-          hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          prefixIcon: Icon(
-            Icons.search,
-            color: AppColors.textSecondary,
-            size: 20,
-          ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                  child: Icon(
-                    Icons.close,
-                    color: AppColors.textSecondary,
-                    size: 18,
-                  ),
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 12),
-          isDense: true,
-        ),
       ),
     );
   }
@@ -157,8 +68,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     try {
       final fields = _allFieldsForPdf;
       final deviceName = fields['DEVICE NAME'] ?? 'Unknown Device';
-      final imei =
-          widget.report['imei']?.toString() ?? fields['IMEI'] ?? '';
+      final imei = widget.report['imei']?.toString() ?? fields['IMEI'] ?? '';
 
       final file = await DeviceCertificatePdf.build(
         deviceName: deviceName,
@@ -171,9 +81,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       await Share.shareXFiles([XFile(file.path)]);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate PDF: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
     } finally {
       if (mounted) setState(() => _isGeneratingPdf = false);
     }
@@ -192,11 +100,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     final report = widget.report;
     final result = <String, String>{};
 
-    for (final key in [
-      'parsedProviderData',
-      'providerData',
-      'providerResults',
-    ]) {
+    for (final key in ['parsedProviderData', 'providerData', 'providerResults']) {
       final value = data[key];
       if (value is Map && value.isNotEmpty) {
         for (final entry in value.entries) {
@@ -289,42 +193,18 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     }
 
     // --- common fields for ALL devices ---
-    final deviceName = resolve([
-      'model',
-      'marketing_name',
-      'model_description',
-      'device_name',
-      'product',
-      'description',
-    ]);
+    final deviceName = resolve(['model', 'marketing_name', 'model_description', 'device_name', 'product', 'description']);
 
-    fields.add(_DisplayField(
-      'DEVICE NAME',
-      deviceName,
-      fullWidth: true,
-    ));
+    fields.add(_DisplayField('DEVICE NAME', deviceName, fullWidth: true));
 
-    fields.add(_DisplayField(
-      'SERIAL NUMBER',
-      resolve(['serial_number', 'serial', 'serialnumber']),
-      fullWidth: true,
-    ));
+    fields.add(_DisplayField('SERIAL NUMBER', resolve(['serial_number', 'serial', 'serialnumber']), fullWidth: true));
 
-    fields.add(_DisplayField(
-      'IMEI',
-      imei.isNotEmpty ? imei : resolve(['imei', 'imei_number']),
-    ));
+    fields.add(_DisplayField('IMEI', imei.isNotEmpty ? imei : resolve(['imei', 'imei_number'])));
     if (imei.isNotEmpty) usedKeys.addAll(['imei', 'imei_number']);
 
-    fields.add(_DisplayField(
-      'IMEI 2',
-      resolve(['imei2', 'imei2_number']),
-    ));
+    fields.add(_DisplayField('IMEI 2', resolve(['imei2', 'imei2_number'])));
 
-    fields.add(_DisplayField(
-      'MANUFACTURER',
-      resolve(['manufacturer', 'brand']),
-    ));
+    fields.add(_DisplayField('MANUFACTURER', resolve(['manufacturer', 'brand'])));
 
     fields.add(_DisplayField('MEID', resolve(['meid'])));
 
@@ -353,7 +233,10 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         _DisplayField('VALID PURCHASE DATE', resolve(['valid_purchase_date', 'validpurchasedate'])),
         _DisplayField('BLACKLIST STATUS', resolve(['blacklist_status', 'blackliststatus'])),
         _DisplayField('TECH SUPPORT', resolve(['telephone_technical_support'])),
-        _DisplayField('TECH SUPPORT EXPIRES', resolve(['telephone_technical_support_expiration_date', 'telephone_technical_support_expires_in'])),
+        _DisplayField(
+          'TECH SUPPORT EXPIRES',
+          resolve(['telephone_technical_support_expiration_date', 'telephone_technical_support_expires_in']),
+        ),
         _DisplayField('REPAIR COVERAGE EXPIRES', resolve(['repairs_and_service_expiration_date', 'repairs_and_service_expires_in'])),
       ]);
     } else if (cat == _DeviceCategory.samsung) {
@@ -385,8 +268,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     }
 
     // --- remaining provider keys not yet mapped ---
-    final remaining =
-        provider.entries.where((e) => !usedKeys.contains(e.key)).toList();
+    final remaining = provider.entries.where((e) => !usedKeys.contains(e.key)).toList();
 
     for (final entry in remaining) {
       fields.add(_DisplayField(_snakeToLabel(entry.key), entry.value));
@@ -411,12 +293,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
       if (i + 1 < fields.length && !fields[i + 1].fullWidth) {
         final next = fields[i + 1];
-        widgets.add(DeviceFieldRow(
-          leftLabel: field.label,
-          leftValue: field.value,
-          rightLabel: next.label,
-          rightValue: next.value,
-        ));
+        widgets.add(DeviceFieldRow(leftLabel: field.label, leftValue: field.value, rightLabel: next.label, rightValue: next.value));
         widgets.add(SizedBox(height: 10));
         i += 2;
       } else {
@@ -452,12 +329,8 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       }
     }
 
-    final blacklist =
-        (provider['blacklist_status'] ?? provider['blackliststatus'] ?? '')
-            .toLowerCase();
-    final icloud =
-        (provider['icloud_lock'] ?? provider['icloudlock'] ?? '')
-            .toLowerCase();
+    final blacklist = (provider['blacklist_status'] ?? provider['blackliststatus'] ?? '').toLowerCase();
+    final icloud = (provider['icloud_lock'] ?? provider['icloudlock'] ?? '').toLowerCase();
     if (blacklist.contains('clean') && icloud.contains('off')) return 0.96;
     if (blacklist.contains('clean')) return 0.85;
     if (blacklist.contains('blacklisted') || blacklist.contains('lost')) {
@@ -508,13 +381,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
   }
 
   static String _snakeToLabel(String key) {
-    return key
-        .replaceAll('_', ' ')
-        .replaceAllMapped(
-          RegExp(r'(^|\s)\w'),
-          (m) => m.group(0)!.toUpperCase(),
-        )
-        .toUpperCase();
+    return key.replaceAll('_', ' ').replaceAllMapped(RegExp(r'(^|\s)\w'), (m) => m.group(0)!.toUpperCase()).toUpperCase();
   }
 }
 

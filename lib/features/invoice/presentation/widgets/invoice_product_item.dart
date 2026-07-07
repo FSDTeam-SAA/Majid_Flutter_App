@@ -22,9 +22,24 @@ class InvoiceProductItem extends StatelessWidget {
         margin: EdgeInsets.only(bottom: 10),
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.cardBackground,
+          color: AppColors.isDark
+              ? AppColors.cardBackground
+              : Colors.white.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.fieldBorder),
+          border: Border.all(
+            color: AppColors.isDark
+                ? AppColors.fieldBorder
+                : const Color(0xFFE4E7EC),
+          ),
+          boxShadow: AppColors.isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF6BA0C8).withValues(alpha: 0.07),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
         ),
         child: Row(
           children: [
@@ -42,7 +57,7 @@ class InvoiceProductItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: isSelected
-                  ? Icon(Icons.check, color: Colors.black, size: 15)
+                  ? Icon(Icons.check, color: AppColors.surfaceForeground, size: 15)
                   : null,
             ),
             SizedBox(width: 12),

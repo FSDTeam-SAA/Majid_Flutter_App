@@ -104,7 +104,7 @@ class AiInsightsCard extends StatelessWidget {
     final categories = ctrl.totalCategories.value;
 
     if (inventory == 0 && sold == 0) {
-      return 'Get started by adding products to your inventory. Use the Stock tab to add your first device!';
+      return 'Get started by adding products to your inventory. Use the Checkout tab to add your first device!';
     }
 
     if (sold > 0 && inventory > 0) {

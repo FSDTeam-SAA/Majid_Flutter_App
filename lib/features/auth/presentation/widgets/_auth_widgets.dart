@@ -28,31 +28,25 @@ class AuthBackButton extends StatelessWidget {
 }
 
 class ImoscanTitle extends StatelessWidget {
-  const ImoscanTitle({super.key});
+  final double width;
+  final double height;
+  final Alignment alignment;
+
+  const ImoscanTitle({
+    super.key,
+    this.width = 170,
+    this.height = 44,
+    this.alignment = Alignment.centerLeft,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: 'Imo',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          TextSpan(
-            text: 'scan',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
+    return Image.asset(
+      'assets/icons/icon.png',
+      width: width,
+      height: height,
+      fit: BoxFit.contain,
+      alignment: alignment,
     );
   }
 }

@@ -1,12 +1,20 @@
 import 'dart:math' as math;
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../../app_ground_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
 import '../../../auth/presentation/pages/signup_screen_view.dart';
+import '../../../scan/presentation/controller/scan_data.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
+import '../../../scan/presentation/pages/device_report_page.dart';
+import '../../../scan/presentation/widgets/carrier_dropdown.dart';
+import '../../../scan/presentation/widgets/scan_search_bar.dart';
 
 class AiHomePreviewScreen extends StatefulWidget {
   const AiHomePreviewScreen({super.key});
@@ -16,19 +24,212 @@ class AiHomePreviewScreen extends StatefulWidget {
 }
 
 class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
+  static const _freeScanLimit = 2;
+  static const _scanCountKey = 'anonymous_free_scan_count';
+
   final AuthController _auth = Get.find<AuthController>();
+  late final ApiClient _api;
+  final _imeiController = TextEditingController();
   bool _hasStoredLogin = false;
+  bool _isScanning = false;
+  bool _isLoadingServices = false;
+  bool _isDropdownOpen = false;
+  List<ScanDropdownOption> _freeServices = [];
+  ScanDropdownOption? _selectedFreeService;
 
   @override
   void initState() {
     super.initState();
+    _api = ApiClient(baseUrl);
     _loadLoginState();
+    _loadFreeServices();
+  }
+
+  @override
+  void dispose() {
+    _imeiController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadLoginState() async {
     final isLoggedIn = await TokenManager.isLoggedIn();
     if (!mounted) return;
     setState(() => _hasStoredLogin = isLoggedIn);
+  }
+
+  Future<int> _getFreeScanCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_scanCountKey) ?? 0;
+  }
+
+  Future<void> _incrementFreeScanCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getInt(_scanCountKey) ?? 0;
+    await prefs.setInt(_scanCountKey, current + 1);
+  }
+
+  Future<void> _loadFreeServices() async {
+    if (_isLoadingServices) return;
+    setState(() => _isLoadingServices = true);
+    try {
+      final res = await _api.get(ImeiEndpoints.services);
+      final data = res.data['data'];
+      if (data is! List) return;
+      final options = <ScanDropdownOption>[];
+      for (final group in data) {
+        if (group is! Map) continue;
+        final groupServices = group['services'];
+        if (groupServices is! List) continue;
+        for (final service in groupServices) {
+          if (service is! Map) continue;
+          if (service['isFree'] != true) continue;
+          final id = (service['serviceId'] as num?)?.toInt();
+          final ids = service['serviceIds'];
+          final fallbackId = ids is List && ids.isNotEmpty ? (ids.first as num?)?.toInt() : null;
+          final serviceId = id ?? fallbackId;
+          if (serviceId == null || serviceId <= 0) continue;
+          options.add(ScanDropdownOption(
+            service['name']?.toString() ?? 'Free Check',
+            'Free',
+            serviceId: serviceId,
+          ));
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _freeServices = options;
+        if (options.isNotEmpty) {
+          _selectedFreeService = options.first;
+        }
+      });
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isLoadingServices = false);
+    }
+  }
+
+  Future<int?> _resolveFreeServiceId() async {
+    if (_selectedFreeService?.serviceId != null) return _selectedFreeService!.serviceId;
+    await _loadFreeServices();
+    return _selectedFreeService?.serviceId;
+  }
+
+  bool _isValidImei(String value) => RegExp(r'^\d{15}$').hasMatch(value);
+
+  Future<void> _showFreeLimitDialog() async {
+    await _showLoginPrompt(
+      title: 'Free Scan Limit Reached',
+      message: 'You\'ve used your $_freeScanLimit free scans. Login or create a free account to keep scanning.',
+    );
+  }
+
+  Future<void> _showLoginPrompt({required String title, required String message}) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+        content: Text(message, style: TextStyle(color: Colors.white70, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => SignupScreenView()));
+            },
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Color(0xFF8EFC7C))),
+            child: Text('Sign Up'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreenView()));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF8EFC7C), foregroundColor: Colors.black),
+            child: Text('Login'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openBarcodeScanner() async {
+    if (_isScanning) return;
+
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+
+    if (!mounted || scannedValue == null || scannedValue.trim().isEmpty) return;
+
+    final normalizedImei = scannedValue.trim().replaceAll(RegExp(r'\D'), '');
+    _imeiController.text = normalizedImei.isNotEmpty ? normalizedImei : scannedValue.trim();
+
+    if (_isValidImei(normalizedImei)) {
+      await _scanNow();
+    }
+  }
+
+  Future<void> _scanNow() async {
+    if (_isScanning) return;
+    final imei = _imeiController.text.replaceAll(RegExp(r'\D'), '');
+    if (!_isValidImei(imei)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid 15-digit IMEI number.')),
+      );
+      return;
+    }
+
+    final usedCount = await _getFreeScanCount();
+    if (usedCount >= _freeScanLimit) {
+      if (!mounted) return;
+      await _showFreeLimitDialog();
+      return;
+    }
+
+    setState(() => _isScanning = true);
+    try {
+      final serviceId = await _resolveFreeServiceId();
+      if (serviceId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No free service available right now. Please try again later.')),
+        );
+        return;
+      }
+
+      final res = await _api.post(ImeiEndpoints.checkV2, data: {'imei': imei, 'serviceId': serviceId});
+      final data = res.data['data'];
+      if (data is! List || data.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
+        return;
+      }
+      final first = data.first;
+      if (first is! Map || first['ok'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(first is Map ? first['message']?.toString() ?? 'Device data not found.' : 'Device data not found.')),
+        );
+        return;
+      }
+
+      await _incrementFreeScanCount();
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DeviceReportPage(report: Map<String, dynamic>.from(first))),
+      );
+    } on DioException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.response?.data?['message']?.toString() ?? 'Scan failed. Please try again.')),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
   }
 
   @override
@@ -135,101 +336,22 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.fieldBorder, width: 1),
-      ),
-      child: Row(
-        children: [
-          SizedBox(width: 14),
-          Icon(
-            Icons.search,
-            color: Colors.white.withValues(alpha: 0.4),
-            size: 20,
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Enter IMEI / Serial Number',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.all(6),
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Color(0xFF8EFC7C),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.qr_code_scanner, color: Colors.black, size: 20),
-          ),
-        ],
-      ),
+    return ScanSearchBar(
+      controller: _imeiController,
+      onScanTap: _isScanning ? null : _openBarcodeScanner,
     );
   }
 
   Widget _buildCarrierChip() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.fieldBorder, width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Color(0xFF8EFC7C),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              'FREE',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'iPhone Carrier Check',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  '8 verification types available',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.keyboard_arrow_down,
-            color: Colors.white.withValues(alpha: 0.5),
-            size: 20,
-          ),
-        ],
-      ),
+    return CarrierDropdown(
+      isOpen: _isDropdownOpen,
+      options: _freeServices,
+      selected: _selectedFreeService,
+      onToggle: () => setState(() => _isDropdownOpen = !_isDropdownOpen),
+      onSelect: (option) => setState(() {
+        _selectedFreeService = option;
+        _isDropdownOpen = false;
+      }),
     );
   }
 
@@ -238,16 +360,19 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: () => Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => AppGroundView(initialIndex: 2)),
-        ),
+        onPressed: _isScanning ? null : _scanNow,
         style: ElevatedButton.styleFrom(
           backgroundColor: Color(0xFF8EFC7C),
           shape: StadiumBorder(),
           elevation: 0,
         ),
-        child: Text(
+        child: _isScanning
+            ? SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+              )
+            : Text(
           'Scan Now',
           style: TextStyle(
             color: Colors.black,
@@ -566,7 +691,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       _BizCard(
         asset: 'assets/built/inventorydark.png',
         title: 'Inventory',
-        subtitle: 'Track stock in real time',
+        subtitle: 'Track checkout in real time',
         gradient: LinearGradient(
           colors: [AppColors.fieldBackground, Color(0xFF143520)],
         ),
