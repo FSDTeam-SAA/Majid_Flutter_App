@@ -7,12 +7,14 @@ import 'package:pdf/widgets.dart' as pw;
 class InvoicePdfItem {
   final String name;
   final String code;
+  final String imeiSerial;
   final int quantity;
   final double unitPrice;
 
   const InvoicePdfItem({
     required this.name,
     required this.code,
+    this.imeiSerial = '',
     required this.quantity,
     required this.unitPrice,
   });
@@ -215,13 +217,14 @@ class InvoicePdfBuilder {
   static pw.Widget _buildItemsTable(List<InvoicePdfItem> items) {
     final rows = items.isEmpty
         ? [
-            ['No items selected', '-', '0', _formatCurrency(0), _formatCurrency(0)],
+            ['No items selected', '-', '-', '0', _formatCurrency(0), _formatCurrency(0)],
           ]
         : items
               .map(
                 (item) => [
                   item.name,
                   item.code.isEmpty ? '-' : item.code,
+                  item.imeiSerial.isEmpty ? '-' : item.imeiSerial,
                   '${item.quantity}',
                   _formatCurrency(item.unitPrice),
                   _formatCurrency(item.lineTotal),
@@ -237,7 +240,7 @@ class InvoicePdfBuilder {
         fontWeight: pw.FontWeight.bold,
       ),
       cellStyle: const pw.TextStyle(fontSize: 10),
-      headers: const ['Item', 'Code', 'Qty', 'Unit Price', 'Total'],
+      headers: const ['Item', 'Code', 'IMEI/Serial', 'Qty', 'Unit Price', 'Total'],
       data: rows,
     );
   }

@@ -239,7 +239,15 @@ class _InvoicePageState extends State<InvoicePage> {
         customerAddress: _addressCtrl.text.trim(),
         paymentType: paymentType,
         items: selectedProducts
-            .map((product) => InvoicePdfItem(name: product.name, code: product.code, quantity: 1, unitPrice: product.price))
+            .map(
+              (product) => InvoicePdfItem(
+                name: product.name,
+                code: product.code,
+                imeiSerial: product.imeiSerial,
+                quantity: 1,
+                unitPrice: product.price,
+              ),
+            )
             .toList(),
         totalAmount: _totalAmount,
         footerNote: 'Generated from iMoScan invoice flow.',
@@ -315,6 +323,7 @@ class _InvoicePageState extends State<InvoicePage> {
       id: item['_id']?.toString() ?? '',
       name: item['itemName']?.toString() ?? item['brand']?.toString() ?? 'Inventory item',
       code: item['sku']?.toString() ?? item['imeiNumber']?.toString() ?? 'N/A',
+      imeiSerial: item['imeiNumber']?.toString() ?? item['serialNumber']?.toString() ?? '',
       price: price,
       color: AppColors.primary,
       category: _categoryFromJson(item),

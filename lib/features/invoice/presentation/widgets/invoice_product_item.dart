@@ -91,6 +91,16 @@ class InvoiceProductItem extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
+                  if (product.imeiSerial.isNotEmpty) ...[
+                    SizedBox(height: 2),
+                    Text(
+                      'IMEI/Serial: ${product.imeiSerial}',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -4,6 +4,7 @@ class InvoiceProduct {
   final String id;
   final String name;
   final String code;
+  final String imeiSerial;
   final double price;
   final Color color;
   final String category;
@@ -11,6 +12,7 @@ class InvoiceProduct {
     this.id = '',
     required this.name,
     required this.code,
+    this.imeiSerial = '',
     required this.price,
     required this.color,
     this.category = '',

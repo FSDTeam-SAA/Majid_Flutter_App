@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../app_ground_view.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../utils/device_certificate_pdf.dart';
 import '../widgets/ai_risk_card.dart';
 import '../widgets/device_field_card.dart';
+
+const _kSmartActionsGreen = Color(0xFF22C55E);
 
 enum _DeviceCategory { apple, samsung, android, other }
 
@@ -30,28 +33,121 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           AppHeader(title: 'Device Report'),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.paddingOf(context).bottom + 24),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                MediaQuery.paddingOf(context).bottom + 24,
+              ),
               children: [
                 ..._buildFieldWidgets(allFields),
                 SizedBox(height: 12),
-                AiRiskCard(percentage: _riskScore, description: _riskDescription),
+                AiRiskCard(
+                  percentage: _riskScore,
+                  description: _riskDescription,
+                  riskLabel: _riskLabel,
+                ),
                 SizedBox(height: 16),
-                /*  AppButton(
-                  label: _isGeneratingPdf
-                      ? 'Generating...'
-                      : 'Download PDF Certificate',
-                  onPressed: _isGeneratingPdf ? null : _generatePdf,
-                ), */
-                SizedBox(height: 10),
-                /*  AppOutlinedButton(
-                  label: 'Create Smart Invoice',
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AppGroundView(initialIndex: 4),
-                    ),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AppGroundView(initialIndex: 4),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: _kSmartActionsGreen,
+                              width: 1.5,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.description_outlined,
+                                size: 18,
+                                color: _kSmartActionsGreen,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Create Smart Invoice',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _kSmartActionsGreen,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isGeneratingPdf ? null : _generatePdf,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kSmartActionsGreen,
+                            disabledBackgroundColor: _kSmartActionsGreen
+                                .withValues(alpha: 0.5),
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _isGeneratingPdf
+                                  ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.file_download_outlined,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                              SizedBox(height: 4),
+                              Text(
+                                _isGeneratingPdf
+                                    ? 'Generating...'
+                                    : 'Download PDF Certificate',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ), */
+                ),
                 SizedBox(height: 16),
               ],
             ),
@@ -81,7 +177,9 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       await Share.shareXFiles([XFile(file.path)]);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
     } finally {
       if (mounted) setState(() => _isGeneratingPdf = false);
     }
@@ -100,7 +198,11 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     final report = widget.report;
     final result = <String, String>{};
 
-    for (final key in ['parsedProviderData', 'providerData', 'providerResults']) {
+    for (final key in [
+      'parsedProviderData',
+      'providerData',
+      'providerResults',
+    ]) {
       final value = data[key];
       if (value is Map && value.isNotEmpty) {
         for (final entry in value.entries) {
@@ -115,13 +217,18 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     }
 
     if (result.isEmpty) {
-      final deviceName = report['deviceName']?.toString() ?? data['deviceName']?.toString();
-      if (deviceName != null && deviceName.isNotEmpty && deviceName != 'Unknown Device') {
+      final deviceName =
+          report['deviceName']?.toString() ?? data['deviceName']?.toString();
+      if (deviceName != null &&
+          deviceName.isNotEmpty &&
+          deviceName != 'Unknown Device') {
         result['device_name'] = deviceName;
       }
       final imei = report['imei']?.toString() ?? data['imei']?.toString();
       if (imei != null && imei.isNotEmpty) result['imei'] = imei;
-      final status = report['deviceStatus']?.toString() ?? data['deviceStatus']?.toString();
+      final status =
+          report['deviceStatus']?.toString() ??
+          data['deviceStatus']?.toString();
       if (status != null && status.isNotEmpty && status != 'unknown') {
         result['device_status'] = status;
       }
@@ -193,18 +300,38 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     }
 
     // --- common fields for ALL devices ---
-    final deviceName = resolve(['model', 'marketing_name', 'model_description', 'device_name', 'product', 'description']);
+    final deviceName = resolve([
+      'model',
+      'marketing_name',
+      'model_description',
+      'device_name',
+      'product',
+      'description',
+    ]);
 
     fields.add(_DisplayField('DEVICE NAME', deviceName, fullWidth: true));
 
-    fields.add(_DisplayField('SERIAL NUMBER', resolve(['serial_number', 'serial', 'serialnumber']), fullWidth: true));
+    fields.add(
+      _DisplayField(
+        'SERIAL NUMBER',
+        resolve(['serial_number', 'serial', 'serialnumber']),
+        fullWidth: true,
+      ),
+    );
 
-    fields.add(_DisplayField('IMEI', imei.isNotEmpty ? imei : resolve(['imei', 'imei_number'])));
+    fields.add(
+      _DisplayField(
+        'IMEI',
+        imei.isNotEmpty ? imei : resolve(['imei', 'imei_number']),
+      ),
+    );
     if (imei.isNotEmpty) usedKeys.addAll(['imei', 'imei_number']);
 
     fields.add(_DisplayField('IMEI 2', resolve(['imei2', 'imei2_number'])));
 
-    fields.add(_DisplayField('MANUFACTURER', resolve(['manufacturer', 'brand'])));
+    fields.add(
+      _DisplayField('MANUFACTURER', resolve(['manufacturer', 'brand'])),
+    );
 
     fields.add(_DisplayField('MEID', resolve(['meid'])));
 
@@ -213,62 +340,199 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
     if (cat == _DeviceCategory.apple) {
       fields.addAll([
-        _DisplayField('FIND MY IPHONE', resolve(['find_my_iphone', 'fmi', 'fmi_status', 'findmyiphone'])),
-        _DisplayField('ICLOUD STATUS', resolve(['icloud_status', 'icloudstatus'])),
+        _DisplayField(
+          'FIND MY IPHONE',
+          resolve(['find_my_iphone', 'fmi', 'fmi_status', 'findmyiphone']),
+        ),
+        _DisplayField(
+          'ICLOUD STATUS',
+          resolve(['icloud_status', 'icloudstatus']),
+        ),
         _DisplayField('ICLOUD LOCK', resolve(['icloud_lock', 'icloudlock'])),
-        _DisplayField('ACTIVATION STATUS', resolve(['activation_status', 'activationstatus', 'activation_policy', 'activationpolicy'])),
-        _DisplayField('SIM LOCK', resolve(['simlock', 'sim_lock', 'simlock_status', 'sim_lock_status'])),
-        _DisplayField('LOCKED CARRIER', resolve(['locked_carrier', 'lockedcarrier', 'carrier'])),
-        _DisplayField('WARRANTY STATUS', resolve(['warranty_status', 'warrantystatus', 'warranty'])),
-        _DisplayField('LIMITED WARRANTY', resolve(['limited_warranty', 'limitedwarranty'])),
-        _DisplayField('APPLECARE ELIGIBLE', resolve(['applecare_eligible', 'applecareeligible'])),
-        _DisplayField('PURCHASE DATE', resolve(['purchase_date', 'purchasedate', 'estimated_purchase_date'])),
-        _DisplayField('COVERAGE START', resolve(['coverage_start', 'coveragestart', 'repairs_and_service_coverage'])),
-        _DisplayField('REPLACED DEVICE', resolve(['replaced_device', 'replaceddevice', 'replaced'])),
-        _DisplayField('REPLACEMENT DEVICE', resolve(['replacement_device', 'replacementdevice'])),
-        _DisplayField('REFURBISHED DEVICE', resolve(['refurbished_device', 'refurbisheddevice'])),
+        _DisplayField(
+          'ACTIVATION STATUS',
+          resolve([
+            'activation_status',
+            'activationstatus',
+            'activation_policy',
+            'activationpolicy',
+          ]),
+        ),
+        _DisplayField(
+          'SIM LOCK',
+          resolve(['simlock', 'sim_lock', 'simlock_status', 'sim_lock_status']),
+        ),
+        _DisplayField(
+          'LOCKED CARRIER',
+          resolve(['locked_carrier', 'lockedcarrier', 'carrier']),
+        ),
+        _DisplayField(
+          'WARRANTY STATUS',
+          resolve(['warranty_status', 'warrantystatus', 'warranty']),
+        ),
+        _DisplayField(
+          'LIMITED WARRANTY',
+          resolve(['limited_warranty', 'limitedwarranty']),
+        ),
+        _DisplayField(
+          'APPLECARE ELIGIBLE',
+          resolve(['applecare_eligible', 'applecareeligible']),
+        ),
+        _DisplayField(
+          'PURCHASE DATE',
+          resolve(['purchase_date', 'purchasedate', 'estimated_purchase_date']),
+        ),
+        _DisplayField(
+          'COVERAGE START',
+          resolve([
+            'coverage_start',
+            'coveragestart',
+            'repairs_and_service_coverage',
+          ]),
+        ),
+        _DisplayField(
+          'REPLACED DEVICE',
+          resolve(['replaced_device', 'replaceddevice', 'replaced']),
+        ),
+        _DisplayField(
+          'REPLACEMENT DEVICE',
+          resolve(['replacement_device', 'replacementdevice']),
+        ),
+        _DisplayField(
+          'REFURBISHED DEVICE',
+          resolve(['refurbished_device', 'refurbisheddevice']),
+        ),
         _DisplayField('DEMO UNIT', resolve(['demo_unit', 'demounit'])),
-        _DisplayField('LOANER DEVICE', resolve(['loaner_device', 'loanerdevice'])),
-        _DisplayField('REGISTRATION STATUS', resolve(['registration_status', 'registrationstatus'])),
-        _DisplayField('VALID PURCHASE DATE', resolve(['valid_purchase_date', 'validpurchasedate'])),
-        _DisplayField('BLACKLIST STATUS', resolve(['blacklist_status', 'blackliststatus'])),
+        _DisplayField(
+          'LOANER DEVICE',
+          resolve(['loaner_device', 'loanerdevice']),
+        ),
+        _DisplayField(
+          'REGISTRATION STATUS',
+          resolve(['registration_status', 'registrationstatus']),
+        ),
+        _DisplayField(
+          'VALID PURCHASE DATE',
+          resolve(['valid_purchase_date', 'validpurchasedate']),
+        ),
+        _DisplayField(
+          'BLACKLIST STATUS',
+          resolve(['blacklist_status', 'blackliststatus']),
+        ),
         _DisplayField('TECH SUPPORT', resolve(['telephone_technical_support'])),
         _DisplayField(
           'TECH SUPPORT EXPIRES',
-          resolve(['telephone_technical_support_expiration_date', 'telephone_technical_support_expires_in']),
+          resolve([
+            'telephone_technical_support_expiration_date',
+            'telephone_technical_support_expires_in',
+          ]),
         ),
-        _DisplayField('REPAIR COVERAGE EXPIRES', resolve(['repairs_and_service_expiration_date', 'repairs_and_service_expires_in'])),
+        _DisplayField(
+          'REPAIR COVERAGE EXPIRES',
+          resolve([
+            'repairs_and_service_expiration_date',
+            'repairs_and_service_expires_in',
+          ]),
+        ),
       ]);
     } else if (cat == _DeviceCategory.samsung) {
       fields.addAll([
-        _DisplayField('KNOX GUARD', resolve(['knox_guard', 'knoxguard', 'knox_status'])),
-        _DisplayField('SIM LOCK', resolve(['simlock', 'sim_lock', 'simlock_status', 'sim_lock_status', 'network_lock'])),
-        _DisplayField('CARRIER', resolve(['carrier', 'locked_carrier', 'lockedcarrier', 'network'])),
-        _DisplayField('WARRANTY STATUS', resolve(['warranty_status', 'warrantystatus', 'warranty'])),
-        _DisplayField('PURCHASE DATE', resolve(['purchase_date', 'purchasedate'])),
-        _DisplayField('BLACKLIST STATUS', resolve(['blacklist_status', 'blackliststatus'])),
-        _DisplayField('MDM STATUS', resolve(['mdm_lock', 'mdmlock', 'mdm_status'])),
-        _DisplayField('OPERATING SYSTEM', resolve(['operating_system', 'operatingsystem', 'os'])),
+        _DisplayField(
+          'KNOX GUARD',
+          resolve(['knox_guard', 'knoxguard', 'knox_status']),
+        ),
+        _DisplayField(
+          'SIM LOCK',
+          resolve([
+            'simlock',
+            'sim_lock',
+            'simlock_status',
+            'sim_lock_status',
+            'network_lock',
+          ]),
+        ),
+        _DisplayField(
+          'CARRIER',
+          resolve(['carrier', 'locked_carrier', 'lockedcarrier', 'network']),
+        ),
+        _DisplayField(
+          'WARRANTY STATUS',
+          resolve(['warranty_status', 'warrantystatus', 'warranty']),
+        ),
+        _DisplayField(
+          'PURCHASE DATE',
+          resolve(['purchase_date', 'purchasedate']),
+        ),
+        _DisplayField(
+          'BLACKLIST STATUS',
+          resolve(['blacklist_status', 'blackliststatus']),
+        ),
+        _DisplayField(
+          'MDM STATUS',
+          resolve(['mdm_lock', 'mdmlock', 'mdm_status']),
+        ),
+        _DisplayField(
+          'OPERATING SYSTEM',
+          resolve(['operating_system', 'operatingsystem', 'os']),
+        ),
         _DisplayField('COUNTRY', resolve(['country', 'purchase_country'])),
-        _DisplayField('REPLACED DEVICE', resolve(['replaced_device', 'replaceddevice', 'replaced'])),
+        _DisplayField(
+          'REPLACED DEVICE',
+          resolve(['replaced_device', 'replaceddevice', 'replaced']),
+        ),
       ]);
     } else {
       fields.addAll([
-        _DisplayField('SIM LOCK', resolve(['simlock', 'sim_lock', 'simlock_status', 'sim_lock_status', 'network_lock'])),
-        _DisplayField('CARRIER', resolve(['carrier', 'locked_carrier', 'lockedcarrier', 'network'])),
-        _DisplayField('WARRANTY STATUS', resolve(['warranty_status', 'warrantystatus', 'warranty'])),
-        _DisplayField('PURCHASE DATE', resolve(['purchase_date', 'purchasedate'])),
-        _DisplayField('BLACKLIST STATUS', resolve(['blacklist_status', 'blackliststatus'])),
-        _DisplayField('MDM STATUS', resolve(['mdm_lock', 'mdmlock', 'mdm_status'])),
-        _DisplayField('OPERATING SYSTEM', resolve(['operating_system', 'operatingsystem', 'os'])),
-        _DisplayField('ACTIVATION STATUS', resolve(['activation_status', 'activationstatus'])),
+        _DisplayField(
+          'SIM LOCK',
+          resolve([
+            'simlock',
+            'sim_lock',
+            'simlock_status',
+            'sim_lock_status',
+            'network_lock',
+          ]),
+        ),
+        _DisplayField(
+          'CARRIER',
+          resolve(['carrier', 'locked_carrier', 'lockedcarrier', 'network']),
+        ),
+        _DisplayField(
+          'WARRANTY STATUS',
+          resolve(['warranty_status', 'warrantystatus', 'warranty']),
+        ),
+        _DisplayField(
+          'PURCHASE DATE',
+          resolve(['purchase_date', 'purchasedate']),
+        ),
+        _DisplayField(
+          'BLACKLIST STATUS',
+          resolve(['blacklist_status', 'blackliststatus']),
+        ),
+        _DisplayField(
+          'MDM STATUS',
+          resolve(['mdm_lock', 'mdmlock', 'mdm_status']),
+        ),
+        _DisplayField(
+          'OPERATING SYSTEM',
+          resolve(['operating_system', 'operatingsystem', 'os']),
+        ),
+        _DisplayField(
+          'ACTIVATION STATUS',
+          resolve(['activation_status', 'activationstatus']),
+        ),
         _DisplayField('COUNTRY', resolve(['country', 'purchase_country'])),
-        _DisplayField('REPLACED DEVICE', resolve(['replaced_device', 'replaceddevice', 'replaced'])),
+        _DisplayField(
+          'REPLACED DEVICE',
+          resolve(['replaced_device', 'replaceddevice', 'replaced']),
+        ),
       ]);
     }
 
     // --- remaining provider keys not yet mapped ---
-    final remaining = provider.entries.where((e) => !usedKeys.contains(e.key)).toList();
+    final remaining = provider.entries
+        .where((e) => !usedKeys.contains(e.key))
+        .toList();
 
     for (final entry in remaining) {
       fields.add(_DisplayField(_snakeToLabel(entry.key), entry.value));
@@ -293,7 +557,14 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
       if (i + 1 < fields.length && !fields[i + 1].fullWidth) {
         final next = fields[i + 1];
-        widgets.add(DeviceFieldRow(leftLabel: field.label, leftValue: field.value, rightLabel: next.label, rightValue: next.value));
+        widgets.add(
+          DeviceFieldRow(
+            leftLabel: field.label,
+            leftValue: field.value,
+            rightLabel: next.label,
+            rightValue: next.value,
+          ),
+        );
         widgets.add(SizedBox(height: 10));
         i += 2;
       } else {
@@ -329,14 +600,35 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       }
     }
 
-    final blacklist = (provider['blacklist_status'] ?? provider['blackliststatus'] ?? '').toLowerCase();
-    final icloud = (provider['icloud_lock'] ?? provider['icloudlock'] ?? '').toLowerCase();
+    final blacklist =
+        (provider['blacklist_status'] ?? provider['blackliststatus'] ?? '')
+            .toLowerCase();
+    final icloud = (provider['icloud_lock'] ?? provider['icloudlock'] ?? '')
+        .toLowerCase();
     if (blacklist.contains('clean') && icloud.contains('off')) return 0.96;
     if (blacklist.contains('clean')) return 0.85;
     if (blacklist.contains('blacklisted') || blacklist.contains('lost')) {
       return 0.15;
     }
     return 0.70;
+  }
+
+  String get _riskLabel {
+    final data = _data;
+
+    final riskMeter = data['riskMeter'] ?? data['riskAnalysis'];
+    if (riskMeter is Map) {
+      final label = riskMeter['label']?.toString().trim();
+      if (label != null && label.isNotEmpty) return label;
+    }
+
+    final provider = _providerFields;
+    final label = provider['risk_level'];
+    if (label != null && label.isNotEmpty) return label;
+
+    if (_riskScore >= 0.8) return 'Low Risk';
+    if (_riskScore >= 0.5) return 'Medium Risk';
+    return 'High Risk';
   }
 
   String get _riskDescription {
@@ -381,7 +673,10 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
   }
 
   static String _snakeToLabel(String key) {
-    return key.replaceAll('_', ' ').replaceAllMapped(RegExp(r'(^|\s)\w'), (m) => m.group(0)!.toUpperCase()).toUpperCase();
+    return key
+        .replaceAll('_', ' ')
+        .replaceAllMapped(RegExp(r'(^|\s)\w'), (m) => m.group(0)!.toUpperCase())
+        .toUpperCase();
   }
 }
 
