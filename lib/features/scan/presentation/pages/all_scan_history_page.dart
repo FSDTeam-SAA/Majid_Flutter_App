@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../controller/scan_data.dart';
@@ -106,14 +108,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppColors.primary),
-              const SizedBox(height: 16),
-              Text('Loading report...', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-            ],
-          ),
+          child: const AppLoadingIndicator(label: 'Loading report...'),
         ),
       ),
     );
@@ -155,7 +150,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(child: AppLoadingIndicator(label: 'Loading scans...'));
     }
 
     if (_errorMessage.isNotEmpty) {
@@ -169,12 +164,12 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
                 _errorMessage,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
-              ),
+              ).entrance(enableScale: false),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: _fetchScans,
                 child: const Text('Retry'),
-              ),
+              ).entrance(index: 1),
             ],
           ),
         ),
@@ -192,7 +187,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
           Text(
             '${_scans.length} Records',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
+          ).entrance(enableScale: false),
           const SizedBox(height: 14),
           if (_scans.isEmpty)
             Center(
@@ -201,15 +196,15 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
                 child: Text(
                   'No scans yet',
                   style: TextStyle(color: AppColors.textSecondary),
-                ),
+                ).entrance(index: 1, enableScale: false),
               ),
             )
           else
-            ..._scans.map(
-              (item) => ScanItemCard(
-                item: item,
-                onTap: () => _openScan(item),
-              ),
+            ..._scans.indexed.map(
+              (entry) => ScanItemCard(
+                item: entry.$2,
+                onTap: () => _openScan(entry.$2),
+              ).entrance(index: entry.$1, begin: const Offset(0, 0.05)),
             ),
         ],
       ),

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/animation/app_entrance.dart';
+import '../../../../core/animation/app_motion.dart';
+import '../../../../core/animation/pressable_scale.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 
@@ -7,20 +11,22 @@ class AuthBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.fieldBorder),
-          borderRadius: BorderRadius.circular(10),
-          color: AppColors.fieldBackground,
-        ),
-        child: Icon(
-          Icons.arrow_back_ios_new,
-          color: AppColors.textPrimary,
-          size: 16,
+    return PressableScale(
+      child: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.fieldBorder),
+            borderRadius: BorderRadius.circular(10),
+            color: AppColors.fieldBackground,
+          ),
+          child: Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.textPrimary,
+            size: 16,
+          ),
         ),
       ),
     );
@@ -65,24 +71,27 @@ class AuthLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: text,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            ),
-            TextSpan(
-              text: linkText,
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+    return PressableScale(
+      pressedScale: 0.98,
+      child: GestureDetector(
+        onTap: onTap,
+        child: RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: text,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
-            ),
-          ],
+              TextSpan(
+                text: linkText,
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -106,8 +115,11 @@ class AuthPageScaffold extends StatelessWidget {
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: IntrinsicHeight(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
-                  child: child,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: child.entrance(
+                    duration: AppMotion.slow,
+                    begin: const Offset(0, 0.035),
+                  ),
                 ),
               ),
             ),

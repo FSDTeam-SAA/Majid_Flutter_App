@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../supplier/presentation/pages/supplier_page.dart';
 import '../controller/stock_controller.dart';
 import '../widgets/category_card.dart';
 import 'add_new_device_page.dart';
@@ -226,6 +227,14 @@ class StockPage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => InventoryScreen()),
+                      );
+                    }),
+                    const SizedBox(height: 10),
+                    _buildMenuOption(context, 'Suppliers', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SupplierPage()),
                       );
                     }),
                   ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import 'core/animation/app_motion.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
@@ -59,7 +60,37 @@ class _AppGroundViewState extends State<AppGroundView> {
           backgroundColor: AppColors.background,
           body: Stack(
             children: [
-              Positioned.fill(child: pages[_selectedIndex]),
+              Positioned.fill(
+                child: AnimatedSwitcher(
+                  duration: AppMotion.standard,
+                  reverseDuration: AppMotion.quick,
+                  switchInCurve: AppMotion.easeOutCubic,
+                  switchOutCurve: AppMotion.easeInOut,
+                  transitionBuilder: (child, animation) {
+                    final slideAnimation = Tween<Offset>(
+                      begin: const Offset(0.04, 0),
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: AppMotion.easeOutCubic,
+                      ),
+                    );
+
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: slideAnimation,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(_selectedIndex),
+                    child: pages[_selectedIndex],
+                  ),
+                ),
+              ),
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,

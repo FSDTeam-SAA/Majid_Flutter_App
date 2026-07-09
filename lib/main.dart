@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'core/animation/app_motion.dart';
+import 'core/animation/app_page_transition.dart';
 import 'core/network/api_service/token_meneger.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
@@ -34,12 +36,15 @@ class MyApp extends StatelessWidget {
       return GetMaterialApp(
         title: 'iMoScan',
         debugShowCheckedModeBanner: false,
+        transitionDuration: AppMotion.route,
+        customTransition: AppPageTransitions.getx,
         theme: ThemeData(
           scaffoldBackgroundColor: AppColors.background,
           colorScheme: ColorScheme.fromSeed(
             seedColor: palette.primaryColor,
             brightness: palette.brightness,
           ),
+          pageTransitionsTheme: AppPageTransitions.theme,
         ),
         home: const SplashScreenView(),
       );

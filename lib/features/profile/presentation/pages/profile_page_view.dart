@@ -13,6 +13,7 @@ import 'edit_profile_page.dart';
 import 'payment_history_page.dart';
 import 'shopkeeper_id_card_page.dart';
 import 'upgrade_plan_page.dart';
+import '../../../staff/presentation/pages/staff_page.dart';
 
 class ProfilePageView extends StatefulWidget {
   const ProfilePageView({super.key});
@@ -180,6 +181,13 @@ class _ProfilePageViewState extends State<ProfilePageView>
                               MaterialPageRoute(
                                 builder: (_) => BusinessHealthScorePage(),
                               ),
+                            ),
+                          ),
+                          (
+                            'Staff Management',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => StaffPage()),
                             ),
                           ),
                         ], palette),

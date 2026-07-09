@@ -204,6 +204,20 @@ class ProfileController extends GetxController {
     }
   }
 
+  Future<Map<String, dynamic>> createPayment({
+    required double amount,
+    String? subscriptionId,
+  }) async {
+    final res = await _api.post(
+      PaymentEndpoints.createPayment,
+      data: {
+        'amount': amount,
+        if (subscriptionId != null && subscriptionId.isNotEmpty) 'subscriptionId': subscriptionId,
+      },
+    );
+    return Map<String, dynamic>.from(res.data['data']);
+  }
+
   Future<void> fetchBusinessHealthData() async {
     try {
       final results = await Future.wait([

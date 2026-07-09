@@ -25,6 +25,8 @@ class UserEndpoints {
   static String myProfile = "$baseApiUrl/user/my-profile";
   static String updateProfile = "$baseApiUrl/user/update-profile";
   static String balanceHistory = "$baseApiUrl/user/balance-history";
+  static String staffByShopkeeper(String shopkeeperId) => "$baseApiUrl/user/staff/$shopkeeperId";
+  static String deleteUser(String userId) => "$baseApiUrl/user/delete-user/$userId";
 }
 
 class ImeiEndpoints {
@@ -52,6 +54,12 @@ class InventoryEndpoints {
   static String byStatus(String status) => "$baseApiUrl/inventory/status/$status";
 }
 
+class SupplierEndpoints {
+  static String create = "$baseApiUrl/suppliers/create";
+  static String all = "$baseApiUrl/suppliers";
+  static String byId(String id) => "$baseApiUrl/suppliers/$id";
+}
+
 class CategoryEndpoints {
   static String create = "$baseApiUrl/category";
   static String all = "$baseApiUrl/category";
@@ -66,6 +74,7 @@ class RepairRequestEndpoints {
   static String myHistory = "$baseApiUrl/repair-requests/my-history";
   static String byId(String id) => "$baseApiUrl/repair-requests/$id";
   static String updateStatus(String id) => "$baseApiUrl/repair-requests/update-status/$id";
+  static String reassign(String id) => "$baseApiUrl/repair-requests/reassign/$id";
   static String addNote(String id) => "$baseApiUrl/repair-requests/add-note/$id";
   static String technicianNote(String id) => "$baseApiUrl/repair-requests/tech-note/$id";
   static String technicianFeedback(String id) => "$baseApiUrl/repair-requests/technician-feedback/$id";

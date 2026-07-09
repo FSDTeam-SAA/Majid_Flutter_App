@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:image_picker/image_picker.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
@@ -60,6 +63,24 @@ class _InvoicePageState extends State<InvoicePage> {
   final _pCustomerNameCtrl = TextEditingController();
   final List<_PurchaseItem> _purchaseItems = [_PurchaseItem()];
   bool _isSendingPurchase = false;
+  File? _nidFrontImage;
+  File? _nidBackImage;
+  bool _isExtractingNid = false;
+
+  // Delivery Invoice
+  final _dFirstNameCtrl = TextEditingController();
+  final _dLastNameCtrl = TextEditingController();
+  final _dEmailCtrl = TextEditingController();
+  final _dPhoneCtrl = TextEditingController();
+  final _dAddressCtrl = TextEditingController();
+  final List<_PurchaseItem> _deliveryItems = [_PurchaseItem()];
+  bool _isSendingDelivery = false;
+
+  // View Invoices
+  bool _isViewInvoicesLoaded = false;
+  bool _isViewInvoicesLoading = false;
+  String _viewInvoicesError = '';
+  List<Map<String, dynamic>> _viewInvoices = [];
 
   double get _totalAmount =>
       _products.where((product) => _selectedProductIds.contains(product.id)).fold(0, (sum, product) => sum + product.price);
@@ -108,6 +129,14 @@ class _InvoicePageState extends State<InvoicePage> {
     _pIdNumberCtrl.dispose();
     _pCustomerNameCtrl.dispose();
     for (final item in _purchaseItems) {
+      item.dispose();
+    }
+    _dFirstNameCtrl.dispose();
+    _dLastNameCtrl.dispose();
+    _dEmailCtrl.dispose();
+    _dPhoneCtrl.dispose();
+    _dAddressCtrl.dispose();
+    for (final item in _deliveryItems) {
       item.dispose();
     }
     super.dispose();
@@ -353,22 +382,49 @@ class _InvoicePageState extends State<InvoicePage> {
     return 'Uncategorized';
   }
 
-  Future<void> _showInvoiceList() async {
-    var shopkeeperId = _profileCtrl.userId;
-    if (shopkeeperId.isEmpty) {
-      await _profileCtrl.fetchProfile();
-      shopkeeperId = _profileCtrl.userId;
+  Future<void> _fetchViewInvoices() async {
+    setState(() {
+      _isViewInvoicesLoading = true;
+      _viewInvoicesError = '';
+    });
+    try {
+      var shopkeeperId = _profileCtrl.userId;
+      if (shopkeeperId.isEmpty) {
+        await _profileCtrl.fetchProfile();
+        shopkeeperId = _profileCtrl.userId;
+      }
+      final res = await _api.get(InvoiceEndpoints.byShopkeeper(shopkeeperId));
+      final data = res.data['data'];
+      if (data is List) {
+        _viewInvoices = List<Map<String, dynamic>>.from(data);
+      }
+      _isViewInvoicesLoaded = true;
+    } on DioException catch (e) {
+      _viewInvoicesError = e.response?.data?['message'] ?? 'Failed to load invoices';
+    } catch (_) {
+      _viewInvoicesError = 'Failed to load invoices';
+    } finally {
+      if (mounted) setState(() => _isViewInvoicesLoading = false);
     }
+  }
 
-    if (!mounted) return;
+  String _formatInvoiceDate(String? dateStr) {
+    if (dateStr == null) return '';
+    final date = DateTime.tryParse(dateStr);
+    if (date == null) return dateStr;
+    return '${date.day}/${date.month}/${date.year}';
+  }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => _InvoiceListSheet(api: _api, shopkeeperId: shopkeeperId),
-    );
+  String _invoiceCustomerName(Map<String, dynamic> invoice) {
+    final info = invoice['customerInfo'];
+    if (info is Map) {
+      final first = info['firstName']?.toString() ?? '';
+      final last = info['lastName']?.toString() ?? '';
+      final name = '$first $last'.trim();
+      if (name.isNotEmpty) return name;
+      return info['email']?.toString() ?? 'Customer';
+    }
+    return 'N/A';
   }
 
   @override
@@ -376,23 +432,7 @@ class _InvoicePageState extends State<InvoicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(
-            title: 'Create Invoice',
-            showBackButton: false,
-            trailing: GestureDetector(
-              onTap: _showInvoiceList,
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.fieldBorder),
-                ),
-                child: Icon(Icons.history, color: AppColors.textPrimary, size: 20),
-              ),
-            ),
-          ),
+          AppHeader(title: 'Create Invoice', showBackButton: false),
           Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), child: _buildTabBar()),
           Expanded(
             child: SingleChildScrollView(
@@ -400,7 +440,7 @@ class _InvoicePageState extends State<InvoicePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_isLoading)
+                  if (_tabIndex == 0 && _isLoading)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 48),
@@ -414,12 +454,14 @@ class _InvoicePageState extends State<InvoicePage> {
                         ),
                       ),
                     )
-                  else if (_errorMessage.isNotEmpty)
+                  else if (_tabIndex == 0 && _errorMessage.isNotEmpty)
                     _buildLoadError()
                   else if (_tabIndex == 0)
                     _buildCreateInvoiceTab(),
                   if (_tabIndex == 1) _buildPurchaseInvoiceTab(),
-                  if (_tabIndex == 0) SizedBox(height: 100),
+                  if (_tabIndex == 2) _buildDeliveryInvoiceTab(),
+                  if (_tabIndex == 3) _buildViewInvoicesTab(),
+                  if (_tabIndex == 0 && !_isLoading && _errorMessage.isEmpty) SizedBox(height: 100),
                 ],
               ),
             ),
@@ -429,47 +471,80 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
-  double _floatingNavClearance(BuildContext context) {
-    return MediaQuery.paddingOf(context).bottom + 72;
-  }
+  static const List<_InvoiceTabSpec> _tabSpecs = [
+    _InvoiceTabSpec('Create', Icons.receipt_long_outlined),
+    _InvoiceTabSpec('Purchase', Icons.shopping_bag_outlined),
+    _InvoiceTabSpec('Delivery', Icons.local_shipping_outlined),
+    _InvoiceTabSpec('View', Icons.history_rounded),
+  ];
 
   Widget _buildTabBar() {
     final isDark = AppColors.isDark;
-    final tabBg = isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.5);
-    final glowColor = AppColors.primary.withValues(alpha: 0.15);
+    final tabBg = isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.6);
 
     return Container(
-      height: 46,
+      height: 54,
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: tabBg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: isDark ? AppColors.fieldBorder : AppColors.primary.withValues(alpha: 0.18)),
-        boxShadow: [BoxShadow(color: glowColor, blurRadius: 50, spreadRadius: 0, offset: Offset(0, 0))],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? AppColors.fieldBorder : AppColors.primary.withValues(alpha: 0.16)),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
-        children: [
-          Expanded(child: _buildTab('Create Invoice', 0)),
-          Expanded(child: _buildTab('Purchase Invoice', 1)),
-        ],
+        children: List.generate(
+          _tabSpecs.length,
+          (index) => Expanded(child: _buildTab(_tabSpecs[index], index)),
+        ),
       ),
     );
   }
 
-  Widget _buildTab(String label, int index) {
+  Widget _buildTab(_InvoiceTabSpec spec, int index) {
     final isActive = _tabIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _tabIndex = index),
+      onTap: () {
+        setState(() => _tabIndex = index);
+        if (index == 3 && !_isViewInvoicesLoaded && !_isViewInvoicesLoading) {
+          _fetchViewInvoices();
+        }
+      },
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 200),
-        margin: EdgeInsets.all(4),
-        decoration: BoxDecoration(color: isActive ? AppColors.primary : Colors.transparent, borderRadius: BorderRadius.circular(50)),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isActive ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 3))] : null,
+        ),
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isActive ? AppColors.surfaceForeground : AppColors.textSecondary,
-              fontSize: 13,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w400,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  spec.icon,
+                  size: 16,
+                  color: isActive ? AppColors.surfaceForeground : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  spec.label,
+                  style: TextStyle(
+                    color: isActive ? AppColors.surfaceForeground : AppColors.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -906,14 +981,20 @@ class _InvoicePageState extends State<InvoicePage> {
             ),
             SizedBox(width: 10),
             OutlinedButton(
-              onPressed: () => showErrorSnackbar('NID capture coming soon'),
+              onPressed: _isExtractingNid ? null : _showCaptureNidSheet,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
-              child: Text('Capture NID'),
+              child: _isExtractingNid
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.primary),
+                    )
+                  : Text('Capture NID'),
             ),
           ],
         ),
@@ -961,8 +1042,10 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
-  Widget _buildPurchaseItemCard(int index) {
-    final item = _purchaseItems[index];
+  Widget _buildPurchaseItemCard(int index) => _buildItemCard(_purchaseItems, index);
+
+  Widget _buildItemCard(List<_PurchaseItem> items, int index) {
+    final item = items[index];
     final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
     final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
     final subTotal = qty * price;
@@ -991,19 +1074,19 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
               GestureDetector(
                 onTap: () {
-                  if (_purchaseItems.length > 1) {
+                  if (items.length > 1) {
                     setState(() {
-                      _purchaseItems[index].dispose();
-                      _purchaseItems.removeAt(index);
+                      items[index].dispose();
+                      items.removeAt(index);
                     });
                   } else {
                     setState(() {
-                      _purchaseItems[index].nameCtrl.clear();
-                      _purchaseItems[index].storageCtrl.clear();
-                      _purchaseItems[index].colorCtrl.clear();
-                      _purchaseItems[index].conditionCtrl.clear();
-                      _purchaseItems[index].quantityCtrl.text = '1';
-                      _purchaseItems[index].priceCtrl.text = '0';
+                      items[index].nameCtrl.clear();
+                      items[index].storageCtrl.clear();
+                      items[index].colorCtrl.clear();
+                      items[index].conditionCtrl.clear();
+                      items[index].quantityCtrl.text = '1';
+                      items[index].priceCtrl.text = '0';
                     });
                   }
                 },
@@ -1062,6 +1145,162 @@ class _InvoicePageState extends State<InvoicePage> {
         ],
       ),
     );
+  }
+
+  Future<void> _showCaptureNidSheet() async {
+    File? frontImage = _nidFrontImage;
+    File? backImage = _nidBackImage;
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Capture NID', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Add a photo of the front (required) and back (optional) of the NID card.',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                    ),
+                    const SizedBox(height: 18),
+                    _buildNidImageTile(
+                      label: 'Front of NID',
+                      required: true,
+                      image: frontImage,
+                      onTap: () async {
+                        final picked = await _pickNidImage();
+                        if (picked != null) setSheetState(() => frontImage = picked);
+                      },
+                      onClear: frontImage == null ? null : () => setSheetState(() => frontImage = null),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildNidImageTile(
+                      label: 'Back of NID (optional)',
+                      required: false,
+                      image: backImage,
+                      onTap: () async {
+                        final picked = await _pickNidImage();
+                        if (picked != null) setSheetState(() => backImage = picked);
+                      },
+                      onClear: backImage == null ? null : () => setSheetState(() => backImage = null),
+                    ),
+                    const SizedBox(height: 20),
+                    AppButton(
+                      label: 'Extract NID',
+                      onPressed: frontImage == null && backImage == null ? null : () => Navigator.pop(sheetCtx, true),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _nidFrontImage = frontImage;
+        _nidBackImage = backImage;
+      });
+      await _extractNid();
+    }
+  }
+
+  Widget _buildNidImageTile({
+    required String label,
+    required bool required,
+    required File? image,
+    required VoidCallback onTap,
+    VoidCallback? onClear,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.fieldBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.fieldBorder),
+        ),
+        child: Row(
+          children: [
+            if (image != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(image, width: 44, height: 44, fit: BoxFit.cover),
+              )
+            else
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.badge_outlined, color: AppColors.primary, size: 20),
+              ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                image != null ? 'Selected' : label,
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+            if (onClear != null)
+              GestureDetector(
+                onTap: onClear,
+                child: Icon(Icons.close_rounded, color: AppColors.dangerColor, size: 18),
+              )
+            else
+              Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<File?> _pickNidImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked == null) return null;
+    return File(picked.path);
+  }
+
+  Future<void> _extractNid() async {
+    if (_nidFrontImage == null && _nidBackImage == null) return;
+
+    setState(() => _isExtractingNid = true);
+    try {
+      final payload = FormData.fromMap({
+        if (_nidFrontImage != null) 'nid_front': await MultipartFile.fromFile(_nidFrontImage!.path),
+        if (_nidBackImage != null) 'nid_back': await MultipartFile.fromFile(_nidBackImage!.path),
+      });
+      final res = await _api.post(OcrEndpoints.extractNid, data: payload);
+      final data = res.data['data'];
+      final nidNumber = data is Map ? data['nidNumber']?.toString() : null;
+
+      if (nidNumber == null || nidNumber.isEmpty) {
+        showErrorSnackbar('No valid NID number found in the selected image.');
+        return;
+      }
+      _pIdNumberCtrl.text = nidNumber;
+      showSuccessSnackbar('NID number extracted successfully.');
+    } on DioException catch (e) {
+      showErrorSnackbar(e.response?.data?['message']?.toString() ?? 'Failed to extract NID from image.');
+    } catch (_) {
+      showErrorSnackbar('Failed to extract NID from image.');
+    } finally {
+      if (mounted) setState(() => _isExtractingNid = false);
+    }
   }
 
   Future<void> _createPurchaseInvoice() async {
@@ -1142,6 +1381,8 @@ class _InvoicePageState extends State<InvoicePage> {
         _pAddressCtrl.clear();
         _pIdNumberCtrl.clear();
         _pCustomerNameCtrl.clear();
+        _nidFrontImage = null;
+        _nidBackImage = null;
         for (final item in _purchaseItems) {
           item.dispose();
         }
@@ -1157,6 +1398,285 @@ class _InvoicePageState extends State<InvoicePage> {
     } finally {
       if (mounted) setState(() => _isSendingPurchase = false);
     }
+  }
+
+  double get _deliveryGrandTotal {
+    double total = 0;
+    for (final item in _deliveryItems) {
+      final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
+      final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+      total += qty * price;
+    }
+    return total;
+  }
+
+  Widget _buildDeliveryInvoiceTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Delivery Information',
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: InvoiceInputField(hint: 'First Name', controller: _dFirstNameCtrl),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: InvoiceInputField(hint: 'Last Name', controller: _dLastNameCtrl),
+            ),
+          ],
+        ),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Email', controller: _dEmailCtrl),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Customer Phone Number', controller: _dPhoneCtrl),
+        SizedBox(height: 10),
+        InvoiceInputField(hint: 'Delivery Address', controller: _dAddressCtrl),
+        SizedBox(height: 14),
+        ShopInfoCard(),
+        SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Delivery Items',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            OutlinedButton(
+              onPressed: () => setState(() => _deliveryItems.add(_PurchaseItem())),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: Text('Add Item', style: TextStyle(fontSize: 13)),
+            ),
+          ],
+        ),
+        SizedBox(height: 14),
+        ...List.generate(_deliveryItems.length, (i) => _buildItemCard(_deliveryItems, i)),
+        SizedBox(height: 20),
+        AppButton(
+          label: _isSendingDelivery ? 'Creating...' : 'Create Delivery Invoice',
+          onPressed: _isSendingDelivery ? null : _createDeliveryInvoice,
+        ),
+        SizedBox(height: 100),
+      ],
+    );
+  }
+
+  Future<void> _createDeliveryInvoice() async {
+    if (_dFirstNameCtrl.text.trim().isEmpty) {
+      showErrorSnackbar('Please enter customer first name');
+      return;
+    }
+    final hasItems = _deliveryItems.any((item) => item.nameCtrl.text.trim().isNotEmpty);
+    if (!hasItems) {
+      showErrorSnackbar('Please add at least one item');
+      return;
+    }
+    final grandTotal = _deliveryGrandTotal;
+
+    setState(() => _isSendingDelivery = true);
+    try {
+      var shopkeeperId = _profileCtrl.userId;
+      if (shopkeeperId.isEmpty) {
+        await _profileCtrl.fetchProfile();
+        shopkeeperId = _profileCtrl.userId;
+      }
+
+      final now = DateTime.now();
+      final customerName = [_dFirstNameCtrl.text.trim(), _dLastNameCtrl.text.trim()].where((v) => v.isNotEmpty).join(' ');
+
+      final pdfItems = _deliveryItems
+          .where((item) => item.nameCtrl.text.trim().isNotEmpty)
+          .map(
+            (item) => InvoicePdfItem(
+              name: item.nameCtrl.text.trim(),
+              code: [
+                item.storageCtrl.text.trim(),
+                item.colorCtrl.text.trim(),
+                item.conditionCtrl.text.trim(),
+              ].where((v) => v.isNotEmpty).join(' / '),
+              quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
+              unitPrice: double.tryParse(item.priceCtrl.text.trim()) ?? 0,
+            ),
+          )
+          .toList();
+
+      final pdfFile = await InvoicePdfBuilder.build(
+        fileNamePrefix: 'delivery_invoice',
+        invoiceTitle: 'DELIVERY INVOICE',
+        invoiceNumber: now.millisecondsSinceEpoch.toString(),
+        createdAt: now,
+        shopName: _profileCtrl.shopName,
+        shopAddress: _profileCtrl.shopAddress,
+        shopEmail: _profileCtrl.email,
+        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty ? _profileCtrl.whatsappNumber : _profileCtrl.phone,
+        customerName: customerName,
+        customerEmail: _dEmailCtrl.text.trim(),
+        customerPhone: _dPhoneCtrl.text.trim(),
+        customerAddress: _dAddressCtrl.text.trim(),
+        paymentType: 'cash',
+        items: pdfItems,
+        totalAmount: grandTotal,
+        footerNote: 'Delivery invoice generated from iMoScan.',
+      );
+
+      final payload = FormData();
+      payload.fields.addAll([
+        MapEntry('shopkeeperId', shopkeeperId),
+        MapEntry('type', 'delivery'),
+        MapEntry('totalAmount', grandTotal.toString()),
+        MapEntry('paymentMethod', 'cash'),
+      ]);
+      payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
+
+      await _api.post(InvoiceEndpoints.create, data: payload);
+      if (!mounted) return;
+      showSuccessSnackbar('Delivery invoice created successfully!');
+      setState(() {
+        _dFirstNameCtrl.clear();
+        _dLastNameCtrl.clear();
+        _dEmailCtrl.clear();
+        _dPhoneCtrl.clear();
+        _dAddressCtrl.clear();
+        for (final item in _deliveryItems) {
+          item.dispose();
+        }
+        _deliveryItems.clear();
+        _deliveryItems.add(_PurchaseItem());
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to create delivery invoice');
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar('Failed to create delivery invoice');
+    } finally {
+      if (mounted) setState(() => _isSendingDelivery = false);
+    }
+  }
+
+  Widget _buildViewInvoicesTab() {
+    if (_isViewInvoicesLoading) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: CircularProgressIndicator(strokeWidth: 2.6, color: AppColors.primary),
+        ),
+      );
+    }
+    if (_viewInvoicesError.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Column(
+            children: [
+              Text(_viewInvoicesError, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              OutlinedButton(onPressed: _fetchViewInvoices, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_viewInvoices.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Text('No invoices yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Invoices',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            Text('${_viewInvoices.length} total', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          ],
+        ),
+        SizedBox(height: 14),
+        ..._viewInvoices.map((inv) {
+          final type = inv['type']?.toString() ?? 'invoice';
+          final amount = (inv['totalAmount'] as num?)?.toDouble();
+          final date = _formatInvoiceDate(inv['createdAt']?.toString());
+          final customer = _invoiceCustomerName(inv);
+          final invoiceFile = inv['invoice'];
+          final pdfUrl = invoiceFile is Map ? invoiceFile['url']?.toString() : null;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (pdfUrl != null) {
+                  showDialog(
+                    context: context,
+                    useSafeArea: false,
+                    builder: (_) => _PdfViewerPage(url: pdfUrl, title: '${type[0].toUpperCase()}${type.substring(1)} Invoice'),
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.fieldBackground,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.fieldBorder),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                      child: Icon(Icons.receipt_long, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${type[0].toUpperCase()}${type.substring(1)} Invoice',
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(customer, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (amount != null)
+                          Text(
+                            '£${amount.toStringAsFixed(2)}',
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                        if (date.isNotEmpty) Text(date, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+        SizedBox(height: 100),
+      ],
+    );
   }
 
   Widget _buildBottomBar() {
@@ -1182,7 +1702,7 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    '£${(_tabIndex == 0 ? _totalAmount : _purchaseGrandTotal).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                    '£${_totalAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
                     style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -1201,204 +1721,12 @@ class _InvoicePageState extends State<InvoicePage> {
           ),
           SizedBox(height: 12),
           AppButton(
-            label: _tabIndex == 0
-                ? (_isSendingInvoice ? 'Creating...' : 'Create Invoice')
-                : (_isSendingPurchase ? 'Creating...' : 'Create Purchase Receipt'),
-            onPressed: _tabIndex == 0 ? (_isSendingInvoice ? null : _createInvoice) : (_isSendingPurchase ? null : _createPurchaseInvoice),
+            label: _isSendingInvoice ? 'Creating...' : 'Create Invoice',
+            onPressed: _isSendingInvoice ? null : _createInvoice,
           ),
           SizedBox(height: 30),
         ],
       ),
-    );
-  }
-}
-
-class _InvoiceListSheet extends StatefulWidget {
-  final ApiClient api;
-  final String shopkeeperId;
-
-  const _InvoiceListSheet({required this.api, required this.shopkeeperId});
-
-  @override
-  State<_InvoiceListSheet> createState() => _InvoiceListSheetState();
-}
-
-class _InvoiceListSheetState extends State<_InvoiceListSheet> {
-  List<Map<String, dynamic>> _invoices = [];
-  bool _isLoading = true;
-  String _error = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchInvoices();
-  }
-
-  Future<void> _fetchInvoices() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
-    try {
-      final res = await widget.api.get(InvoiceEndpoints.byShopkeeper(widget.shopkeeperId));
-      final data = res.data['data'];
-      if (data is List) {
-        _invoices = List<Map<String, dynamic>>.from(data);
-      }
-    } on DioException catch (e) {
-      _error = e.response?.data?['message'] ?? 'Failed to load invoices';
-    } catch (_) {
-      _error = 'Failed to load invoices';
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  String _customerName(Map<String, dynamic> invoice) {
-    final info = invoice['customerInfo'];
-    if (info is Map) {
-      final first = info['firstName']?.toString() ?? '';
-      final last = info['lastName']?.toString() ?? '';
-      final name = '$first $last'.trim();
-      if (name.isNotEmpty) return name;
-      return info['email']?.toString() ?? 'Customer';
-    }
-    return 'N/A';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (context, scrollController) {
-        return Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: AppColors.fieldBorder, borderRadius: BorderRadius.circular(2)),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Row(
-                children: [
-                  Text(
-                    'Invoices',
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                  const Spacer(),
-                  if (!_isLoading) Text('${_invoices.length} total', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : _error.isNotEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_error, style: TextStyle(color: AppColors.textSecondary)),
-                          const SizedBox(height: 12),
-                          OutlinedButton(onPressed: _fetchInvoices, child: const Text('Retry')),
-                        ],
-                      ),
-                    )
-                  : _invoices.isEmpty
-                  ? Center(
-                      child: Text('No invoices yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                    )
-                  : ListView.separated(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      itemCount: _invoices.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (_, index) {
-                        final inv = _invoices[index];
-                        final type = inv['type']?.toString() ?? 'invoice';
-                        final amount = (inv['totalAmount'] as num?)?.toDouble();
-                        final date = _formatDate(inv['createdAt']?.toString());
-                        final customer = _customerName(inv);
-                        final invoiceFile = inv['invoice'];
-                        final pdfUrl = invoiceFile is Map ? invoiceFile['url']?.toString() : null;
-                        return GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            debugPrint('Invoice tapped, pdfUrl: $pdfUrl');
-                            debugPrint('Invoice data: $invoiceFile');
-                            if (pdfUrl != null) {
-                              showDialog(
-                                context: context,
-                                useSafeArea: false,
-                                builder: (_) => _PdfViewerPage(url: pdfUrl, title: '${type[0].toUpperCase()}${type.substring(1)} Invoice'),
-                              );
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.fieldBackground,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.fieldBorder),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 42,
-                                  height: 42,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(Icons.receipt_long, color: AppColors.primary, size: 22),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${type[0].toUpperCase()}${type.substring(1)} Invoice',
-                                        style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(customer, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    if (amount != null)
-                                      Text(
-                                        '£${amount.toStringAsFixed(2)}',
-                                        style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                                      ),
-                                    if (date.isNotEmpty) Text(date, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        );
-      },
     );
   }
 }
@@ -1454,6 +1782,13 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
       ),
     );
   }
+}
+
+class _InvoiceTabSpec {
+  final String label;
+  final IconData icon;
+
+  const _InvoiceTabSpec(this.label, this.icon);
 }
 
 class _PurchaseItem {

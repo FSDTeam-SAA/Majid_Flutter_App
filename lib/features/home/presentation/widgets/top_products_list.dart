@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import '../../../../core/animation/app_entrance.dart';
+import '../../../../core/animation/pressable_scale.dart';
 import '../../../../core/utils/colors.dart';
 import '../controller/home_controller.dart';
 
@@ -27,21 +30,25 @@ class TopProductsList extends StatelessWidget {
                 ),
               ),
               Spacer(),
-              InkWell(
-                onTap: products.isEmpty
-                    ? null
-                    : () => _showAllProductsSheet(context, products),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Text(
-                    'View All',
-                    style: TextStyle(
-                      color: products.isEmpty
-                          ? AppColors.textSecondary
-                          : AppColors.primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+              PressableScale(
+                enabled: products.isNotEmpty,
+                pressedScale: 0.98,
+                child: InkWell(
+                  onTap: products.isEmpty
+                      ? null
+                      : () => _showAllProductsSheet(context, products),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      'View All',
+                      style: TextStyle(
+                        color: products.isEmpty
+                            ? AppColors.textSecondary
+                            : AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -83,7 +90,7 @@ class TopProductsList extends StatelessWidget {
                 item: item,
                 rank: i + 1,
                 maxSold: _asNumber(products[0]['quantity']) ?? 1,
-              );
+              ).entrance(index: i, begin: const Offset(0, 0.05));
             }),
         ],
       );
@@ -141,7 +148,7 @@ class TopProductsList extends StatelessWidget {
                       item: products[index],
                       rank: index + 1,
                       maxSold: maxSold,
-                    ),
+                    ).entrance(index: index, begin: const Offset(0, 0.045)),
                   ),
                 ),
               ],

@@ -194,6 +194,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     setState(() => _isScanning = true);
     try {
       final serviceId = await _resolveFreeServiceId();
+      if (!mounted) return;
       if (serviceId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No free service available right now. Please try again later.')),
@@ -202,6 +203,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       }
 
       final res = await _api.post(ImeiEndpoints.checkV2, data: {'imei': imei, 'serviceId': serviceId});
+      if (!mounted) return;
       final data = res.data['data'];
       if (data is! List || data.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
@@ -222,10 +224,12 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
         MaterialPageRoute(builder: (_) => DeviceReportPage(report: Map<String, dynamic>.from(first))),
       );
     } on DioException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.response?.data?['message']?.toString() ?? 'Scan failed. Please try again.')),
       );
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
     } finally {
       if (mounted) setState(() => _isScanning = false);

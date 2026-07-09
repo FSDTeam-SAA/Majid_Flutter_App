@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../controller/repair_data.dart';
@@ -118,7 +120,9 @@ class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: AppLoadingIndicator(label: 'Loading repair requests...'),
+      );
     }
 
     if (_errorMessage.isNotEmpty) {
@@ -132,12 +136,12 @@ class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
                 _errorMessage,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
-              ),
+              ).entrance(enableScale: false),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: _fetchRepairs,
                 child: const Text('Retry'),
-              ),
+              ).entrance(index: 1),
             ],
           ),
         ),
@@ -158,9 +162,9 @@ class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
                     ? '$_totalRecords Records'
                     : '${filteredRepairs.length} of $_totalRecords Records',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
+              ).entrance(enableScale: false),
               const SizedBox(height: 12),
-              _buildSearchBar(),
+              _buildSearchBar().entrance(index: 1),
             ],
           ),
         ),
@@ -181,7 +185,7 @@ class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
                       child: Text(
                         'No repair requests yet',
                         style: TextStyle(color: AppColors.textSecondary),
-                      ),
+                      ).entrance(index: 2, enableScale: false),
                     ),
                   )
                 else if (filteredRepairs.isEmpty)
@@ -192,24 +196,24 @@ class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
                         'No repair requests match "$_searchQuery"',
                         style: TextStyle(color: AppColors.textSecondary),
                         textAlign: TextAlign.center,
-                      ),
+                      ).entrance(index: 2, enableScale: false),
                     ),
                   )
                 else
-                  ...filteredRepairs.map(
-                    (item) => RepairCard(
-                      item: item,
+                  ...filteredRepairs.indexed.map(
+                    (entry) => RepairCard(
+                      item: entry.$2,
                       onViewReport: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
-                              RepairRequestDetailsPage(repair: item.raw),
+                              RepairRequestDetailsPage(repair: entry.$2.raw),
                         ),
                       ),
-                    ),
+                    ).entrance(index: entry.$1, begin: const Offset(0, 0.05)),
                   ),
                 const SizedBox(height: 8),
-                if (_totalPages > 1) _buildPagination(),
+                if (_totalPages > 1) _buildPagination().entrance(index: filteredRepairs.length + 1),
               ],
             ),
           ),

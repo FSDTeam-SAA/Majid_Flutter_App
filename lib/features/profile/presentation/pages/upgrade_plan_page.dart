@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 import '../controller/profile_controller.dart';
+import 'payment_checkout_page.dart';
 
 class UpgradePlanPage extends StatefulWidget {
   const UpgradePlanPage({super.key});
@@ -13,12 +16,49 @@ class UpgradePlanPage extends StatefulWidget {
 
 class _UpgradePlanPageState extends State<UpgradePlanPage> {
   late final ProfileController _profileCtrl;
+  String? _processingPlanId;
 
   @override
   void initState() {
     super.initState();
     _profileCtrl = Get.find<ProfileController>();
     _profileCtrl.fetchSubscriptions();
+  }
+
+  Future<void> _startCheckout(Map<String, dynamic> plan) async {
+    final planId = plan['_id']?.toString() ?? '';
+    final isCustomPricing = plan['customPricing'] == true;
+    final price = (plan['price'] as num?)?.toDouble() ?? 0;
+
+    if (isCustomPricing || price <= 0) {
+      showErrorSnackbar('Contact support to set up this plan.');
+      return;
+    }
+
+    setState(() => _processingPlanId = planId);
+    try {
+      final session = await _profileCtrl.createPayment(amount: price, subscriptionId: planId);
+      final checkoutUrl = session['url']?.toString();
+      if (checkoutUrl == null || checkoutUrl.isEmpty) {
+        showErrorSnackbar('Failed to start checkout. Please try again.');
+        return;
+      }
+      if (!mounted) return;
+      final success = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => PaymentCheckoutPage(checkoutUrl: checkoutUrl)),
+      );
+      if (success == true) {
+        showSuccessSnackbar('Payment submitted! It may take a moment to reflect on your account.');
+        _profileCtrl.fetchPayments();
+      }
+    } on DioException catch (e) {
+      showErrorSnackbar(e.response?.data?['message']?.toString() ?? 'Failed to start checkout.');
+    } catch (_) {
+      showErrorSnackbar('Failed to start checkout. Please try again.');
+    } finally {
+      if (mounted) setState(() => _processingPlanId = null);
+    }
   }
 
   @override
@@ -65,6 +105,8 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                       final discount = plan['discount'];
                       final badge = discount != null ? '$discount% Off' : null;
 
+                      final planId = plan['_id']?.toString() ?? '';
+
                       return _PlanCard(
                         icon: _getIconForPlan(plan['type'] ?? ''),
                         name: plan['name'] ?? '',
@@ -77,6 +119,8 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                         buttonLabel: plan['ctaText'] ?? 'Select',
                         buttonFilled: isPopular,
                         badge: badge,
+                        isProcessing: _processingPlanId == planId,
+                        onSelect: () => _startCheckout(plan),
                       );
                     },
                   );
@@ -183,6 +227,8 @@ class _PlanCard extends StatelessWidget {
   final String buttonLabel;
   final bool buttonFilled;
   final String? badge;
+  final bool isProcessing;
+  final VoidCallback onSelect;
 
   const _PlanCard({
     required this.icon,
@@ -194,6 +240,8 @@ class _PlanCard extends StatelessWidget {
     required this.buttonLabel,
     this.buttonFilled = false,
     this.badge,
+    this.isProcessing = false,
+    required this.onSelect,
   });
 
   @override
@@ -262,7 +310,7 @@ class _PlanCard extends StatelessWidget {
           SizedBox(height: 16),
           _FeaturesGrid(features: features),
           SizedBox(height: 16),
-          _ActionBtn(label: buttonLabel, filled: buttonFilled),
+          _ActionBtn(label: buttonLabel, filled: buttonFilled, isProcessing: isProcessing, onPressed: onSelect),
         ],
       ),
     );
@@ -349,21 +397,40 @@ class _FeatureItem extends StatelessWidget {
 class _ActionBtn extends StatelessWidget {
   final String label;
   final bool filled;
-  const _ActionBtn({required this.label, required this.filled});
+  final bool isProcessing;
+  final VoidCallback onPressed;
+  const _ActionBtn({
+    required this.label,
+    required this.filled,
+    this.isProcessing = false,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final child = isProcessing
+        ? SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: filled ? Colors.black : AppColors.textPrimary,
+            ),
+          )
+        : Text(
+            label,
+            style: TextStyle(
+              color: filled ? Colors.black : AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          );
+
     if (filled) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$label selected. Payment setup is coming soon.'),
-              ),
-            );
-          },
+          onPressed: isProcessing ? null : onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
@@ -372,23 +439,14 @@ class _ActionBtn extends StatelessWidget {
             ),
             padding: EdgeInsets.symmetric(vertical: 14),
           ),
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-          ),
+          child: child,
         ),
       );
     }
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$label selected. Payment setup is coming soon.'),
-            ),
-          );
-        },
+        onPressed: isProcessing ? null : onPressed,
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
@@ -396,14 +454,7 @@ class _ActionBtn extends StatelessWidget {
           ),
           padding: EdgeInsets.symmetric(vertical: 14),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: child,
       ),
     );
   }

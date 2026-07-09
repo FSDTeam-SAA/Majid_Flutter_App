@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../profile/presentation/pages/profile_page_view.dart';
 import '../../../stock/presentation/pages/add_new_device_page.dart';
@@ -107,8 +109,8 @@ class _HomePageState extends State<HomePage> {
       return GradientScaffold(
         child: Obx(() {
           if (homeCtrl.isLoading.value) {
-            return Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+            return const Center(
+              child: AppLoadingIndicator(label: 'Loading dashboard...'),
             );
           }
           final selectedPeriod = homePeriodFromIndex(_selectedPeriod);
@@ -124,9 +126,9 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
+                      _buildHeader().entrance(index: 0, begin: const Offset(0, 0.04)),
                       const SizedBox(height: 20),
-                      _buildPeriodTabs(),
+                      _buildPeriodTabs().entrance(index: 1, begin: const Offset(0, 0.04)),
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -145,14 +147,14 @@ class _HomePageState extends State<HomePage> {
                             totalProfit: (d?['totalProfit'] as num?)?.toDouble() ?? 0,
                             totalOrders: (d?['totalOrders'] as num?)?.toInt() ?? 0,
                             avgOrderValue: (d?['avgOrderValue'] as num?)?.toDouble() ?? 0,
-                          );
+                          ).entrance(index: 2);
                         }),
                         const SizedBox(height: 20),
                         QuickActions(
                           onAddRepair: () => widget.onOpenTab?.call(3),
                           onCreateInvoice: () => widget.onOpenTab?.call(4),
                           onAddItem: () => Get.to(() => const AddNewDevicePage()),
-                        ),
+                        ).entrance(index: 3),
                         const SizedBox(height: 20),
                         SalesTrendChart(
                           periodLabel: salesTrend.periodLabel,
@@ -162,11 +164,11 @@ class _HomePageState extends State<HomePage> {
                           previousPeriod: salesTrend.previousValues,
                           xLabels: salesTrend.axisLabels,
                           onPeriodTap: _showPeriodPicker,
-                        ),
+                        ).entrance(index: 4),
                         const SizedBox(height: 20),
-                        const TopProductsList(),
+                        const TopProductsList().entrance(index: 5),
                         const SizedBox(height: 20),
-                        const AiInsightsCard(),
+                        const AiInsightsCard().entrance(index: 6),
                         const SizedBox(height: 100),
                       ],
                     ),
@@ -183,10 +185,13 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        Image.asset(
-          'assets/images/imoscan_logo.png',
-          width: 132,
-          fit: BoxFit.contain,
+        Hero(
+          tag: 'imoscan-brand-mark',
+          child: Image.asset(
+            'assets/images/imoscan_logo.png',
+            width: 132,
+            fit: BoxFit.contain,
+          ),
         ),
         const Spacer(),
         GestureDetector(

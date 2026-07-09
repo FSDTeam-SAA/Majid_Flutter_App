@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/utils/colors.dart';
 
 class StatsGrid extends StatelessWidget {
@@ -55,7 +57,15 @@ class StatsGrid extends StatelessWidget {
       mainAxisSpacing: 12,
       childAspectRatio: 1.25,
       children: items
-          .map((e) => _StatCard(icon: e.$1, title: e.$2, value: e.$3, iconColor: e.$4, lightModeAsset: e.$5, darkModeAsset: e.$6))
+          .indexed
+          .map((entry) => _StatCard(
+                icon: entry.$2.$1,
+                title: entry.$2.$2,
+                value: entry.$2.$3,
+                iconColor: entry.$2.$4,
+                lightModeAsset: entry.$2.$5,
+                darkModeAsset: entry.$2.$6,
+              ).entrance(index: entry.$1, begin: const Offset(0, 0.045)))
           .toList(),
     );
   }

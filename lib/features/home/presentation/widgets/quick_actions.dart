@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/animation/app_entrance.dart';
+import '../../../../core/animation/pressable_scale.dart';
 import '../../../../core/utils/colors.dart';
 
 class QuickActions extends StatelessWidget {
@@ -20,11 +23,11 @@ class QuickActions extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            _ActionBtn(label: 'Add Repair', icon: Icons.build_outlined, onTap: onAddRepair),
+            _ActionBtn(label: 'Add Repair', icon: Icons.build_outlined, onTap: onAddRepair).entrance(index: 0),
             const SizedBox(width: 12),
-            _ActionBtn(label: 'Create Invoice', icon: Icons.note_add_outlined, onTap: onCreateInvoice),
+            _ActionBtn(label: 'Create Invoice', icon: Icons.note_add_outlined, onTap: onCreateInvoice).entrance(index: 1),
             const SizedBox(width: 12),
-            _ActionBtn(label: 'Add Item', icon: Icons.shopping_bag_outlined, onTap: onAddItem),
+            _ActionBtn(label: 'Add Item', icon: Icons.shopping_bag_outlined, onTap: onAddItem).entrance(index: 2),
           ],
         ),
       ],
@@ -42,28 +45,29 @@ class _ActionBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Container(
-              height: 56,
-              width: 56,
-              // padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.fieldBorder),
+      child: PressableScale(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Column(
+            children: [
+              Container(
+                height: 56,
+                width: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.fieldBorder),
+                ),
+                child: Center(child: Icon(icon, color: AppColors.primary, size: 26)),
               ),
-              child: Center(child: Icon(icon, color: AppColors.primary, size: 26)),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w400, height: 1.2),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w400, height: 1.2),
+              ),
+            ],
+          ),
         ),
       ),
     );

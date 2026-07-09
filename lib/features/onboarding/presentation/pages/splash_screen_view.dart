@@ -1,6 +1,9 @@
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/animation/app_motion.dart';
 import '../../../../app_ground_view.dart';
 import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../../core/utils/colors.dart';
@@ -16,7 +19,8 @@ class SplashScreenView extends StatefulWidget {
 
 class _SplashScreenViewState extends State<SplashScreenView>
     with SingleTickerProviderStateMixin {
-  static const _minimumSplashDuration = Duration(milliseconds: 2200);
+  static const _minimumSplashDuration = Duration(milliseconds: 5200);
+  static const _heroTag = 'imoscan-brand-mark';
 
   late final AnimationController _controller;
   late final Animation<double> _logoScale;
@@ -30,37 +34,37 @@ class _SplashScreenViewState extends State<SplashScreenView>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: AppMotion.splash,
     )..forward();
 
-    _logoScale = Tween<double>(begin: 0.72, end: 1).animate(
+    _logoScale = Tween<double>(begin: 0.76, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.08, 0.52, curve: Curves.easeOutBack),
+        curve: const Interval(0.06, 0.56, curve: AppMotion.easeOutExpo),
       ),
     );
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.36, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.34, curve: AppMotion.easeOutCubic),
       ),
     );
-    _logoFloat = Tween<double>(begin: 20, end: 0).animate(
+    _logoFloat = Tween<double>(begin: 28, end: 0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.12, 0.6, curve: Curves.easeOutCubic),
+        curve: const Interval(0.1, 0.62, curve: AppMotion.easeOutExpo),
       ),
     );
     _textOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.42, 0.82, curve: Curves.easeOut),
+        curve: const Interval(0.34, 0.78, curve: AppMotion.easeOutCubic),
       ),
     );
-    _haloScale = Tween<double>(begin: 0.86, end: 1.18).animate(
+    _haloScale = Tween<double>(begin: 0.82, end: 1.2).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.1, 0.72, curve: Curves.easeOutCubic),
+        curve: const Interval(0.08, 0.74, curve: AppMotion.easeOutCubic),
       ),
     );
 
@@ -168,9 +172,28 @@ class _SplashScreenViewState extends State<SplashScreenView>
                                       ),
                                     ],
                                   ),
-                                  child: Image.asset(
-                                    'assets/images/imoscan_logo.png',
-                                    fit: BoxFit.contain,
+                                  child: Hero(
+                                    tag: _heroTag,
+                                    child:
+                                        Image.asset(
+                                          'assets/images/imoscan_logo.png',
+                                          fit: BoxFit.contain,
+                                        )
+                                        .animate(
+                                          onPlay: (controller) =>
+                                              controller.repeat(reverse: true),
+                                          delay: const Duration(
+                                            milliseconds: 1500,
+                                          ),
+                                        )
+                                        .scaleXY(
+                                          begin: 1,
+                                          end: 1.07,
+                                          duration: const Duration(
+                                            milliseconds: 1400,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                        ),
                                   ),
                                 ),
                               ),
@@ -179,30 +202,56 @@ class _SplashScreenViewState extends State<SplashScreenView>
                         ),
                       ),
                       const SizedBox(height: 28),
-                      Opacity(
-                        opacity: _textOpacity.value,
-                        child: Text(
-                          'iMoScan',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                      SizedBox(
+                        height: 40,
+                        child: _controller.value < 0.34
+                            ? null
+                            : Opacity(
+                                opacity: _textOpacity.value,
+                                child: AnimatedTextKit(
+                                  isRepeatingAnimation: false,
+                                  totalRepeatCount: 1,
+                                  displayFullTextOnTap: true,
+                                  animatedTexts: [
+                                    WavyAnimatedText(
+                                      'iMoScan',
+                                      textStyle: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                      ),
+                                      speed: const Duration(milliseconds: 280),
+                                    ),
+                                  ],
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 10),
-                      Opacity(
-                        opacity: _textOpacity.value,
-                        child: Text(
-                          'Scan smarter. Sell with confidence.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
+                      SizedBox(
+                        height: 42,
+                        child: _controller.value < 0.34
+                            ? null
+                            : Opacity(
+                                opacity: _textOpacity.value,
+                                child: AnimatedTextKit(
+                                  isRepeatingAnimation: false,
+                                  totalRepeatCount: 1,
+                                  displayFullTextOnTap: true,
+                                  animatedTexts: [
+                                    WavyAnimatedText(
+                                      'Scan smarter. Sell with confidence.',
+                                      textAlign: TextAlign.center,
+                                      textStyle: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14,
+                                        height: 1.5,
+                                      ),
+                                      speed: const Duration(milliseconds: 120),
+                                    ),
+                                  ],
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 34),
                       SizedBox(
@@ -216,6 +265,13 @@ class _SplashScreenViewState extends State<SplashScreenView>
                             ),
                             valueColor: AlwaysStoppedAnimation<Color>(
                               AppColors.primary,
+                            ),
+                          ).animate(
+                            onPlay: (controller) => controller.repeat(),
+                          ).shimmer(
+                            duration: const Duration(milliseconds: 1200),
+                            color: AppColors.surfaceForeground.withValues(
+                              alpha: 0.2,
                             ),
                           ),
                         ),

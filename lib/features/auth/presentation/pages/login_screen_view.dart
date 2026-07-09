@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_snackbar.dart';
@@ -37,21 +39,25 @@ class LoginScreenView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            SizedBox(height: 64),
+                            const SizedBox(height: 64),
                             Text(
                               'Welcome Back to',
                               style: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
-                            ),
-                            ImoscanTitle(),
-                            SizedBox(height: 40),
+                            ).entrance(index: 0, begin: const Offset(0, 0.04)),
+                            const ImoscanTitle().entrance(index: 1, begin: const Offset(0, 0.04)),
+                            const SizedBox(height: 40),
                             AppTextField(
                               hint: 'Enter your email',
                               controller: auth.emailController,
                               keyboardType: TextInputType.emailAddress,
-                            ),
-                            SizedBox(height: 16),
-                            AppTextField(hint: 'Enter your password', controller: auth.passwordController, isPassword: true),
-                            SizedBox(height: 24),
+                            ).entrance(index: 2),
+                            const SizedBox(height: 16),
+                            AppTextField(
+                              hint: 'Enter your password',
+                              controller: auth.passwordController,
+                              isPassword: true,
+                            ).entrance(index: 3),
+                            const SizedBox(height: 24),
                             Obx(
                               () => AppButton(
                                 label: 'Sign In',
@@ -67,27 +73,27 @@ class LoginScreenView extends StatelessWidget {
                                     showErrorSnackbar(auth.errorMessage.value);
                                   }
                                 },
-                              ),
+                              ).entrance(index: 4),
                             ),
-                            SizedBox(height: 20),
+                            const SizedBox(height: 20),
                             Center(
                               child: GestureDetector(
                                 onTap: () => Get.to(() => ForgotPasswordScreenView()),
                                 child: Text(
                                   'Forgot Password?',
                                   style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500),
-                                ),
+                                ).entrance(index: 5, enableScale: false),
                               ),
                             ),
-                            SizedBox(height: 200),
+                            const SizedBox(height: 200),
                             Center(
                               child: AuthLink(
                                 text: "Don't have an account? ",
                                 linkText: 'Register Now',
                                 onTap: () => Get.to(() => SignupScreenView()),
-                              ),
+                              ).entrance(index: 6, enableScale: false),
                             ),
-                            SizedBox(height: 24),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
