@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../controller/home_controller.dart';
+import 'score_card_header.dart';
 
 class HomeHealthSection extends StatelessWidget {
   const HomeHealthSection({super.key});
@@ -111,6 +112,12 @@ class HomeHealthSection extends StatelessWidget {
       ),
       child: Column(
         children: [
+          const ScoreCardHeader(
+            title: 'Business Health Score',
+            infoMessage:
+                'A blended score across sales growth, profit margin, stock management and customer satisfaction.',
+          ),
+          const SizedBox(height: 20),
           LayoutBuilder(builder: (ctx, c) {
             final w = c.maxWidth;
             final h = w * 0.46;
@@ -343,31 +350,39 @@ class _GaugePainter extends CustomPainter {
     final radius = size.width / 2 - 14;
     const strokeW = 18.0;
 
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: radius);
     canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      pi, pi, false,
+      rect, pi, pi, false,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.10)
+        ..shader = const SweepGradient(
+          startAngle: pi,
+          endAngle: 2 * pi,
+          colors: [
+            Color(0xFFE85050),
+            Color(0xFFE8920A),
+            Color(0xFF4EE86A),
+          ],
+        ).createShader(rect)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeW
         ..strokeCap = StrokeCap.round,
     );
 
-    if (value > 0) {
-      final rect = Rect.fromCircle(center: Offset(cx, cy), radius: radius);
-      canvas.drawArc(
-        rect, pi, pi * value, false,
-        Paint()
-          ..shader = SweepGradient(
-            startAngle: pi,
-            endAngle: 2 * pi,
-            colors: const [Color(0xFF4EE86A), Color(0xFFACFF7A)],
-          ).createShader(rect)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeW
-          ..strokeCap = StrokeCap.round,
-      );
-    }
+    final needleAngle = pi + pi * value.clamp(0.0, 1.0);
+    final needleLength = radius - strokeW / 2 - 4;
+    final needleEnd = Offset(
+      cx + needleLength * cos(needleAngle),
+      cy + needleLength * sin(needleAngle),
+    );
+    canvas.drawLine(
+      Offset(cx, cy),
+      needleEnd,
+      Paint()
+        ..color = Colors.white
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(Offset(cx, cy), 5, Paint()..color = Colors.white);
   }
 
   @override

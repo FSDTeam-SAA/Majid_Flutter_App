@@ -48,6 +48,12 @@ class _InvoicePageState extends State<InvoicePage> {
   bool _isLoading = true;
   bool _isCustomersLoading = false;
   bool _isCustomerDropdownOpen = false;
+
+  String? _selectedPurchaseCustomer;
+  bool _isPurchaseCustomerDropdownOpen = false;
+
+  String? _selectedDeliveryCustomer;
+  bool _isDeliveryCustomerDropdownOpen = false;
   String _errorMessage = '';
   List<InvoiceProduct> _products = [];
   List<Map<String, dynamic>> _customers = [];
@@ -209,12 +215,98 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   void _applyCustomerData(Map<String, dynamic>? customer) {
-    _firstNameCtrl.text = customer?['firstName']?.toString() ?? '';
-    _lastNameCtrl.text = customer?['lastName']?.toString() ?? '';
-    _emailCtrl.text = customer?['email']?.toString() ?? '';
-    _phoneCtrl.text = customer?['phone']?.toString() ?? customer?['whatsappNumber']?.toString() ?? '';
-    _addressCtrl.text = customer?['billingAddress']?.toString() ?? customer?['address']?.toString() ?? '';
+    _applyCustomerDataTo(
+      customer,
+      firstName: _firstNameCtrl,
+      lastName: _lastNameCtrl,
+      email: _emailCtrl,
+      phone: _phoneCtrl,
+      address: _addressCtrl,
+    );
     _customerIdCtrl.text = customer?['_id']?.toString() ?? '';
+  }
+
+  void _applyCustomerDataTo(
+    Map<String, dynamic>? customer, {
+    required TextEditingController firstName,
+    required TextEditingController lastName,
+    required TextEditingController email,
+    required TextEditingController phone,
+    required TextEditingController address,
+  }) {
+    firstName.text = customer?['firstName']?.toString() ?? '';
+    lastName.text = customer?['lastName']?.toString() ?? '';
+    email.text = customer?['email']?.toString() ?? '';
+    phone.text = customer?['phone']?.toString() ?? customer?['whatsappNumber']?.toString() ?? '';
+    address.text = customer?['billingAddress']?.toString() ?? customer?['address']?.toString() ?? '';
+  }
+
+  Future<void> _openPurchaseCustomerPicker() async {
+    if (_isCustomersLoading) return;
+    setState(() {
+      _isCustomersLoading = true;
+      _isPurchaseCustomerDropdownOpen = true;
+    });
+    try {
+      await _fetchCustomers();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to load customers');
+    } catch (_) {
+      if (!mounted) return;
+      showErrorSnackbar('Failed to load customers');
+    } finally {
+      if (mounted) setState(() => _isCustomersLoading = false);
+    }
+  }
+
+  void _selectPurchaseCustomer(Map<String, dynamic> customer) {
+    setState(() {
+      _selectedPurchaseCustomer = _customerLabel(customer);
+      _applyCustomerDataTo(
+        customer,
+        firstName: _pFirstNameCtrl,
+        lastName: _pLastNameCtrl,
+        email: _pEmailCtrl,
+        phone: _pPhoneCtrl,
+        address: _pAddressCtrl,
+      );
+      _isPurchaseCustomerDropdownOpen = false;
+    });
+  }
+
+  Future<void> _openDeliveryCustomerPicker() async {
+    if (_isCustomersLoading) return;
+    setState(() {
+      _isCustomersLoading = true;
+      _isDeliveryCustomerDropdownOpen = true;
+    });
+    try {
+      await _fetchCustomers();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to load customers');
+    } catch (_) {
+      if (!mounted) return;
+      showErrorSnackbar('Failed to load customers');
+    } finally {
+      if (mounted) setState(() => _isCustomersLoading = false);
+    }
+  }
+
+  void _selectDeliveryCustomer(Map<String, dynamic> customer) {
+    setState(() {
+      _selectedDeliveryCustomer = _customerLabel(customer);
+      _applyCustomerDataTo(
+        customer,
+        firstName: _dFirstNameCtrl,
+        lastName: _dLastNameCtrl,
+        email: _dEmailCtrl,
+        phone: _dPhoneCtrl,
+        address: _dAddressCtrl,
+      );
+      _isDeliveryCustomerDropdownOpen = false;
+    });
   }
 
   Future<void> _fetchProducts() async {
@@ -321,6 +413,8 @@ class _InvoicePageState extends State<InvoicePage> {
       await _api.post(InvoiceEndpoints.create, data: payload);
       if (!mounted) return;
       showSuccessSnackbar('Invoice created successfully!');
+      _isViewInvoicesLoaded = false;
+      _fetchViewInvoices();
       setState(() {
         _selectedProductIds.clear();
         _selectedCustomer = null;
@@ -435,36 +529,48 @@ class _InvoicePageState extends State<InvoicePage> {
           AppHeader(title: 'Create Invoice', showBackButton: false),
           Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), child: _buildTabBar()),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_tabIndex == 0 && _isLoading)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 48),
-                        child: SizedBox(
-                          width: _pageLoaderSize,
-                          height: _pageLoaderSize,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.6,
-                            color: AppColors.primary,
-                          ),
-                        ),
+            child: _tabIndex == 3
+                ? RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: _fetchViewInvoices,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [_buildViewInvoicesTab()],
                       ),
-                    )
-                  else if (_tabIndex == 0 && _errorMessage.isNotEmpty)
-                    _buildLoadError()
-                  else if (_tabIndex == 0)
-                    _buildCreateInvoiceTab(),
-                  if (_tabIndex == 1) _buildPurchaseInvoiceTab(),
-                  if (_tabIndex == 2) _buildDeliveryInvoiceTab(),
-                  if (_tabIndex == 3) _buildViewInvoicesTab(),
-                  if (_tabIndex == 0 && !_isLoading && _errorMessage.isEmpty) SizedBox(height: 100),
-                ],
-              ),
-            ),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_tabIndex == 0 && _isLoading)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 48),
+                              child: SizedBox(
+                                width: _pageLoaderSize,
+                                height: _pageLoaderSize,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.6,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (_tabIndex == 0 && _errorMessage.isNotEmpty)
+                          _buildLoadError()
+                        else if (_tabIndex == 0)
+                          _buildCreateInvoiceTab(),
+                        if (_tabIndex == 1) _buildPurchaseInvoiceTab(),
+                        if (_tabIndex == 2) _buildDeliveryInvoiceTab(),
+                        if (_tabIndex == 0 && !_isLoading && _errorMessage.isEmpty) SizedBox(height: 100),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -669,6 +775,26 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Widget _buildCustomerDropdown() {
+    return _buildCustomerPicker(
+      selected: _selectedCustomer,
+      isOpen: _isCustomerDropdownOpen,
+      onToggle: () {
+        if (_isCustomerDropdownOpen) {
+          setState(() => _isCustomerDropdownOpen = false);
+        } else {
+          _openCustomerPicker();
+        }
+      },
+      onSelect: (customer) => _selectCustomer(_customerLabel(customer)),
+    );
+  }
+
+  Widget _buildCustomerPicker({
+    required String? selected,
+    required bool isOpen,
+    required VoidCallback onToggle,
+    required ValueChanged<Map<String, dynamic>> onSelect,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -680,36 +806,30 @@ class _InvoicePageState extends State<InvoicePage> {
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(26),
-            onTap: () {
-              if (_isCustomerDropdownOpen) {
-                setState(() => _isCustomerDropdownOpen = false);
-              } else {
-                _openCustomerPicker();
-              }
-            },
+            onTap: onToggle,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      _isCustomersLoading ? 'Loading customers...' : (_selectedCustomer ?? 'Choose a customer'),
+                      _isCustomersLoading ? 'Loading customers...' : (selected ?? 'Choose a customer'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: _selectedCustomer != null && !_isCustomersLoading ? AppColors.textPrimary : AppColors.textSecondary,
+                        color: selected != null && !_isCustomersLoading ? AppColors.textPrimary : AppColors.textSecondary,
                         fontSize: 14,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(_isCustomerDropdownOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+                  Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
                 ],
               ),
             ),
           ),
         ),
-        if (_isCustomerDropdownOpen) ...[
+        if (isOpen) ...[
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
@@ -718,14 +838,17 @@ class _InvoicePageState extends State<InvoicePage> {
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: AppColors.fieldBorder),
             ),
-            child: _buildCustomerDropdownMenu(),
+            child: _buildCustomerPickerMenu(selected: selected, onSelect: onSelect),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildCustomerDropdownMenu() {
+  Widget _buildCustomerPickerMenu({
+    required String? selected,
+    required ValueChanged<Map<String, dynamic>> onSelect,
+  }) {
     if (_isCustomersLoading) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
@@ -757,10 +880,10 @@ class _InvoicePageState extends State<InvoicePage> {
       child: Column(
         children: _customers.map((customer) {
           final label = _customerLabel(customer);
-          final isSelected = _selectedCustomer == label;
+          final isSelected = selected == label;
           return InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => _selectCustomer(label),
+            onTap: () => onSelect(customer),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -954,6 +1077,19 @@ class _InvoicePageState extends State<InvoicePage> {
         SizedBox(height: 4),
         Text('Identity validation framework controls', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         SizedBox(height: 14),
+        _buildCustomerPicker(
+          selected: _selectedPurchaseCustomer,
+          isOpen: _isPurchaseCustomerDropdownOpen,
+          onToggle: () {
+            if (_isPurchaseCustomerDropdownOpen) {
+              setState(() => _isPurchaseCustomerDropdownOpen = false);
+            } else {
+              _openPurchaseCustomerPicker();
+            }
+          },
+          onSelect: _selectPurchaseCustomer,
+        ),
+        SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -1342,23 +1478,18 @@ class _InvoicePageState extends State<InvoicePage> {
           )
           .toList();
 
-      final pdfFile = await InvoicePdfBuilder.build(
-        fileNamePrefix: 'purchase_invoice',
-        invoiceTitle: 'PURCHASE INVOICE',
+      final pdfFile = await InvoicePdfBuilder.buildPurchaseReceipt(
+        fileNamePrefix: 'purchase_receipt',
         invoiceNumber: now.millisecondsSinceEpoch.toString(),
         createdAt: now,
         shopName: _profileCtrl.shopName,
         shopAddress: _profileCtrl.shopAddress,
-        shopEmail: _profileCtrl.email,
         shopPhone: _profileCtrl.whatsappNumber.isNotEmpty ? _profileCtrl.whatsappNumber : _profileCtrl.phone,
         customerName: customerName,
-        customerEmail: _pEmailCtrl.text.trim(),
         customerPhone: _pPhoneCtrl.text.trim(),
-        customerAddress: _pAddressCtrl.text.trim(),
-        paymentType: 'cash',
+        customerIdNumber: _pIdNumberCtrl.text.trim(),
         items: pdfItems,
         totalAmount: grandTotal,
-        footerNote: 'Purchase invoice generated from iMoScan.',
       );
 
       final payload = FormData();
@@ -1373,7 +1504,10 @@ class _InvoicePageState extends State<InvoicePage> {
       await _api.post(InvoiceEndpoints.create, data: payload);
       if (!mounted) return;
       showSuccessSnackbar('Purchase receipt created successfully!');
+      _isViewInvoicesLoaded = false;
+      _fetchViewInvoices();
       setState(() {
+        _selectedPurchaseCustomer = null;
         _pFirstNameCtrl.clear();
         _pLastNameCtrl.clear();
         _pEmailCtrl.clear();
@@ -1419,6 +1553,19 @@ class _InvoicePageState extends State<InvoicePage> {
           style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 14),
+        _buildCustomerPicker(
+          selected: _selectedDeliveryCustomer,
+          isOpen: _isDeliveryCustomerDropdownOpen,
+          onToggle: () {
+            if (_isDeliveryCustomerDropdownOpen) {
+              setState(() => _isDeliveryCustomerDropdownOpen = false);
+            } else {
+              _openDeliveryCustomerPicker();
+            }
+          },
+          onSelect: _selectDeliveryCustomer,
+        ),
+        SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -1540,7 +1687,10 @@ class _InvoicePageState extends State<InvoicePage> {
       await _api.post(InvoiceEndpoints.create, data: payload);
       if (!mounted) return;
       showSuccessSnackbar('Delivery invoice created successfully!');
+      _isViewInvoicesLoaded = false;
+      _fetchViewInvoices();
       setState(() {
+        _selectedDeliveryCustomer = null;
         _dFirstNameCtrl.clear();
         _dLastNameCtrl.clear();
         _dEmailCtrl.clear();

@@ -12,6 +12,9 @@ import 'notifications_page.dart';
 import '../controller/home_controller.dart';
 import '../controller/home_data.dart';
 import '../widgets/ai_insights_card.dart';
+import '../widgets/cash_insight_card.dart';
+import '../widgets/cash_management_card.dart';
+import '../widgets/home_health_section.dart';
 import '../widgets/quick_actions.dart';
 import '../widgets/sales_trend_chart.dart';
 import '../widgets/stats_grid.dart';
@@ -166,9 +169,15 @@ class _HomePageState extends State<HomePage> {
                           onPeriodTap: _showPeriodPicker,
                         ).entrance(index: 4),
                         const SizedBox(height: 20),
-                        const TopProductsList().entrance(index: 5),
+                        const CashInsightCard().entrance(index: 5),
                         const SizedBox(height: 20),
-                        const AiInsightsCard().entrance(index: 6),
+                        const HomeHealthSection().entrance(index: 6),
+                        const SizedBox(height: 20),
+                        const CashManagementCard().entrance(index: 7),
+                        const SizedBox(height: 20),
+                        const TopProductsList().entrance(index: 8),
+                        const SizedBox(height: 20),
+                        const AiInsightsCard().entrance(index: 9),
                         const SizedBox(height: 100),
                       ],
                     ),

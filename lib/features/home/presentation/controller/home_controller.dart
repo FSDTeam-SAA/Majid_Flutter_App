@@ -41,6 +41,10 @@ class HomeController extends GetxController {
   // Dashboard stats (for health summary section)
   final dashboardStats = Rx<Map<String, dynamic>?>(null);
 
+  // Cash management
+  final cashManagement = Rx<Map<String, dynamic>?>(null);
+  final isSubmittingCash = false.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -62,6 +66,7 @@ class HomeController extends GetxController {
       ]);
       // fetch dashboard after profile so userId is available
       await _fetchDashboardStats();
+      await _fetchCashManagement();
     } catch (e) {
       debugPrint('HomeController error: $e');
     } finally {
@@ -166,6 +171,47 @@ class HomeController extends GetxController {
 
   Future<void> fetchDashboardForFilter(String filter) =>
       _fetchDashboardStats(filter: filter);
+
+  Future<void> _fetchCashManagement() async {
+    final id = userId.value.trim();
+    if (id.isEmpty) return;
+    try {
+      final res = await _api.get(CashManagementEndpoints.byShopkeeper(id));
+      final data = res.data['data'];
+      if (data is Map) {
+        cashManagement.value = Map<String, dynamic>.from(data);
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode != 404) {
+        debugPrint('Cash management fetch error: $e');
+      }
+    }
+  }
+
+  Future<bool> submitStartingDayCash(double startingDayCash) async {
+    final id = userId.value.trim();
+    if (id.isEmpty) return false;
+    isSubmittingCash.value = true;
+    try {
+      final res = await _api.post(
+        CashManagementEndpoints.createOrUpdate,
+        data: {
+          'shopkeeperId': id,
+          'startingDayCash': startingDayCash,
+        },
+      );
+      final data = res.data['data'];
+      if (data is Map) {
+        cashManagement.value = Map<String, dynamic>.from(data);
+      }
+      return true;
+    } on DioException catch (e) {
+      debugPrint('Cash management submit error: $e');
+      return false;
+    } finally {
+      isSubmittingCash.value = false;
+    }
+  }
 
   Future<void> _fetchInvoices() async {
     final shopkeeperId = userId.value.trim();

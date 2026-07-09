@@ -182,6 +182,257 @@ class InvoicePdfBuilder {
     return file;
   }
 
+  static Future<File> buildPurchaseReceipt({
+    required String fileNamePrefix,
+    required String invoiceNumber,
+    required DateTime createdAt,
+    required String shopName,
+    required String shopAddress,
+    required String shopPhone,
+    required String customerName,
+    required String customerPhone,
+    required String customerIdNumber,
+    required List<InvoicePdfItem> items,
+    required double totalAmount,
+  }) async {
+    final pdf = pw.Document();
+    const navy = PdfColor.fromInt(0xFF0F172A);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.zero,
+        build: (context) => [
+          pw.Container(height: 6, color: navy),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(32),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'PURCHASE RECEIPT',
+                        style: pw.TextStyle(
+                          fontSize: 24,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        'Date: ${_formatLongDate(createdAt)}',
+                        style: pw.TextStyle(fontSize: 10, color: navy),
+                      ),
+                      pw.Text(
+                        'Time: ${_formatTime(createdAt)}',
+                        style: pw.TextStyle(fontSize: 10, color: navy),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 24),
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      child: _buildShadedCard(
+                        title: 'CUSTOMER DETAILS',
+                        rows: [
+                          ('NAME', _safeValue(customerName)),
+                          ('PHONE', _safeValue(customerPhone)),
+                          ('GOVT ID / NID', _safeValue(customerIdNumber)),
+                        ],
+                      ),
+                    ),
+                    pw.SizedBox(width: 16),
+                    pw.Expanded(
+                      child: _buildShadedCard(
+                        title: 'SHOP INFORMATION',
+                        rows: [],
+                        plainLines: [shopName, shopAddress, shopPhone]
+                            .map(_safeValue)
+                            .toList(),
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 24),
+                pw.Text(
+                  'PURCHASED DEVICES',
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Divider(color: PdfColors.grey400),
+                pw.SizedBox(height: 8),
+                _buildPurchaseDevicesTable(items, navy),
+                pw.SizedBox(height: 18),
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Container(
+                    width: 220,
+                    padding: const pw.EdgeInsets.all(14),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey100,
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'TOTAL VALUE',
+                          style: pw.TextStyle(
+                            fontSize: 11,
+                            color: PdfColors.grey700,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.Text(
+                          _formatCurrency(totalAmount),
+                          style: pw.TextStyle(
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final directory = await getTemporaryDirectory();
+    final safePrefix = fileNamePrefix.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final safeNumber = invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final file = File('${directory.path}/${safePrefix}_$safeNumber.pdf');
+    await file.writeAsBytes(await pdf.save());
+    return file;
+  }
+
+  static pw.Widget _buildShadedCard({
+    required String title,
+    required List<(String, String)> rows,
+    List<String> plainLines = const [],
+  }) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey700,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          ...rows.map(
+            (row) => pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    row.$1,
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+                  ),
+                  pw.Text(
+                    row.$2,
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ...plainLines.map(
+            (line) => pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 2),
+              child: pw.Text(line, style: const pw.TextStyle(fontSize: 11)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildPurchaseDevicesTable(
+    List<InvoicePdfItem> items,
+    PdfColor headerColor,
+  ) {
+    final rows = items.isEmpty
+        ? [
+            ['No devices added', '0', _formatCurrency(0)],
+          ]
+        : items
+              .map(
+                (item) => [
+                  item.code.isEmpty ? item.name : '${item.name}\n${item.code}',
+                  '${item.quantity}',
+                  _formatCurrency(item.lineTotal),
+                ],
+              )
+              .toList();
+
+    return pw.TableHelper.fromTextArray(
+      headerDecoration: pw.BoxDecoration(color: headerColor),
+      headerStyle: pw.TextStyle(
+        fontSize: 10,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfColors.white,
+      ),
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      cellStyle: const pw.TextStyle(fontSize: 10),
+      headers: const ['PRODUCT SPECIFICATIONS', 'QTY', 'VALUE'],
+      columnWidths: const {
+        0: pw.FlexColumnWidth(3),
+        1: pw.FlexColumnWidth(1),
+        2: pw.FlexColumnWidth(1.4),
+      },
+      cellAlignments: const {
+        0: pw.Alignment.centerLeft,
+        1: pw.Alignment.center,
+        2: pw.Alignment.centerRight,
+      },
+      data: rows,
+    );
+  }
+
+  static String _formatLongDate(DateTime value) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[value.month - 1]} ${value.day}, ${value.year}';
+  }
+
+  static String _formatTime(DateTime value) {
+    final hour24 = value.hour;
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+    final minute = value.minute.toString().padLeft(2, '0');
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    return '${hour12.toString().padLeft(2, '0')}:$minute $period';
+  }
+
   static pw.Widget _buildInfoCard({
     required String title,
     required List<String> lines,

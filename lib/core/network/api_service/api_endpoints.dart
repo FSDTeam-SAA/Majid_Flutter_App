@@ -113,6 +113,14 @@ class DashboardEndpoints {
   static String stats = "$baseApiUrl/dashboard/stats";
 }
 
+class CashManagementEndpoints {
+  static String createOrUpdate = "$baseApiUrl/cash-management";
+  static String byShopkeeper(String shopkeeperId) =>
+      "$baseApiUrl/cash-management/shopkeeper/$shopkeeperId";
+  static String stats(String shopkeeperId) =>
+      "$baseApiUrl/cash-management/shopkeeper/$shopkeeperId/stats";
+}
+
 class NotificationEndpoints {
   static String all = "$baseApiUrl/notification";
   static String shopkeeper = "$baseApiUrl/notification/shopkeeper";
