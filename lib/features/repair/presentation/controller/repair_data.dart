@@ -20,6 +20,16 @@ class RepairItem {
     this.createdAt,
     this.raw = const {},
   });
+
+  String get imei {
+    final value = raw['IMEINumber']?.toString().trim() ?? '';
+    return value.isEmpty ? '' : value;
+  }
+
+  String get technicianName {
+    final value = raw['technicianName']?.toString().trim() ?? '';
+    return value.isEmpty ? '' : value;
+  }
 }
 
 List<RepairItem> sampleRepairs = [

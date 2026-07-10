@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/utils/colors.dart';
@@ -19,11 +20,24 @@ class StaffPage extends StatefulWidget {
 
 class _StaffPageState extends State<StaffPage> {
   late final StaffController _controller;
+  bool _isStaff = false;
+  bool _isCheckingRole = true;
 
   @override
   void initState() {
     super.initState();
     _controller = Get.isRegistered<StaffController>() ? Get.find<StaffController>() : Get.put(StaffController());
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await TokenManager.getRole();
+    if (mounted) {
+      setState(() {
+        _isStaff = role == 'staff';
+        _isCheckingRole = false;
+      });
+    }
   }
 
   Future<void> _openAddStaffSheet() async {
@@ -171,6 +185,41 @@ class _StaffPageState extends State<StaffPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingRole) {
+      return GradientScaffold(
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    if (_isStaff) {
+      return GradientScaffold(
+        child: Column(
+          children: [
+            AppHeader(title: 'Staff Management', showBackButton: true),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline, color: AppColors.textSecondary, size: 40),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Only the shopkeeper can manage staff.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return GradientScaffold(
       child: Column(
         children: [

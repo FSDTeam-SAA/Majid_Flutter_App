@@ -810,6 +810,20 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                   label: 'SHOP',
                   value: _repair['shopName']?.toString() ?? 'Your Shop',
                 ),
+                if ((_repair['IMEINumber']?.toString().trim() ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  InfoField(
+                    label: 'IMEI / SERIAL',
+                    value: _repair['IMEINumber'].toString(),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                InfoField(
+                  label: 'TECHNICIAN',
+                  value: (_repair['technicianName']?.toString().trim().isNotEmpty ?? false)
+                      ? _repair['technicianName'].toString()
+                      : 'Unassigned',
+                ),
               ],
             ),
           ),

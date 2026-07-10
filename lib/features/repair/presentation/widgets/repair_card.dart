@@ -84,6 +84,19 @@ class RepairCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (item.imei.isNotEmpty || item.technicianName.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 14,
+                runSpacing: 4,
+                children: [
+                  if (item.imei.isNotEmpty)
+                    _MetaChip(icon: Icons.sim_card_outlined, label: 'IMEI: ${item.imei}'),
+                  if (item.technicianName.isNotEmpty)
+                    _MetaChip(icon: Icons.person_outline, label: item.technicianName),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -127,6 +140,28 @@ class RepairCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MetaChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: AppColors.textSecondary),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+      ],
     );
   }
 }

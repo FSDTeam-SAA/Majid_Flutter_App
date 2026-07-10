@@ -75,6 +75,9 @@ class RepairRequestEndpoints {
   static String byId(String id) => "$baseApiUrl/repair-requests/$id";
   static String updateStatus(String id) => "$baseApiUrl/repair-requests/update-status/$id";
   static String reassign(String id) => "$baseApiUrl/repair-requests/reassign/$id";
+  // Backend route not implemented yet — wired ahead of time so the Pending
+  // section's "Nudge" button starts working the moment it's added server-side.
+  static String nudge(String id) => "$baseApiUrl/repair-requests/nudge/$id";
   static String addNote(String id) => "$baseApiUrl/repair-requests/add-note/$id";
   static String technicianNote(String id) => "$baseApiUrl/repair-requests/tech-note/$id";
   static String technicianFeedback(String id) => "$baseApiUrl/repair-requests/technician-feedback/$id";

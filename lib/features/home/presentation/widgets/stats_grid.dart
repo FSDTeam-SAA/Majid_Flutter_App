@@ -48,25 +48,28 @@ class StatsGrid extends StatelessWidget {
       (Icons.adjust_rounded, 'Avg Order Value', _fmtCurrency(avgOrderValue), _iconColors[3], _lightModeIcons[3], _darkModeIcons[3]),
     ];
 
-    return GridView.count(
+    return GridView.builder(
       key: ValueKey(AppColors.isDark),
-      crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.25,
-      children: items
-          .indexed
-          .map((entry) => _StatCard(
-                icon: entry.$2.$1,
-                title: entry.$2.$2,
-                value: entry.$2.$3,
-                iconColor: entry.$2.$4,
-                lightModeAsset: entry.$2.$5,
-                darkModeAsset: entry.$2.$6,
-              ).entrance(index: entry.$1, begin: const Offset(0, 0.045)))
-          .toList(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        mainAxisExtent: 152,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final entry = items[index];
+        return _StatCard(
+          icon: entry.$1,
+          title: entry.$2,
+          value: entry.$3,
+          iconColor: entry.$4,
+          lightModeAsset: entry.$5,
+          darkModeAsset: entry.$6,
+        ).entrance(index: index, begin: const Offset(0, 0.045));
+      },
     );
   }
 }
@@ -98,7 +101,6 @@ class _StatCard extends StatelessWidget {
     final valueColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
 
     return Container(
-      height: 145,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardColor,

@@ -139,6 +139,7 @@ class AuthController extends GetxController {
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
       );
+      await TokenManager.saveRole(response.user.role);
       user.value = response.user;
       _clearFields();
       return true;

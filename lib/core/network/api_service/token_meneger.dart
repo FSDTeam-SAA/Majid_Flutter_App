@@ -35,6 +35,10 @@ class TokenManager {
     return await _storage.read(key: _accessTokenKey);
   }
 
+  static Future<String?> getRole() async {
+    return await _storage.read(key: _role);
+  }
+
   static Future<String?> getRefreshToken() async {
     return await _storage.read(key: _refreshKey);
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
@@ -13,7 +14,9 @@ import 'edit_profile_page.dart';
 import 'payment_history_page.dart';
 import 'shopkeeper_id_card_page.dart';
 import 'upgrade_plan_page.dart';
+import '../../../customer/presentation/pages/customer_page.dart';
 import '../../../staff/presentation/pages/staff_page.dart';
+import '../../../supplier/presentation/pages/supplier_page.dart';
 
 class ProfilePageView extends StatefulWidget {
   const ProfilePageView({super.key});
@@ -26,6 +29,7 @@ class _ProfilePageViewState extends State<ProfilePageView>
     with WidgetsBindingObserver {
   late final ProfileController _profileCtrl;
   late final ProfileThemeController _themeCtrl;
+  bool _isStaff = false;
 
   @override
   void initState() {
@@ -35,6 +39,12 @@ class _ProfilePageViewState extends State<ProfilePageView>
     _themeCtrl = Get.isRegistered<ProfileThemeController>()
         ? Get.find<ProfileThemeController>()
         : Get.put(ProfileThemeController());
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await TokenManager.getRole();
+    if (mounted) setState(() => _isStaff = role == 'staff');
   }
 
   @override
@@ -184,35 +194,55 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             ),
                           ),
                           (
-                            'Staff Management',
+                            'Customers',
                             () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => StaffPage()),
-                            ),
-                          ),
-                        ], palette),
-                        SizedBox(height: 24),
-                        _buildSection('Subscription', [
-                          (
-                            'Upgrade Plan',
-                            () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => UpgradePlanPage(),
-                              ),
+                              MaterialPageRoute(builder: (_) => const CustomerPage()),
                             ),
                           ),
                           (
-                            'Payment History',
+                            'Suppliers',
                             () => Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) => PaymentHistoryPage(),
-                              ),
+                              MaterialPageRoute(builder: (_) => const SupplierPage()),
                             ),
                           ),
+                          // Staff Management is shopkeeper-only — staff
+                          // accounts can add/delete other staff otherwise.
+                          if (!_isStaff)
+                            (
+                              'Staff Management',
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => StaffPage()),
+                              ),
+                            ),
                         ], palette),
                         SizedBox(height: 24),
+                        // Subscription/billing is shopkeeper-only.
+                        if (!_isStaff) ...[
+                          _buildSection('Subscription', [
+                            (
+                              'Upgrade Plan',
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UpgradePlanPage(),
+                                ),
+                              ),
+                            ),
+                            (
+                              'Payment History',
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PaymentHistoryPage(),
+                                ),
+                              ),
+                            ),
+                          ], palette),
+                          SizedBox(height: 24),
+                        ],
                         _buildSection('Support', [
                           (
                             'Help Center',

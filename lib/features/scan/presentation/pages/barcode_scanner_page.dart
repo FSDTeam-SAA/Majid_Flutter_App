@@ -14,20 +14,21 @@ class BarcodeScannerPage extends StatefulWidget {
 
 class _BarcodeScannerPageState extends State<BarcodeScannerPage>
     with WidgetsBindingObserver {
-  // autoStart is off and cameraResolution is capped: on some Android devices
-  // CameraX crashes natively (null object reference deep in its obfuscated
-  // internals) when the plugin auto-starts at full/unsupported resolution.
-  // Starting manually with a modest resolution and retrying on failure
-  // avoids that crash on the affected devices.
-  final MobileScannerController _scannerController = MobileScannerController(
+  // autoStart is off: on some Android devices CameraX crashes natively (null
+  // object reference deep in its obfuscated internals) when the plugin
+  // auto-starts before the preview surface is ready, or when forced into a
+  // resolution the device's camera HAL doesn't actually support. Starting
+  // manually with no fixed resolution (let CameraX negotiate one the device
+  // supports) and retrying on failure avoids that crash across devices.
+  MobileScannerController _scannerController = MobileScannerController(
     formats: const [BarcodeFormat.all],
     detectionSpeed: DetectionSpeed.noDuplicates,
-    cameraResolution: const Size(1280, 720),
     autoStart: false,
   );
 
   bool _hasDetectedCode = false;
   String? _startError;
+  int _startAttempts = 0;
 
   @override
   void initState() {
@@ -54,13 +55,41 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
     }
   }
 
+  static const _maxStartAttempts = 3;
+
   Future<void> _startCamera() async {
     try {
       await _scannerController.start();
-      if (mounted) setState(() => _startError = null);
+      if (mounted) {
+        setState(() {
+          _startError = null;
+          _startAttempts = 0;
+        });
+      }
     } catch (e) {
+      _startAttempts++;
+      if (_startAttempts < _maxStartAttempts) {
+        // CameraX can leave the previous controller session in a bad state
+        // after a failed start; recreating it before retrying resolves the
+        // null-reference crash on affected devices instead of repeating it.
+        final oldController = _scannerController;
+        _scannerController = MobileScannerController(
+          formats: const [BarcodeFormat.all],
+          detectionSpeed: DetectionSpeed.noDuplicates,
+          autoStart: false,
+        );
+        await oldController.dispose();
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) await _startCamera();
+        return;
+      }
       if (mounted) setState(() => _startError = e.toString());
     }
+  }
+
+  Future<void> _retryCamera() async {
+    _startAttempts = 0;
+    await _startCamera();
   }
 
   void _handleDetection(BarcodeCapture capture) {
@@ -98,7 +127,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                           if (_startError != null)
                             _CameraErrorView(
                               message: _startError!,
-                              onRetry: _startCamera,
+                              onRetry: _retryCamera,
                             )
                           else
                             MobileScanner(
@@ -108,7 +137,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                                 return _CameraErrorView(
                                   message: error.errorDetails?.message ??
                                       error.errorCode.name,
-                                  onRetry: _startCamera,
+                                  onRetry: _retryCamera,
                                 );
                               },
                             ),
