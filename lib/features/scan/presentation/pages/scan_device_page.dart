@@ -4,13 +4,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/user_avatar.dart';
+import '../../data/repositories/imei_repository_impl.dart';
+import '../../domain/repositories/imei_repository.dart';
 import '../controller/scan_data.dart';
-import '../utils/scan_item_mapper.dart';
 import 'all_scan_history_page.dart';
 import 'barcode_scanner_page.dart';
 import '../widgets/carrier_dropdown.dart';
@@ -29,7 +30,7 @@ final List<ScanItem> sessionScans = [];
 
 class _ScanDevicePageState extends State<ScanDevicePage> {
   final _controller = TextEditingController();
-  late final ApiClient _api;
+  late final ImeiRepository _imeiRepository;
   bool _dropdownOpen = false;
   bool _isLoading = false;
   bool _isScanning = false;
@@ -42,7 +43,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    _imeiRepository = ImeiRepositoryImpl(ApiClient(baseUrl));
     _loadScanData();
   }
 
@@ -72,51 +73,13 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   }
 
   Future<void> _fetchServices() async {
-    final res = await _api.get(ImeiEndpoints.services);
-    final data = res.data['data'];
-    if (data is! List) {
-      throw const FormatException('Invalid services response');
-    }
-
-    final services = <ScanDropdownOption>[];
-    for (final group in data) {
-      if (group is! Map) continue;
-      final groupServices = group['services'];
-      if (groupServices is! List) continue;
-      for (final service in groupServices) {
-        if (service is! Map) continue;
-        final id = (service['serviceId'] as num?)?.toInt();
-        final ids = service['serviceIds'];
-        final fallbackId = ids is List && ids.isNotEmpty
-            ? (ids.first as num?)?.toInt()
-            : null;
-        final serviceId = id ?? fallbackId;
-        if (serviceId == null || serviceId <= 0) continue;
-        final isFree = service['isFree'] == true;
-        services.add(
-          ScanDropdownOption(
-            service['name']?.toString() ?? 'IMEI Check',
-            isFree ? 'Free' : service['priceLabel']?.toString() ?? 'Premium',
-            serviceId: serviceId,
-          ),
-        );
-      }
-    }
-
+    final services = await _imeiRepository.getServices();
     _services = services.isEmpty ? verificationOptions : services;
     _selectedService ??= _services.firstOrNull;
   }
 
   Future<void> _fetchRecentScans() async {
-    final res = await _api.get(ImeiEndpoints.history);
-    final data = res.data['data'];
-    if (data is! List) {
-      throw const FormatException('Invalid scan history response');
-    }
-    final scans = data
-        .whereType<Map>()
-        .map((item) => scanItemFromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    final scans = await _imeiRepository.getHistory();
 
     scans.sort((a, b) {
       final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -161,23 +124,10 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     FocusScope.of(context).unfocus();
     setState(() => _isScanning = true);
     try {
-      final res = await _api.post(
-        ImeiEndpoints.checkV2,
-        data: {'imei': imei, 'serviceId': serviceId},
+      final scanResult = await _imeiRepository.checkImei(
+        imei: imei,
+        serviceId: serviceId,
       );
-      final data = res.data['data'];
-      if (data is! List || data.isEmpty) {
-        throw const FormatException('Invalid scan response');
-      }
-      final first = data.first;
-      if (first is! Map) {
-        throw const FormatException('Invalid scan result');
-      }
-      if (first['ok'] != true) {
-        _showMessage(first['message']?.toString() ?? 'IMEI check failed');
-        return;
-      }
-      final scanResult = Map<String, dynamic>.from(first);
       final scanData = scanResult['data'];
       final hasDeviceData = _hasValidDeviceData(scanData);
       if (!hasDeviceData) {
@@ -200,8 +150,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
           builder: (_) => DeviceReportPage(report: scanResult),
         ),
       );
-    } on DioException catch (e) {
-      _showMessage(e.response?.data?['message'] ?? 'IMEI check failed');
+    } on ImeiScanException catch (e) {
+      _showMessage(e.message.isNotEmpty ? e.message : 'IMEI check failed');
     } catch (e) {
       _showMessage(e.toString());
     } finally {
@@ -225,15 +175,10 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
 
     setState(() => _isExtractingImei = true);
     try {
-      final payload = FormData.fromMap({
-        'image': await MultipartFile.fromFile(
-          picked.path,
-          filename: picked.name,
-        ),
-      });
-      final res = await _api.post(OcrEndpoints.extractImei, data: payload);
-      final responseData = res.data is Map ? res.data['data'] : null;
-      final imeiNumbers = _extractImeis(responseData);
+      final imeiNumbers = await _imeiRepository.extractImeiFromImage(
+        picked.path,
+        fileName: picked.name,
+      );
 
       if (imeiNumbers.isEmpty) {
         _showMessage('No valid IMEI found in the selected image.');
@@ -250,10 +195,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
           '${imeiNumbers.length} IMEIs found. The first one has been filled in.',
         );
       }
-    } on DioException catch (e) {
-      _showMessage(
-        e.response?.data?['message'] ?? 'Failed to extract IMEI from image.',
-      );
+    } on ImeiScanException catch (e) {
+      _showMessage(e.message);
     } catch (_) {
       _showMessage('Failed to extract IMEI from image.');
     } finally {
@@ -289,15 +232,11 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     FocusScope.of(context).unfocus();
     setState(() => _isScanning = true);
     try {
-      final res = await _api.get(BarcodeEndpoints.search(code));
-      final data = res.data is Map ? res.data['data'] : null;
-      if (data is! Map) {
-        throw const FormatException('Invalid barcode response');
-      }
+      final data = await _imeiRepository.searchBarcode(code);
       if (!mounted) return;
-      await _showBarcodeResultSheet(Map<String, dynamic>.from(data));
-    } on DioException catch (e) {
-      _showMessage(e.response?.data?['message'] ?? 'Barcode lookup failed');
+      await _showBarcodeResultSheet(data);
+    } on ImeiScanException catch (e) {
+      _showMessage(e.message);
     } catch (_) {
       _showMessage('Barcode lookup failed');
     } finally {
@@ -635,43 +574,6 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     );
   }
 
-  List<String> _extractImeis(dynamic responseData) {
-    final imeis = <String>{};
-
-    void addCandidate(dynamic value) {
-      if (value == null) return;
-      final normalized = _normalizeImei(value.toString());
-      if (_isValidImei(normalized)) {
-        imeis.add(normalized);
-      }
-    }
-
-    if (responseData is Map) {
-      final directList = responseData['imeiNumbers'] ?? responseData['imeis'];
-      if (directList is List) {
-        for (final item in directList) {
-          addCandidate(item);
-        }
-      }
-
-      addCandidate(responseData['imei']);
-      addCandidate(responseData['imeiNumber']);
-
-      final rawText = responseData['rawText'];
-      if (rawText is String) {
-        for (final match in RegExp(r'\d{15}').allMatches(rawText)) {
-          addCandidate(match.group(0));
-        }
-      }
-    } else if (responseData is List) {
-      for (final item in responseData) {
-        addCandidate(item);
-      }
-    }
-
-    return imeis.toList();
-  }
-
   Future<void> _openRecentScan(ScanItem item) async {
     if (item.report.containsKey('ok')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: item.report)));
@@ -705,20 +607,18 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     );
 
     try {
-      final res = await _api.post(ImeiEndpoints.checkV2, data: {'imei': item.imei, 'serviceId': serviceId});
+      final report = await _imeiRepository.checkImei(
+        imei: item.imei,
+        serviceId: serviceId,
+      );
       if (!mounted) return;
       Navigator.pop(context);
-      final data = res.data['data'];
-      if (data is! List || data.isEmpty) {
-        _showMessage('Failed to load device report.');
-        return;
+      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)));
+    } on ImeiScanException catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showMessage(e.message.isNotEmpty ? e.message : 'Device data not found.');
       }
-      final first = data.first;
-      if (first is! Map || first['ok'] != true) {
-        _showMessage(first is Map ? first['message']?.toString() ?? 'Device data not found.' : 'Device data not found.');
-        return;
-      }
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: Map<String, dynamic>.from(first))));
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);

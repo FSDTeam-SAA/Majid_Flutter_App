@@ -6,14 +6,21 @@ import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:image_picker/image_picker.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../customer/data/repositories/customer_repository_impl.dart';
+import '../../../customer/domain/entities/customer.dart';
+import '../../../customer/domain/repositories/customer_repository.dart';
+import '../../data/repositories/invoice_repository_impl.dart';
+import '../../domain/entities/invoice.dart' as invoice_entity;
+import '../../domain/repositories/invoice_repository.dart';
 import '../controller/invoice_data.dart';
 import '../utils/invoice_pdf_builder.dart';
+import '../widgets/invoice_customer_picker.dart';
 import '../widgets/invoice_input_field.dart';
 import '../widgets/invoice_product_item.dart';
 import '../widgets/shop_info_card.dart';
@@ -30,7 +37,8 @@ class _InvoicePageState extends State<InvoicePage> {
   static const double _pageLoaderSize = 28;
   static const double _dropdownLoaderSize = 22;
 
-  late final ApiClient _api;
+  late final CustomerRepository _customerRepo;
+  late final InvoiceRepository _invoiceRepo;
   late final ProfileController _profileCtrl;
   final TextEditingController _firstNameCtrl = TextEditingController();
   final TextEditingController _lastNameCtrl = TextEditingController();
@@ -56,7 +64,7 @@ class _InvoicePageState extends State<InvoicePage> {
   bool _isDeliveryCustomerDropdownOpen = false;
   String _errorMessage = '';
   List<InvoiceProduct> _products = [];
-  List<Map<String, dynamic>> _customers = [];
+  List<Customer> _customers = [];
   bool _isSendingInvoice = false;
 
   // Purchase Invoice
@@ -86,7 +94,7 @@ class _InvoicePageState extends State<InvoicePage> {
   bool _isViewInvoicesLoaded = false;
   bool _isViewInvoicesLoading = false;
   String _viewInvoicesError = '';
-  List<Map<String, dynamic>> _viewInvoices = [];
+  List<invoice_entity.Invoice> _viewInvoices = [];
 
   double get _totalAmount =>
       _products.where((product) => _selectedProductIds.contains(product.id)).fold(0, (sum, product) => sum + product.price);
@@ -113,7 +121,9 @@ class _InvoicePageState extends State<InvoicePage> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    final api = ApiClient(baseUrl);
+    _customerRepo = CustomerRepositoryImpl(api);
+    _invoiceRepo = InvoiceRepositoryImpl(api);
     _profileCtrl = Get.find<ProfileController>();
     _loadInvoiceData();
   }
@@ -177,12 +187,7 @@ class _InvoicePageState extends State<InvoicePage> {
       _customers = [];
       return;
     }
-    final res = await _api.get(CustomerEndpoints.byShopkeeper(shopkeeperId));
-    final data = res.data['data'];
-    if (data is! List) {
-      throw const FormatException('Invalid customers response');
-    }
-    _customers = List<Map<String, dynamic>>.from(data);
+    _customers = await _customerRepo.getCustomers(shopkeeperId);
   }
 
   Future<void> _openCustomerPicker() async {
@@ -204,17 +209,16 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  void _selectCustomer(String value) {
-    final customer = _customers.firstWhereOrNull((item) => _customerLabel(item) == value);
+  void _selectCustomer(Customer customer) {
     setState(() {
-      _selectedCustomer = value;
-      _selectedCustomerId = customer?['_id']?.toString();
+      _selectedCustomer = customerLabel(customer);
+      _selectedCustomerId = customer.id;
       _applyCustomerData(customer);
       _isCustomerDropdownOpen = false;
     });
   }
 
-  void _applyCustomerData(Map<String, dynamic>? customer) {
+  void _applyCustomerData(Customer? customer) {
     _applyCustomerDataTo(
       customer,
       firstName: _firstNameCtrl,
@@ -223,22 +227,22 @@ class _InvoicePageState extends State<InvoicePage> {
       phone: _phoneCtrl,
       address: _addressCtrl,
     );
-    _customerIdCtrl.text = customer?['_id']?.toString() ?? '';
+    _customerIdCtrl.text = customer?.id ?? '';
   }
 
   void _applyCustomerDataTo(
-    Map<String, dynamic>? customer, {
+    Customer? customer, {
     required TextEditingController firstName,
     required TextEditingController lastName,
     required TextEditingController email,
     required TextEditingController phone,
     required TextEditingController address,
   }) {
-    firstName.text = customer?['firstName']?.toString() ?? '';
-    lastName.text = customer?['lastName']?.toString() ?? '';
-    email.text = customer?['email']?.toString() ?? '';
-    phone.text = customer?['phone']?.toString() ?? customer?['whatsappNumber']?.toString() ?? '';
-    address.text = customer?['billingAddress']?.toString() ?? customer?['address']?.toString() ?? '';
+    firstName.text = customer?.firstName ?? '';
+    lastName.text = customer?.lastName ?? '';
+    email.text = customer?.email ?? '';
+    phone.text = customer?.phone ?? '';
+    address.text = customer?.address ?? '';
   }
 
   Future<void> _openPurchaseCustomerPicker() async {
@@ -260,9 +264,9 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  void _selectPurchaseCustomer(Map<String, dynamic> customer) {
+  void _selectPurchaseCustomer(Customer customer) {
     setState(() {
-      _selectedPurchaseCustomer = _customerLabel(customer);
+      _selectedPurchaseCustomer = customerLabel(customer);
       _applyCustomerDataTo(
         customer,
         firstName: _pFirstNameCtrl,
@@ -294,9 +298,9 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  void _selectDeliveryCustomer(Map<String, dynamic> customer) {
+  void _selectDeliveryCustomer(Customer customer) {
     setState(() {
-      _selectedDeliveryCustomer = _customerLabel(customer);
+      _selectedDeliveryCustomer = customerLabel(customer);
       _applyCustomerDataTo(
         customer,
         firstName: _dFirstNameCtrl,
@@ -310,12 +314,7 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Future<void> _fetchProducts() async {
-    final res = await _api.get(InventoryEndpoints.myInventory);
-    final data = res.data['data'];
-    if (data is! List) {
-      throw const FormatException('Invalid inventory response');
-    }
-    _products = data.whereType<Map>().map((item) => _productFromJson(Map<String, dynamic>.from(item))).toList();
+    _products = await _invoiceRepo.getInventoryItems();
   }
 
   Future<void> _createInvoice() async {
@@ -378,18 +377,14 @@ class _InvoicePageState extends State<InvoicePage> {
       if (hasExistingCustomer) {
         customerId = _selectedCustomerId!;
       } else {
-        final customerRes = await _api.post(
-          CustomerEndpoints.create,
-          data: {
-            'shopkeeperId': shopkeeperId,
-            'firstName': _firstNameCtrl.text.trim(),
-            'lastName': _lastNameCtrl.text.trim(),
-            'email': _emailCtrl.text.trim(),
-            'phone': _phoneCtrl.text.trim(),
-            'billingAddress': _addressCtrl.text.trim(),
-          },
+        final createdCustomer = await _customerRepo.createCustomer(
+          firstName: _firstNameCtrl.text.trim(),
+          lastName: _lastNameCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+          phone: _phoneCtrl.text.trim(),
+          address: _addressCtrl.text.trim(),
         );
-        customerId = customerRes.data['data']?['_id']?.toString() ?? '';
+        customerId = createdCustomer.id;
         if (customerId.isEmpty) {
           showErrorSnackbar('Failed to create customer');
           return;
@@ -410,7 +405,7 @@ class _InvoicePageState extends State<InvoicePage> {
       }
 
       payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
-      await _api.post(InvoiceEndpoints.create, data: payload);
+      await _invoiceRepo.createInvoice(payload);
       if (!mounted) return;
       showSuccessSnackbar('Invoice created successfully!');
       _isViewInvoicesLoaded = false;
@@ -440,42 +435,6 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  InvoiceProduct _productFromJson(Map<String, dynamic> item) {
-    final price = (item['expectedPrice'] as num?)?.toDouble() ?? (item['purchasePrice'] as num?)?.toDouble() ?? 0;
-    return InvoiceProduct(
-      id: item['_id']?.toString() ?? '',
-      name: item['itemName']?.toString() ?? item['brand']?.toString() ?? 'Inventory item',
-      code: item['sku']?.toString() ?? item['imeiNumber']?.toString() ?? 'N/A',
-      imeiSerial: item['imeiNumber']?.toString() ?? item['serialNumber']?.toString() ?? '',
-      price: price,
-      color: AppColors.primary,
-      category: _categoryFromJson(item),
-    );
-  }
-
-  String _categoryFromJson(Map<String, dynamic> item) {
-    final categoryName = item['categoryName'];
-    if (categoryName is String && categoryName.trim().isNotEmpty) {
-      return categoryName.trim();
-    }
-
-    final category = item['category'];
-    if (category is Map && category['name'] != null) {
-      return category['name'].toString();
-    }
-
-    final categoryId = item['categoryId'];
-    if (categoryId is Map && categoryId['name'] != null) {
-      return categoryId['name'].toString();
-    }
-
-    if (category is String && category.trim().isNotEmpty) {
-      return category.trim();
-    }
-
-    return 'Uncategorized';
-  }
-
   Future<void> _fetchViewInvoices() async {
     setState(() {
       _isViewInvoicesLoading = true;
@@ -487,11 +446,7 @@ class _InvoicePageState extends State<InvoicePage> {
         await _profileCtrl.fetchProfile();
         shopkeeperId = _profileCtrl.userId;
       }
-      final res = await _api.get(InvoiceEndpoints.byShopkeeper(shopkeeperId));
-      final data = res.data['data'];
-      if (data is List) {
-        _viewInvoices = List<Map<String, dynamic>>.from(data);
-      }
+      _viewInvoices = await _invoiceRepo.getInvoices(shopkeeperId);
       _isViewInvoicesLoaded = true;
     } on DioException catch (e) {
       _viewInvoicesError = e.response?.data?['message'] ?? 'Failed to load invoices';
@@ -507,18 +462,6 @@ class _InvoicePageState extends State<InvoicePage> {
     final date = DateTime.tryParse(dateStr);
     if (date == null) return dateStr;
     return '${date.day}/${date.month}/${date.year}';
-  }
-
-  String _invoiceCustomerName(Map<String, dynamic> invoice) {
-    final info = invoice['customerInfo'];
-    if (info is Map) {
-      final first = info['firstName']?.toString() ?? '';
-      final last = info['lastName']?.toString() ?? '';
-      final name = '$first $last'.trim();
-      if (name.isNotEmpty) return name;
-      return info['email']?.toString() ?? 'Customer';
-    }
-    return 'N/A';
   }
 
   @override
@@ -766,18 +709,13 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
-  String _customerLabel(Map<String, dynamic> customer) {
-    final first = customer['firstName']?.toString() ?? '';
-    final last = customer['lastName']?.toString() ?? '';
-    final name = '$first $last'.trim();
-    if (name.isNotEmpty) return name;
-    return customer['name']?.toString() ?? customer['email']?.toString() ?? 'Customer';
-  }
-
   Widget _buildCustomerDropdown() {
-    return _buildCustomerPicker(
+    return InvoiceCustomerPicker(
+      customers: _customers,
       selected: _selectedCustomer,
       isOpen: _isCustomerDropdownOpen,
+      isLoading: _isCustomersLoading,
+      dropdownLoaderSize: _dropdownLoaderSize,
       onToggle: () {
         if (_isCustomerDropdownOpen) {
           setState(() => _isCustomerDropdownOpen = false);
@@ -785,132 +723,7 @@ class _InvoicePageState extends State<InvoicePage> {
           _openCustomerPicker();
         }
       },
-      onSelect: (customer) => _selectCustomer(_customerLabel(customer)),
-    );
-  }
-
-  Widget _buildCustomerPicker({
-    required String? selected,
-    required bool isOpen,
-    required VoidCallback onToggle,
-    required ValueChanged<Map<String, dynamic>> onSelect,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.fieldBackground,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(26),
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isCustomersLoading ? 'Loading customers...' : (selected ?? 'Choose a customer'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: selected != null && !_isCustomersLoading ? AppColors.textPrimary : AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (isOpen) ...[
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.fieldBorder),
-            ),
-            child: _buildCustomerPickerMenu(selected: selected, onSelect: onSelect),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCustomerPickerMenu({
-    required String? selected,
-    required ValueChanged<Map<String, dynamic>> onSelect,
-  }) {
-    if (_isCustomersLoading) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Center(
-          child: SizedBox(
-            width: _dropdownLoaderSize,
-            height: _dropdownLoaderSize,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.4,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (_customers.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text('No customers found', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-      child: Column(
-        children: _customers.map((customer) {
-          final label = _customerLabel(customer);
-          final isSelected = selected == label;
-          return InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => onSelect(customer),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              margin: const EdgeInsets.only(bottom: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.fieldBackground : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                  if (isSelected) Icon(Icons.check, color: AppColors.primary, size: 18),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+      onSelect: _selectCustomer,
     );
   }
 
@@ -1077,9 +890,12 @@ class _InvoicePageState extends State<InvoicePage> {
         SizedBox(height: 4),
         Text('Identity validation framework controls', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         SizedBox(height: 14),
-        _buildCustomerPicker(
+        InvoiceCustomerPicker(
+          customers: _customers,
           selected: _selectedPurchaseCustomer,
           isOpen: _isPurchaseCustomerDropdownOpen,
+          isLoading: _isCustomersLoading,
+          dropdownLoaderSize: _dropdownLoaderSize,
           onToggle: () {
             if (_isPurchaseCustomerDropdownOpen) {
               setState(() => _isPurchaseCustomerDropdownOpen = false);
@@ -1416,22 +1232,11 @@ class _InvoicePageState extends State<InvoicePage> {
 
     setState(() => _isExtractingNid = true);
     try {
-      final payload = FormData.fromMap({
-        if (_nidFrontImage != null) 'nid_front': await MultipartFile.fromFile(_nidFrontImage!.path),
-        if (_nidBackImage != null) 'nid_back': await MultipartFile.fromFile(_nidBackImage!.path),
-      });
-      final res = await _api.post(OcrEndpoints.extractNid, data: payload);
-      final data = res.data['data'];
-      final nidNumber = data is Map ? data['nidNumber']?.toString() : null;
-
-      if (nidNumber == null || nidNumber.isEmpty) {
-        showErrorSnackbar('No valid NID number found in the selected image.');
-        return;
-      }
+      final nidNumber = await _invoiceRepo.extractNid(frontImage: _nidFrontImage, backImage: _nidBackImage);
       _pIdNumberCtrl.text = nidNumber;
       showSuccessSnackbar('NID number extracted successfully.');
-    } on DioException catch (e) {
-      showErrorSnackbar(e.response?.data?['message']?.toString() ?? 'Failed to extract NID from image.');
+    } on InvoiceException catch (e) {
+      showErrorSnackbar(e.message);
     } catch (_) {
       showErrorSnackbar('Failed to extract NID from image.');
     } finally {
@@ -1501,7 +1306,7 @@ class _InvoicePageState extends State<InvoicePage> {
       ]);
       payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
 
-      await _api.post(InvoiceEndpoints.create, data: payload);
+      await _invoiceRepo.createInvoice(payload);
       if (!mounted) return;
       showSuccessSnackbar('Purchase receipt created successfully!');
       _isViewInvoicesLoaded = false;
@@ -1553,9 +1358,12 @@ class _InvoicePageState extends State<InvoicePage> {
           style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 14),
-        _buildCustomerPicker(
+        InvoiceCustomerPicker(
+          customers: _customers,
           selected: _selectedDeliveryCustomer,
           isOpen: _isDeliveryCustomerDropdownOpen,
+          isLoading: _isCustomersLoading,
+          dropdownLoaderSize: _dropdownLoaderSize,
           onToggle: () {
             if (_isDeliveryCustomerDropdownOpen) {
               setState(() => _isDeliveryCustomerDropdownOpen = false);
@@ -1684,7 +1492,7 @@ class _InvoicePageState extends State<InvoicePage> {
       ]);
       payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
 
-      await _api.post(InvoiceEndpoints.create, data: payload);
+      await _invoiceRepo.createInvoice(payload);
       if (!mounted) return;
       showSuccessSnackbar('Delivery invoice created successfully!');
       _isViewInvoicesLoaded = false;
@@ -1759,12 +1567,11 @@ class _InvoicePageState extends State<InvoicePage> {
         ),
         SizedBox(height: 14),
         ..._viewInvoices.map((inv) {
-          final type = inv['type']?.toString() ?? 'invoice';
-          final amount = (inv['totalAmount'] as num?)?.toDouble();
-          final date = _formatInvoiceDate(inv['createdAt']?.toString());
-          final customer = _invoiceCustomerName(inv);
-          final invoiceFile = inv['invoice'];
-          final pdfUrl = invoiceFile is Map ? invoiceFile['url']?.toString() : null;
+          final type = inv.type;
+          final amount = inv.totalAmount;
+          final date = _formatInvoiceDate(inv.createdAt);
+          final customer = inv.customerName;
+          final pdfUrl = inv.pdfUrl;
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: GestureDetector(

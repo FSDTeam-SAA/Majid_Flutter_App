@@ -1,25 +1,34 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:get/get.dart' hide FormData, MultipartFile;
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../data/repositories/category_repository_impl.dart';
+import '../../data/repositories/inventory_repository_impl.dart';
+import '../../domain/entities/category.dart';
+import '../../domain/entities/inventory_item.dart';
+import '../../domain/repositories/category_repository.dart';
+import '../../domain/repositories/inventory_repository.dart';
 
 class StockController extends GetxController {
-  late final ApiClient _api;
+  late final CategoryRepository _categoryRepo;
+  late final InventoryRepository _inventoryRepo;
 
   final isLoading = true.obs;
   final isSaving = false.obs;
   final errorMessage = ''.obs;
 
-  final categories = <Map<String, dynamic>>[].obs;
-  final inventoryCategoryCards = <Map<String, dynamic>>[].obs;
+  final categories = <Category>[].obs;
+  final inventoryCategoryCards = <Category>[].obs;
 
   @override
   void onInit() {
     super.onInit();
-    _api = ApiClient(baseUrl);
+    final api = ApiClient(baseUrl);
+    _categoryRepo = CategoryRepositoryImpl(api);
+    _inventoryRepo = InventoryRepositoryImpl(api);
     fetchCategories();
   }
 
@@ -33,13 +42,7 @@ class StockController extends GetxController {
         return;
       }
 
-      final res = await _api.get(
-        '${CategoryEndpoints.withCount}?shopkeeperId=$shopkeeperId',
-      );
-      final data = res.data['data'];
-      if (data is List) {
-        categories.value = List<Map<String, dynamic>>.from(data);
-      }
+      categories.value = await _categoryRepo.getCategoriesWithCount(shopkeeperId);
       await _refreshInventoryCategoryCards(shopkeeperId);
     } on DioException catch (e) {
       debugPrint('Categories fetch error: $e');
@@ -53,24 +56,14 @@ class StockController extends GetxController {
     // primary source of truth for the grid. All categories are shown here
     // (even empty ones) so a newly created category is immediately tappable
     // to add its first device, matching the Manage Categories list.
-    final cards = categories
-        .map((category) => Map<String, dynamic>.from(category))
-        .toList();
+    final cards = List<Category>.from(categories);
 
     try {
-      final res = await _api.get(InventoryEndpoints.byUserId(shopkeeperId));
-      final data = res.data['data'];
-      final items = data is List
-          ? List<Map<String, dynamic>>.from(data)
-          : <Map<String, dynamic>>[];
+      final items = await _inventoryRepo.getByShopkeeperId(shopkeeperId);
       final derivedCards = _buildInventoryCategoryCards(items);
-      final existingIds = cards
-          .map((category) => category['_id']?.toString())
-          .whereType<String>()
-          .toSet();
+      final existingIds = cards.map((category) => category.id).toSet();
       for (final card in derivedCards) {
-        final id = card['_id']?.toString();
-        if (id == null || !existingIds.contains(id)) {
+        if (!existingIds.contains(card.id)) {
           cards.add(card);
         }
       }
@@ -81,16 +74,14 @@ class StockController extends GetxController {
     inventoryCategoryCards.value = cards;
   }
 
-  List<Map<String, dynamic>> _buildInventoryCategoryCards(
-    List<Map<String, dynamic>> items,
-  ) {
+  List<Category> _buildInventoryCategoryCards(List<InventoryItem> items) {
     final countByKey = <String, int>{};
-    final templateByKey = <String, Map<String, dynamic>>{};
+    final templateByKey = <String, Category>{};
     final fallbackImageByKey = <String, String>{};
 
     for (final category in categories) {
-      final id = category['_id']?.toString().trim() ?? '';
-      final name = _normalizedCategoryName(category['name']?.toString());
+      final id = category.id.trim();
+      final name = _normalizedCategoryName(category.name);
       if (id.isNotEmpty) {
         templateByKey[id] = category;
       }
@@ -100,108 +91,38 @@ class StockController extends GetxController {
     }
 
     for (final item in items) {
-      final categoryId = _itemCategoryId(item);
-      final categoryName = _normalizedCategoryName(_itemCategoryName(item));
-      final key = categoryId?.isNotEmpty == true
-          ? categoryId!
-          : (categoryName.isNotEmpty ? categoryName : '');
+      final categoryId = item.categoryId;
+      final categoryName = _normalizedCategoryName(item.categoryName ?? '');
+      final key = categoryId?.isNotEmpty == true ? categoryId! : (categoryName.isNotEmpty ? categoryName : '');
       if (key.isEmpty) continue;
 
       countByKey.update(key, (value) => value + 1, ifAbsent: () => 1);
 
-      final itemImage = _itemImageUrl(item);
+      final itemImage = item.imageUrl;
       if (itemImage != null && itemImage.isNotEmpty) {
         fallbackImageByKey.putIfAbsent(key, () => itemImage);
       }
 
       if (!templateByKey.containsKey(key) && categoryName.isNotEmpty) {
-        templateByKey[key] = {
-          '_id': categoryId,
-          'name': _itemCategoryName(item) ?? 'Category',
-        };
+        templateByKey[key] = Category(id: categoryId ?? '', name: item.categoryName ?? 'Category');
       }
     }
 
-    final visibleCategories = <Map<String, dynamic>>[];
+    final visibleCategories = <Category>[];
 
     for (final entry in countByKey.entries) {
-      final template = Map<String, dynamic>.from(templateByKey[entry.key] ?? {});
-      final imageUrl = fallbackImageByKey[entry.key];
-      if ((template['image'] == null || template['image']['url'] == null) &&
-          imageUrl != null) {
-        template['image'] = {'url': imageUrl};
-      }
-      template['itemCount'] = entry.value;
-      template['totalItems'] = entry.value;
-      visibleCategories.add(template);
+      final template = templateByKey[entry.key] ?? Category(id: entry.key, name: 'Category');
+      final imageUrl = template.imageUrl ?? fallbackImageByKey[entry.key];
+      visibleCategories.add(template.copyWith(imageUrl: imageUrl, itemCount: entry.value));
     }
 
-    visibleCategories.sort((a, b) {
-      final aName = a['name']?.toString() ?? '';
-      final bName = b['name']?.toString() ?? '';
-      return aName.toLowerCase().compareTo(bName.toLowerCase());
-    });
+    visibleCategories.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
     return visibleCategories;
   }
 
-  String? _itemCategoryId(Map<String, dynamic> item) {
-    final categoryId = item['categoryId'];
-    if (categoryId is String && categoryId.trim().isNotEmpty) {
-      return categoryId.trim();
-    }
-    if (categoryId is Map) {
-      final nestedId = categoryId['_id']?.toString().trim();
-      if (nestedId != null && nestedId.isNotEmpty) return nestedId;
-    }
-    final category = item['category'];
-    if (category is Map) {
-      final nestedId = category['_id']?.toString().trim();
-      if (nestedId != null && nestedId.isNotEmpty) return nestedId;
-    }
-    return null;
-  }
-
-  String? _itemCategoryName(Map<String, dynamic> item) {
-    final categoryName = item['categoryName'];
-    if (categoryName is String && categoryName.trim().isNotEmpty) {
-      return categoryName.trim();
-    }
-
-    final categoryId = item['categoryId'];
-    if (categoryId is Map) {
-      final nestedName = categoryId['name'];
-      if (nestedName is String && nestedName.trim().isNotEmpty) {
-        return nestedName.trim();
-      }
-    }
-
-    final category = item['category'];
-    if (category is Map) {
-      final nestedName = category['name'];
-      if (nestedName is String && nestedName.trim().isNotEmpty) {
-        return nestedName.trim();
-      }
-    }
-
-    if (category is String && category.trim().isNotEmpty) {
-      return category.trim();
-    }
-
-    return null;
-  }
-
-  String? _itemImageUrl(Map<String, dynamic> item) {
-    final image = item['image'];
-    if (image is Map) {
-      final url = image['url']?.toString().trim();
-      if (url != null && url.isNotEmpty) return url;
-    }
-    return null;
-  }
-
-  String _normalizedCategoryName(String? value) {
-    return value?.trim().toLowerCase() ?? '';
+  String _normalizedCategoryName(String value) {
+    return value.trim().toLowerCase();
   }
 
   Future<String?> _resolveShopkeeperId() async {
@@ -214,10 +135,7 @@ class StockController extends GetxController {
     if (id.isNotEmpty) return id;
 
     try {
-      final res = await _api.get(UserEndpoints.myProfile);
-      final data = res.data['data'];
-      final resolvedId = data['_id']?.toString().trim() ?? '';
-      return resolvedId.isEmpty ? null : resolvedId;
+      return await _categoryRepo.getMyProfileId();
     } on DioException catch (e) {
       debugPrint('Profile resolve error: $e');
       return null;
@@ -234,24 +152,11 @@ class StockController extends GetxController {
         return false;
       }
 
-      if (imagePath != null && imagePath.isNotEmpty) {
-        final formData = FormData.fromMap({
-          'name': name,
-          'shopkeeperId': shopkeeperId,
-          'image': await MultipartFile.fromFile(imagePath),
-        });
-        await _api.dio.post(CategoryEndpoints.create, data: formData);
-      } else {
-        await _api.post(
-          CategoryEndpoints.create,
-          data: {'name': name, 'shopkeeperId': shopkeeperId},
-        );
-      }
+      await _categoryRepo.createCategory(name: name, shopkeeperId: shopkeeperId, imagePath: imagePath);
       await fetchCategories();
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to create category';
+      errorMessage.value = e.response?.data?['message'] ?? 'Failed to create category';
       return false;
     } finally {
       isSaving.value = false;
@@ -272,24 +177,11 @@ class StockController extends GetxController {
         return false;
       }
 
-      if (imagePath != null && imagePath.isNotEmpty) {
-        final formData = FormData.fromMap({
-          'name': name,
-          'shopkeeperId': shopkeeperId,
-          'image': await MultipartFile.fromFile(imagePath),
-        });
-        await _api.dio.put(CategoryEndpoints.byId(id), data: formData);
-      } else {
-        await _api.put(
-          CategoryEndpoints.byId(id),
-          data: {'name': name, 'shopkeeperId': shopkeeperId},
-        );
-      }
+      await _categoryRepo.updateCategory(id: id, name: name, shopkeeperId: shopkeeperId, imagePath: imagePath);
       await fetchCategories();
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to update category';
+      errorMessage.value = e.response?.data?['message'] ?? 'Failed to update category';
       return false;
     } finally {
       isSaving.value = false;
@@ -299,13 +191,12 @@ class StockController extends GetxController {
   Future<bool> deleteCategory(String id) async {
     errorMessage.value = '';
     try {
-      await _api.delete(CategoryEndpoints.byId(id));
-      categories.removeWhere((c) => c['_id'] == id);
-      inventoryCategoryCards.removeWhere((c) => c['_id'] == id);
+      await _categoryRepo.deleteCategory(id);
+      categories.removeWhere((c) => c.id == id);
+      inventoryCategoryCards.removeWhere((c) => c.id == id);
       return true;
     } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to delete category';
+      errorMessage.value = e.response?.data?['message'] ?? 'Failed to delete category';
       return false;
     }
   }

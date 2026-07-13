@@ -55,8 +55,7 @@ class _ProfilePageViewState extends State<ProfilePageView>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed &&
-        _profileCtrl.profileData.isEmpty) {
+    if (state == AppLifecycleState.resumed && _profileCtrl.hasNoProfile) {
       _profileCtrl.fetchProfile();
     }
   }
@@ -91,7 +90,7 @@ class _ProfilePageViewState extends State<ProfilePageView>
                   );
                 }
 
-                if (profileCtrl.profileData.isEmpty) {
+                if (profileCtrl.hasNoProfile) {
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

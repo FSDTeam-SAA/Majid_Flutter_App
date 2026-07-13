@@ -1,26 +1,39 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:get/get.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../stock/data/repositories/inventory_repository_impl.dart';
+import '../../data/repositories/dashboard_repository_impl.dart';
+import '../../data/repositories/payment_repository_impl.dart';
+import '../../data/repositories/profile_repository_impl.dart';
+import '../../domain/entities/checkout_session.dart';
+import '../../domain/entities/dashboard_stats.dart';
+import '../../domain/entities/payment.dart';
+import '../../domain/entities/subscription_plan.dart';
+import '../../domain/entities/user_profile.dart';
+import '../../domain/repositories/dashboard_repository.dart';
+import '../../domain/repositories/payment_repository.dart';
+import '../../domain/repositories/profile_repository.dart';
 
 class ProfileController extends GetxController {
-  late final ApiClient _api;
+  late final ProfileRepository _profileRepo;
+  late final PaymentRepository _paymentRepo;
+  late final DashboardRepository _dashboardRepo;
 
   final isLoading = true.obs;
   final isSaving = false.obs;
   final errorMessage = ''.obs;
 
   // Profile data
-  final profileData = <String, dynamic>{}.obs;
+  final profile = Rx<UserProfile?>(null);
 
   // Payment history
-  final payments = <Map<String, dynamic>>[].obs;
+  final payments = <Payment>[].obs;
   final isPaymentsLoading = true.obs;
 
   // Subscriptions
-  final subscriptions = <Map<String, dynamic>>[].obs;
+  final subscriptions = <SubscriptionPlan>[].obs;
   final isSubscriptionsLoading = true.obs;
 
   // Repair stats for business health (legacy - kept for fallback)
@@ -28,44 +41,38 @@ class ProfileController extends GetxController {
   final totalInventoryItems = 0.obs;
 
   // Dashboard stats
-  final dashboardStats = Rx<Map<String, dynamic>?>(null);
+  final dashboardStats = Rx<DashboardStats?>(null);
   final isDashboardLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    _api = ApiClient(baseUrl);
+    final api = ApiClient(baseUrl);
+    _profileRepo = ProfileRepositoryImpl(api);
+    _paymentRepo = PaymentRepositoryImpl(api);
+    _dashboardRepo = DashboardRepositoryImpl(api, InventoryRepositoryImpl(api));
     fetchProfile();
   }
 
-  String get fullName {
-    final first = profileData['firstName'] ?? '';
-    final last = profileData['lastName'] ?? '';
-    return '$first $last'.trim();
-  }
+  /// True once a profile fetch has completed and returned no data — mirrors
+  /// the previous `profileData.isEmpty` check used by the presentation layer.
+  bool get hasNoProfile => profile.value == null;
 
-  String get email => profileData['email'] ?? '';
-  double get balance => (profileData['balance'] ?? 0).toDouble();
-  String get shopName => profileData['shopName'] ?? '';
-  String get shopAddress => profileData['shopAddress'] ?? '';
-  String get whatsappNumber => profileData['whatsappNumber'] ?? '';
-  String get phone => profileData['phone'] ?? '';
-  String get userId => profileData['_id'] ?? '';
-  String get imageUrl {
-    final img = profileData['image'];
-    if (img is Map && img['url'] != null) return img['url'];
-    return '';
-  }
+  String get fullName => profile.value?.fullName ?? '';
+  String get email => profile.value?.email ?? '';
+  double get balance => profile.value?.balance ?? 0;
+  String get shopName => profile.value?.shopName ?? '';
+  String get shopAddress => profile.value?.shopAddress ?? '';
+  String get whatsappNumber => profile.value?.whatsappNumber ?? '';
+  String get phone => profile.value?.phone ?? '';
+  String get userId => profile.value?.id ?? '';
+  String get imageUrl => profile.value?.imageUrl ?? '';
 
   Future<void> fetchProfile() async {
     isLoading.value = true;
     try {
-      final res = await _api.get(UserEndpoints.myProfile);
-      final data = res.data['data'];
-      if (data != null) {
-        profileData.value = Map<String, dynamic>.from(data);
-      }
-    } on DioException catch (e) {
+      profile.value = await _profileRepo.getProfile();
+    } catch (e) {
       debugPrint('Profile fetch error: $e');
     } finally {
       isLoading.value = false;
@@ -84,35 +91,18 @@ class ProfileController extends GetxController {
     isSaving.value = true;
     errorMessage.value = '';
     try {
-      final data = <String, dynamic>{
-        'firstName': firstName,
-        'lastName': lastName,
-      };
-      if (phone != null && phone.isNotEmpty) data['phone'] = phone;
-      if (whatsappNumber != null && whatsappNumber.isNotEmpty) {
-        data['whatsappNumber'] = whatsappNumber;
-      }
-      if (shopName != null) data['shopName'] = shopName;
-      if (shopAddress != null) data['shopAddress'] = shopAddress;
-
-      final payload = imagePath != null && imagePath.isNotEmpty
-          ? FormData.fromMap({
-              ...data,
-              'image': await MultipartFile.fromFile(imagePath),
-            })
-          : data;
-
-      final res = await _api.put(UserEndpoints.updateProfile, data: payload);
-      final updated = res.data['data'];
-      if (updated != null) {
-        profileData.value = Map<String, dynamic>.from(updated);
-      }
-      return true;
-    } on DioException catch (e) {
-      errorMessage.value = _messageFromDioError(
-        e,
-        fallback: 'Failed to update profile',
+      profile.value = await _profileRepo.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+        whatsappNumber: whatsappNumber,
+        shopName: shopName,
+        shopAddress: shopAddress,
+        imagePath: imagePath,
       );
+      return true;
+    } on ProfileException catch (e) {
+      errorMessage.value = e.message;
       return false;
     } catch (e) {
       errorMessage.value = 'Failed to update profile';
@@ -130,16 +120,13 @@ class ProfileController extends GetxController {
     isSaving.value = true;
     errorMessage.value = '';
     try {
-      await _api.post(
-        AuthEndpoints.changePassword,
-        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      await _profileRepo.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
       );
       return true;
-    } on DioException catch (e) {
-      errorMessage.value = _messageFromDioError(
-        e,
-        fallback: 'Failed to change password',
-      );
+    } on ProfileException catch (e) {
+      errorMessage.value = e.message;
       return false;
     } catch (e) {
       errorMessage.value = 'Failed to change password';
@@ -150,39 +137,11 @@ class ProfileController extends GetxController {
     }
   }
 
-  String _messageFromDioError(DioException error, {required String fallback}) {
-    final statusCode = error.response?.statusCode;
-    final responseData = error.response?.data;
-
-    if (responseData is Map && responseData['message'] != null) {
-      return responseData['message'].toString();
-    }
-
-    if (statusCode == 404) {
-      return 'API route not found. Please check the backend base URL.';
-    }
-
-    if (statusCode == 401) {
-      return 'Session expired. Please login again.';
-    }
-
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.connectionError) {
-      return 'Cannot connect to the backend server.';
-    }
-
-    return fallback;
-  }
-
   Future<void> fetchPayments() async {
     isPaymentsLoading.value = true;
     try {
-      final res = await _api.get(PaymentEndpoints.myPayments);
-      final data = res.data['data'];
-      if (data is List) {
-        payments.value = List<Map<String, dynamic>>.from(data);
-      }
-    } on DioException catch (e) {
+      payments.value = await _paymentRepo.getMyPayments();
+    } catch (e) {
       debugPrint('Payments fetch error: $e');
     } finally {
       isPaymentsLoading.value = false;
@@ -192,49 +151,27 @@ class ProfileController extends GetxController {
   Future<void> fetchSubscriptions() async {
     isSubscriptionsLoading.value = true;
     try {
-      final res = await _api.get(SubscriptionEndpoints.all);
-      final data = res.data['data'];
-      if (data is List) {
-        subscriptions.value = List<Map<String, dynamic>>.from(data);
-      }
-    } on DioException catch (e) {
+      subscriptions.value = await _paymentRepo.getSubscriptionPlans();
+    } catch (e) {
       debugPrint('Subscriptions fetch error: $e');
     } finally {
       isSubscriptionsLoading.value = false;
     }
   }
 
-  Future<Map<String, dynamic>> createPayment({
+  Future<CheckoutSession> createPayment({
     required double amount,
     String? subscriptionId,
-  }) async {
-    final res = await _api.post(
-      PaymentEndpoints.createPayment,
-      data: {
-        'amount': amount,
-        if (subscriptionId != null && subscriptionId.isNotEmpty) 'subscriptionId': subscriptionId,
-      },
-    );
-    return Map<String, dynamic>.from(res.data['data']);
+  }) {
+    return _paymentRepo.createPayment(amount: amount, subscriptionId: subscriptionId);
   }
 
   Future<void> fetchBusinessHealthData() async {
     try {
-      final results = await Future.wait([
-        _api.get(RepairRequestEndpoints.myHistory),
-        _api.get(InventoryEndpoints.myInventory),
-      ]);
-
-      final repairData = results[0].data;
-      totalRepairs.value =
-          repairData['meta']?['total'] ??
-          (repairData['data'] is List ? repairData['data'].length : 0);
-
-      final inventoryData = results[1].data['data'];
-      if (inventoryData is List) {
-        totalInventoryItems.value = inventoryData.length;
-      }
-    } on DioException catch (e) {
+      final stats = await _dashboardRepo.getLegacyBusinessHealthStats();
+      totalRepairs.value = stats.totalRepairs;
+      totalInventoryItems.value = stats.totalInventoryItems;
+    } catch (e) {
       debugPrint('Business health fetch error: $e');
     }
   }
@@ -243,15 +180,11 @@ class ProfileController extends GetxController {
     isDashboardLoading.value = true;
     try {
       final id = userId;
-      final query = id.isNotEmpty
-          ? '?filter=$filter&shopkeeperId=$id'
-          : '?filter=$filter';
-      final res = await _api.get('${DashboardEndpoints.stats}$query');
-      final data = res.data['data'];
-      if (data is Map) {
-        dashboardStats.value = Map<String, dynamic>.from(data);
-      }
-    } on DioException catch (e) {
+      dashboardStats.value = await _dashboardRepo.getStats(
+        filter: filter,
+        shopkeeperId: id.isNotEmpty ? id : null,
+      );
+    } catch (e) {
       debugPrint('Dashboard stats fetch error: $e');
     } finally {
       isDashboardLoading.value = false;

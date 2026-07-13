@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../domain/entities/payment.dart';
 import '../controller/profile_controller.dart';
 
 class PaymentHistoryPage extends StatefulWidget {
@@ -123,20 +124,20 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 }
 
 class _TransactionCard extends StatelessWidget {
-  final Map<String, dynamic> tx;
+  final Payment tx;
   const _TransactionCard({required this.tx});
 
   @override
   Widget build(BuildContext context) {
-    final id = tx['_id'] ?? tx['transactionId'] ?? '';
+    final id = tx.id;
     final shortId = id.length > 8
         ? '#${id.substring(id.length - 8).toUpperCase()}'
         : id;
-    final amount = (tx['amount'] ?? 0).toDouble();
-    final status = tx['status'] ?? '';
-    final createdAt = tx['createdAt'] ?? '';
-    final date = createdAt.length >= 10
-        ? '${createdAt.substring(8, 10)}.${createdAt.substring(5, 7)}.${createdAt.substring(0, 4)}'
+    final amount = tx.amount;
+    final status = tx.status;
+    final createdAt = tx.createdAt;
+    final date = createdAt != null
+        ? '${createdAt.day.toString().padLeft(2, '0')}.${createdAt.month.toString().padLeft(2, '0')}.${createdAt.year}'
         : '';
 
     return Container(

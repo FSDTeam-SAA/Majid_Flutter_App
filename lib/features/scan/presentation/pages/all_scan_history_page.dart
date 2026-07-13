@@ -3,15 +3,16 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../data/repositories/imei_repository_impl.dart';
+import '../../domain/repositories/imei_repository.dart';
 import '../controller/scan_data.dart';
 import 'device_report_page.dart';
 import 'scan_device_page.dart' show sessionScans;
-import '../utils/scan_item_mapper.dart';
 import '../widgets/scan_item_card.dart';
 
 class AllScanHistoryPage extends StatefulWidget {
@@ -22,7 +23,7 @@ class AllScanHistoryPage extends StatefulWidget {
 }
 
 class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
-  late final ApiClient _api;
+  late final ImeiRepository _imeiRepository;
   bool _isLoading = true;
   String _errorMessage = '';
   List<ScanItem> _scans = [];
@@ -30,7 +31,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    _imeiRepository = ImeiRepositoryImpl(ApiClient(baseUrl));
     _fetchScans();
   }
 
@@ -41,16 +42,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
     });
 
     try {
-      final res = await _api.get('${ImeiEndpoints.history}?limit=50');
-      final data = res.data['data'];
-      if (data is! List) {
-        throw const FormatException('Invalid scan history response');
-      }
-
-      final scans = data
-          .whereType<Map>()
-          .map((item) => scanItemFromJson(Map<String, dynamic>.from(item)))
-          .toList();
+      final scans = await _imeiRepository.getHistory(limit: 50);
 
       scans.sort((a, b) {
         final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -114,20 +106,18 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
     );
 
     try {
-      final res = await _api.post(ImeiEndpoints.checkV2, data: {'imei': item.imei, 'serviceId': serviceId});
+      final report = await _imeiRepository.checkImei(
+        imei: item.imei,
+        serviceId: serviceId,
+      );
       if (!mounted) return;
       Navigator.pop(context);
-      final data = res.data['data'];
-      if (data is! List || data.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load device report.')));
-        return;
+      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)));
+    } on ImeiScanException catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message.isNotEmpty ? e.message : 'Device data not found.')));
       }
-      final first = data.first;
-      if (first is! Map || first['ok'] != true) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(first is Map ? first['message']?.toString() ?? 'Device data not found.' : 'Device data not found.')));
-        return;
-      }
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: Map<String, dynamic>.from(first))));
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);

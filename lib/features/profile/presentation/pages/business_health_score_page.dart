@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../domain/entities/dashboard_stats.dart';
 import '../controller/profile_controller.dart';
 
 class BusinessHealthScorePage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
 
   Future<void> _loadDashboard() async {
     // Ensure profile (userId) is loaded before fetching dashboard
-    if (_profileCtrl.profileData.isEmpty) {
+    if (_profileCtrl.hasNoProfile) {
       await _profileCtrl.fetchProfile();
     }
     await _profileCtrl.fetchDashboardStats(filter: _filter);
@@ -103,17 +104,15 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
     );
   }
 
-  Widget _buildContent(Map<String, dynamic> stats) {
-    final health = stats['businessHealthScore'] as Map? ?? {};
-    final metrics = stats['metrics'] as Map? ?? {};
-    final insights = (stats['insights'] as List?)?.cast<String>() ?? [];
+  Widget _buildContent(DashboardStats stats) {
+    final overall = stats.healthScoreOverall;
+    final rating = stats.healthScoreRating;
+    final message = stats.healthScoreMessage;
+    final metrics = stats.metrics;
+    final insights = stats.insights;
 
-    final overall = (health['overall'] as num?)?.toInt() ?? 0;
-    final rating = health['rating']?.toString() ?? '';
-    final message = health['message']?.toString() ?? '';
-
-    final totalSales = (stats['totalSales'] as num?)?.toDouble() ?? 0;
-    final totalOrders = (stats['totalOrders'] as num?)?.toInt() ?? 0;
+    final totalSales = stats.totalSales;
+    final totalOrders = stats.totalOrders;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,13 +264,13 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
     );
   }
 
-  Widget _buildScoreBreakdown(Map metrics) {
+  Widget _buildScoreBreakdown(DashboardMetrics metrics) {
     final items = [
-      ('Sales Growth', metrics['salesGrowth']),
-      ('Profit Margin', metrics['profitMargin']),
-      ('Checkout Management', metrics['stockManagement']),
-      ('Customer Satisfaction', metrics['customerSatisfaction']),
-      ('Outstanding Payments', metrics['outstandingPayments']),
+      ('Sales Growth', metrics.salesGrowth),
+      ('Profit Margin', metrics.profitMargin),
+      ('Checkout Management', metrics.stockManagement),
+      ('Customer Satisfaction', metrics.customerSatisfaction),
+      ('Outstanding Payments', metrics.outstandingPayments),
     ];
 
     return Container(
@@ -295,8 +294,7 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
           const SizedBox(height: 14),
           ...items.map((entry) {
             final label = entry.$1;
-            final metric = entry.$2 as Map?;
-            final score = (metric?['score'] as num?)?.toInt() ?? 0;
+            final score = entry.$2.score;
             return _ScoreRow(label: label, score: score);
           }),
         ],

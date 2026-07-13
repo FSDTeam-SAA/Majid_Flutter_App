@@ -1,52 +1,13 @@
-class ScanItem {
-  final String name;
-  final String imei;
-  final String status;
-  final int? serviceId;
-  final DateTime? createdAt;
-  final Map<String, dynamic> report;
-  ScanItem({
-    required this.name,
-    required this.imei,
-    required this.status,
-    this.serviceId,
-    this.createdAt,
-    this.report = const {},
-  });
-}
+// `ScanItem` and `ScanDropdownOption` now live in `domain/entities/` as the
+// scan feature's proper domain models; they're re-exported here so existing
+// presentation-layer imports of this file keep working unchanged.
+export '../../domain/entities/scan_item.dart';
+export '../../domain/entities/scan_service_option.dart';
 
-class ScanDropdownOption {
-  final String label;
-  final String type;
-  final int? serviceId;
-  ScanDropdownOption(this.label, this.type, {this.serviceId});
-}
+import '../../domain/entities/scan_service_option.dart';
 
-List<ScanItem> recentScans = [
-  ScanItem(
-    name: 'iPhone 15 Pro Max',
-    imei: '35 901234 567890',
-    status: 'Clean',
-  ),
-  ScanItem(
-    name: 'Samsung S24 Ultra',
-    imei: '35 901234 567890',
-    status: 'Blacklisted',
-  ),
-  ScanItem(
-    name: 'Google Pixel 8 Pro',
-    imei: '35 901234 567890',
-    status: 'Clean',
-  ),
-  ScanItem(name: 'OnePlus 11', imei: '35 901234 567890', status: 'Active'),
-  ScanItem(name: 'Xiaomi 13 Pro', imei: '35 901234 567890', status: 'Clean'),
-  ScanItem(
-    name: 'Sony Xperia 1 V',
-    imei: '35 901234 567890',
-    status: 'Blacklisted',
-  ),
-];
-
+/// Fallback verification services shown while the real list is loading (or
+/// if the API returns none), so the dropdown is never empty.
 List<ScanDropdownOption> verificationOptions = [
   ScanDropdownOption('Basic IMEI Check', 'Free'),
   ScanDropdownOption('Carrier Lock Status', 'Free'),

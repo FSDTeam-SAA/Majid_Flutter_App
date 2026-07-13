@@ -1,25 +1,28 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' show DioException;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app_ground_view.dart';
 import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/app_bottom_nav_bar.dart';
 import '../../../home/presentation/controller/home_controller.dart';
+import '../../data/repositories/inventory_repository_impl.dart';
+import '../../domain/entities/inventory_item.dart';
+import '../../domain/repositories/inventory_repository.dart';
 import '../controller/stock_controller.dart';
 import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 
 class AddNewDevicePage extends StatefulWidget {
   final String? initialCategoryId;
   final String? initialCategoryName;
-  final Map<String, dynamic>? initialItem;
+  final InventoryItem? initialItem;
 
   const AddNewDevicePage({
     super.key,
@@ -33,7 +36,7 @@ class AddNewDevicePage extends StatefulWidget {
 }
 
 class _AddNewDevicePageState extends State<AddNewDevicePage> {
-  late final ApiClient _api;
+  late final InventoryRepository _inventoryRepo;
   late final StockController _stockCtrl;
 
   final _itemNameCtrl = TextEditingController();
@@ -69,7 +72,7 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    _inventoryRepo = InventoryRepositoryImpl(ApiClient(baseUrl));
     _stockCtrl = Get.find<StockController>();
     _selectedCategoryId = widget.initialCategoryId;
     _bulkRows.add(_BulkDeviceRowForm());
@@ -81,31 +84,28 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
     final item = widget.initialItem;
     if (item == null) return;
 
-    _itemNameCtrl.text = item['itemName']?.toString() ?? '';
-    _skuCtrl.text = item['sku']?.toString() ?? '';
-    _modelCtrl.text = item['modelNumber']?.toString() ?? '';
-    _imeiCtrl.text = item['imeiNumber']?.toString() ?? '';
-    _purchasePriceCtrl.text = _displayNumber(item['purchasePrice'], fallback: '0.00');
-    _expectedPriceCtrl.text = _displayNumber(item['expectedPrice'], fallback: '0.00');
-    _quantityCtrl.text = _displayNumber(item['quantity'], fallback: '1');
-    _minStockCtrl.text = _displayNumber(item['minStockLevel'], fallback: '0');
-    _groupKeyCtrl.text = item['groupKey']?.toString() ?? '';
-    _detailsCtrl.text = item['productDetails']?.toString() ?? '';
+    _itemNameCtrl.text = item.itemName;
+    _skuCtrl.text = item.sku ?? '';
+    _modelCtrl.text = item.modelNumber ?? '';
+    _imeiCtrl.text = item.imeiNumber;
+    _purchasePriceCtrl.text = _displayNumber(item.purchasePrice, fallback: '0.00');
+    _expectedPriceCtrl.text = _displayNumber(item.expectedPrice, fallback: '0.00');
+    _quantityCtrl.text = _displayNumber(item.quantity, fallback: '1');
+    _minStockCtrl.text = _displayNumber(item.minStockLevel, fallback: '0');
+    _groupKeyCtrl.text = item.groupKey ?? '';
+    _detailsCtrl.text = item.productDetails ?? '';
 
-    _selectedCategoryId = _extractCategoryId(item) ?? _selectedCategoryId;
-    _selectedBrand = _resolveSelectableValue(_brands, item['brand']?.toString());
-    _selectedColor = _resolveSelectableValue(_colors, item['color']?.toString());
-    _selectedStorage = _resolveSelectableValue(_storages, item['storage']?.toString());
+    _selectedCategoryId = item.categoryId ?? _selectedCategoryId;
+    _selectedBrand = _resolveSelectableValue(_brands, item.brand);
+    _selectedColor = _resolveSelectableValue(_colors, item.color);
+    _selectedStorage = _resolveSelectableValue(_storages, item.storage);
 
-    final currentState = item['currentState']?.toString();
-    if (currentState != null && _conditions.containsValue(currentState)) {
+    final currentState = item.currentState;
+    if (_conditions.containsValue(currentState)) {
       _selectedCondition = currentState;
     }
 
-    final image = item['image'];
-    if (image is Map) {
-      _existingImageUrl = image['url']?.toString();
-    }
+    _existingImageUrl = item.imageUrl;
   }
 
   Future<void> _primeCategories() async {
@@ -233,27 +233,15 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         'categoryId': _selectedCategoryId,
       }..removeWhere((_, value) => value == null);
 
-      final payload = _imagePath != null
-          ? FormData.fromMap({
-              ...data,
-              'image': await MultipartFile.fromFile(_imagePath!),
-            })
-          : data;
-
       if (_isEditing) {
-        final itemId = widget.initialItem?['_id']?.toString() ??
-            widget.initialItem?['id']?.toString();
+        final itemId = widget.initialItem?.id;
         if (itemId == null || itemId.isEmpty) {
           throw Exception('Missing inventory item id');
         }
 
-        if (payload is FormData) {
-          await _api.dio.put(InventoryEndpoints.byId(itemId), data: payload);
-        } else {
-          await _api.put(InventoryEndpoints.byId(itemId), data: payload);
-        }
+        await _inventoryRepo.updateItem(id: itemId, data: data, imagePath: _imagePath);
       } else {
-        await _api.post(InventoryEndpoints.create, data: payload);
+        await _inventoryRepo.createItem(data: data, imagePath: _imagePath);
       }
       await _stockCtrl.fetchCategories();
       if (Get.isRegistered<HomeController>()) {
@@ -310,9 +298,7 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         }
       }
 
-      final payload = {'currentState': _selectedCondition, 'items': items};
-
-      await _api.post(InventoryEndpoints.createFromBarcodeBulk, data: payload);
+      await _inventoryRepo.createFromBarcodeBulk(currentState: _selectedCondition, items: items);
       await _stockCtrl.fetchCategories();
       if (Get.isRegistered<HomeController>()) {
         await Get.find<HomeController>().fetchAllData();
@@ -338,31 +324,26 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       return;
     }
 
+    if (csvFile.path == null && csvFile.bytes == null) {
+      showErrorSnackbar('Unable to read the selected file');
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
-      MultipartFile uploadFile;
-      if (csvFile.path != null && csvFile.path!.isNotEmpty) {
-        uploadFile = await MultipartFile.fromFile(csvFile.path!, filename: csvFile.name);
-      } else if (csvFile.bytes != null) {
-        uploadFile = MultipartFile.fromBytes(csvFile.bytes!, filename: csvFile.name);
-      } else {
-        showErrorSnackbar('Unable to read the selected file');
-        return;
-      }
-
-      final payload = FormData.fromMap({'file': uploadFile});
-      final response = await _api.post(InventoryEndpoints.importCsv, data: payload);
+      final summary = await _inventoryRepo.importCsv(
+        filePath: csvFile.path,
+        fileBytes: csvFile.bytes,
+        filename: csvFile.name,
+      );
 
       await _stockCtrl.fetchCategories();
       if (Get.isRegistered<HomeController>()) {
         await Get.find<HomeController>().fetchAllData();
       }
 
-      final responseData = response.data;
-      final responseBody = responseData is Map ? responseData['data'] : null;
-      final summary = responseBody is Map ? responseBody['summary'] : null;
-      final successCount = summary is Map ? summary['successCount'] : null;
-      final failureCount = summary is Map ? summary['failureCount'] : null;
+      final successCount = summary.successCount;
+      final failureCount = summary.failureCount;
 
       if (!mounted) return;
       final successMessage = successCount != null
@@ -409,15 +390,6 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
     return text.isEmpty ? fallback : text;
   }
 
-  String? _extractCategoryId(Map<String, dynamic> item) {
-    final category = item['categoryId'];
-    if (category is String && category.isNotEmpty) return category;
-    if (category is Map && category['_id'] != null) {
-      return category['_id']?.toString();
-    }
-    return null;
-  }
-
   String? _resolveSelectableValue(List<String> options, String? rawValue) {
     if (rawValue == null || rawValue.isEmpty) return null;
     return options.contains(rawValue) ? rawValue : null;
@@ -438,8 +410,8 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       return widget.initialCategoryName ?? 'Select category';
     }
     for (final category in _stockCtrl.categories) {
-      if (category['_id']?.toString() == _selectedCategoryId) {
-        return category['name']?.toString() ?? 'Select category';
+      if (category.id == _selectedCategoryId) {
+        return category.name;
       }
     }
     return widget.initialCategoryName ?? 'Select category';
@@ -615,11 +587,11 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
           label: 'Category',
           value: _selectedCategoryId,
           hint: _categoryLabel(),
-          items: _stockCtrl.categories.map((category) => category['_id']?.toString()).whereType<String>().toList(),
+          items: _stockCtrl.categories.map((category) => category.id).toList(),
           itemLabel: (id) {
             for (final category in _stockCtrl.categories) {
-              if (category['_id']?.toString() == id) {
-                return category['name']?.toString() ?? 'Unnamed';
+              if (category.id == id) {
+                return category.name;
               }
             }
             return 'Unnamed';

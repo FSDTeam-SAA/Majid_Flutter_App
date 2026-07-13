@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
+import '../../domain/entities/category.dart';
 import '../controller/stock_controller.dart';
 import 'add_category_sheet.dart';
 
@@ -129,12 +130,12 @@ class ManageCategoriesPage extends StatelessWidget {
 
   Widget _buildCategoryCard(
     BuildContext context,
-    Map<String, dynamic> cat,
+    Category cat,
     StockController stockCtrl,
   ) {
-    final name = cat['name'] ?? '';
-    final imageUrl = cat['image'] is Map ? cat['image']['url'] : null;
-    final id = cat['_id'] ?? '';
+    final name = cat.name;
+    final imageUrl = cat.imageUrl;
+    final id = cat.id;
 
     return Container(
       decoration: BoxDecoration(

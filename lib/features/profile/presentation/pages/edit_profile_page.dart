@@ -43,14 +43,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _loadProfileData() {
-    final data = _profileCtrl.profileData;
-    _firstNameCtrl.text = data['firstName'] ?? '';
-    _lastNameCtrl.text = data['lastName'] ?? '';
-    _emailCtrl.text = data['email'] ?? '';
-    _phoneCtrl.text = data['phone'] ?? '';
-    _whatsappCtrl.text = data['whatsappNumber'] ?? '';
-    _shopNameCtrl.text = data['shopName'] ?? '';
-    _addressCtrl.text = data['shopAddress'] ?? '';
+    final data = _profileCtrl.profile.value;
+    _firstNameCtrl.text = data?.firstName ?? '';
+    _lastNameCtrl.text = data?.lastName ?? '';
+    _emailCtrl.text = data?.email ?? '';
+    _phoneCtrl.text = data?.phone ?? '';
+    _whatsappCtrl.text = data?.whatsappNumber ?? '';
+    _shopNameCtrl.text = data?.shopName ?? '';
+    _addressCtrl.text = data?.shopAddress ?? '';
   }
 
   @override

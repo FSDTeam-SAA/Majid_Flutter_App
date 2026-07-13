@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../domain/entities/category.dart' as entities;
 
 class CategoryCard extends StatelessWidget {
-  final Map<String, dynamic> category;
+  final entities.Category category;
   final VoidCallback? onTap;
 
   const CategoryCard({super.key, required this.category, this.onTap});
@@ -11,9 +12,9 @@ class CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark;
-    final name = category['name']?.toString().trim().isNotEmpty == true ? category['name'].toString().trim() : 'Category';
-    final itemCount = category['itemCount'] ?? category['totalItems'] ?? 0;
-    final imageUrl = category['image'] is Map ? category['image']['url'] : null;
+    final name = category.name.trim().isNotEmpty ? category.name.trim() : 'Category';
+    final itemCount = category.itemCount;
+    final imageUrl = category.imageUrl;
 
     final borderRadius = BorderRadius.circular(8);
     final cardColor = isDark ? const Color(0xFF0F151D) : const Color(0x80FFFFFF);

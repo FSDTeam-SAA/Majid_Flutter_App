@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
+import '../../domain/entities/subscription_plan.dart';
 import '../controller/profile_controller.dart';
 import 'payment_checkout_page.dart';
 
@@ -25,10 +26,10 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
     _profileCtrl.fetchSubscriptions();
   }
 
-  Future<void> _startCheckout(Map<String, dynamic> plan) async {
-    final planId = plan['_id']?.toString() ?? '';
-    final isCustomPricing = plan['customPricing'] == true;
-    final price = (plan['price'] as num?)?.toDouble() ?? 0;
+  Future<void> _startCheckout(SubscriptionPlan plan) async {
+    final planId = plan.id;
+    final isCustomPricing = plan.customPricing;
+    final price = plan.price;
 
     if (isCustomPricing || price <= 0) {
       showErrorSnackbar('Contact support to set up this plan.');
@@ -38,8 +39,8 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
     setState(() => _processingPlanId = planId);
     try {
       final session = await _profileCtrl.createPayment(amount: price, subscriptionId: planId);
-      final checkoutUrl = session['url']?.toString();
-      if (checkoutUrl == null || checkoutUrl.isEmpty) {
+      final checkoutUrl = session.url;
+      if (checkoutUrl.isEmpty) {
         showErrorSnackbar('Failed to start checkout. Please try again.');
         return;
       }
@@ -101,22 +102,20 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                     separatorBuilder: (_, _) => SizedBox(height: 12),
                     itemBuilder: (context, i) {
                       final plan = subs[i];
-                      final isPopular = plan['isPopular'] == true;
-                      final discount = plan['discount'];
+                      final isPopular = plan.isPopular;
+                      final discount = plan.discount;
                       final badge = discount != null ? '$discount% Off' : null;
 
-                      final planId = plan['_id']?.toString() ?? '';
+                      final planId = plan.id;
 
                       return _PlanCard(
-                        icon: _getIconForPlan(plan['type'] ?? ''),
-                        name: plan['name'] ?? '',
-                        subtitle: plan['description'] ?? '',
-                        price: plan['priceLabel'] ?? '\$${plan['price'] ?? 0}',
-                        priceUnit: plan['customPricing'] == true
-                            ? ''
-                            : '/month',
-                        features: _extractFeatures(plan['features']),
-                        buttonLabel: plan['ctaText'] ?? 'Select',
+                        icon: _getIconForPlan(plan.type),
+                        name: plan.name,
+                        subtitle: plan.description,
+                        price: plan.priceLabel ?? '\$${plan.price}',
+                        priceUnit: plan.customPricing ? '' : '/month',
+                        features: plan.includedFeatures,
+                        buttonLabel: plan.ctaText ?? 'Select',
                         buttonFilled: isPopular,
                         badge: badge,
                         isProcessing: _processingPlanId == planId,
@@ -131,15 +130,6 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
         ),
       ),
     );
-  }
-
-  List<String> _extractFeatures(dynamic features) {
-    if (features is! List) return [];
-    return features
-        .where((f) => f is Map && f['included'] == true)
-        .map<String>((f) => f['name']?.toString() ?? '')
-        .where((name) => name.isNotEmpty)
-        .toList();
   }
 
   Widget _getIconForPlan(String type) {

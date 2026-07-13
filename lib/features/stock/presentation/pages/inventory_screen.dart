@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../home/presentation/controller/home_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../data/repositories/cart_repository_impl.dart';
+import '../../data/repositories/inventory_repository_impl.dart';
+import '../../domain/entities/category.dart';
+import '../../domain/entities/inventory_item.dart';
+import '../../domain/repositories/cart_repository.dart';
+import '../../domain/repositories/inventory_repository.dart';
 import '../controller/stock_controller.dart';
 import 'add_new_device_page.dart';
 import 'cart_items_page.dart';
@@ -28,13 +34,14 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  late final ApiClient _api;
+  late final InventoryRepository _inventoryRepo;
+  late final CartRepository _cartRepo;
   late final AuthController _authCtrl;
   late final StockController _stockCtrl;
   late final ProfileController _profileCtrl;
   final TextEditingController _searchCtrl = TextEditingController();
 
-  List<Map<String, dynamic>> _items = [];
+  List<InventoryItem> _items = [];
   bool _isLoading = true;
   String _errorMessage = '';
   String _searchQuery = '';
@@ -43,7 +50,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    final api = ApiClient(baseUrl);
+    _inventoryRepo = InventoryRepositoryImpl(api);
+    _cartRepo = CartRepositoryImpl(api);
     _authCtrl = Get.find<AuthController>();
     _stockCtrl = Get.find<StockController>();
     _profileCtrl = Get.find<ProfileController>();
@@ -84,15 +93,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
     try {
       final shopkeeperId = await _resolveShopkeeperId();
-      final res = await _api.get(
-        shopkeeperId != null
-            ? InventoryEndpoints.byUserId(shopkeeperId)
-            : InventoryEndpoints.myInventory,
-      );
-      final data = res.data['data'];
-      final List<Map<String, dynamic>> items = data is List
-          ? List<Map<String, dynamic>>.from(data)
-          : <Map<String, dynamic>>[];
+      final items = shopkeeperId != null
+          ? await _inventoryRepo.getByShopkeeperId(shopkeeperId)
+          : await _inventoryRepo.getMyInventory();
       setState(() {
         _items = items;
       });
@@ -113,9 +116,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredItems {
+  List<InventoryItem> get _filteredItems {
     return _items.where((item) {
-      final itemCategoryId = _categoryIdOf(item);
+      final itemCategoryId = item.categoryId;
       final selectedCategoryName = _normalizedCategoryName(
         _selectedCategoryLabel(),
       );
@@ -128,12 +131,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
               selectedCategoryName == itemCategoryName);
 
       final haystack = [
-        item['itemName'],
-        item['brand'],
-        item['imeiNumber'],
-        item['modelNumber'],
-        item['storage'],
-        item['color'],
+        item.itemName,
+        item.brand,
+        item.imeiNumber,
+        item.modelNumber,
+        item.storage,
+        item.color,
       ].whereType<String>().join(' ').toLowerCase();
 
       final matchesSearch =
@@ -144,39 +147,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   int get _totalUnitsInStock {
-    return _filteredItems.fold<int>(0, (sum, item) {
-      final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
-      return sum + quantity;
-    });
+    return _filteredItems.fold<int>(0, (sum, item) => sum + item.quantity);
   }
 
   double get _totalRevenuePotential {
     return _filteredItems.fold<double>(0, (sum, item) {
-      final rawQuantity = (item['quantity'] as num?)?.toInt() ?? 0;
+      final rawQuantity = item.quantity;
       final quantity = rawQuantity < 0
           ? 0
           : (rawQuantity > 999 ? 999 : rawQuantity);
-      final expectedPrice =
-          (item['expectedPrice'] as num?)?.toDouble() ??
-          (item['purchasePrice'] as num?)?.toDouble() ??
-          0;
+      final expectedPrice = item.price;
       return sum + (quantity > 0 ? expectedPrice * quantity : expectedPrice);
     });
   }
 
-  String? _categoryIdOf(Map<String, dynamic> item) {
-    final categoryId = item['categoryId'];
-    if (categoryId is String) return categoryId;
-    if (categoryId is Map && categoryId['_id'] is String) {
-      return categoryId['_id'] as String;
-    }
-    return null;
-  }
-
-  Map<String, dynamic>? _findCategoryById(String? id) {
+  Category? _findCategoryById(String? id) {
     if (id == null) return null;
     for (final category in _stockCtrl.categories) {
-      if (category['_id']?.toString() == id) {
+      if (category.id == id) {
         return category;
       }
     }
@@ -187,49 +175,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (_selectedCategoryId == null) return 'Category';
 
     final category = _findCategoryById(_selectedCategoryId);
-    if (category != null && category['name'] is String) {
-      return category['name'] as String;
-    }
+    if (category != null) return category.name;
     return widget.initialCategoryName ?? 'Category';
   }
 
-  String _categoryNameOf(Map<String, dynamic> item) {
-    final directCategoryName = _categoryNameFromItem(item);
-    if (directCategoryName != null) return directCategoryName;
+  String _categoryNameOf(InventoryItem item) {
+    final directCategoryName = item.categoryName;
+    if (directCategoryName != null && directCategoryName.isNotEmpty) {
+      return directCategoryName;
+    }
 
-    final categoryId = _categoryIdOf(item);
+    final categoryId = item.categoryId;
     if (categoryId == null) return 'Uncategorized';
     final category = _findCategoryById(categoryId);
-    return category?['name']?.toString() ?? 'Uncategorized';
-  }
-
-  String? _categoryNameFromItem(Map<String, dynamic> item) {
-    final categoryName = item['categoryName'];
-    if (categoryName is String && categoryName.trim().isNotEmpty) {
-      return categoryName.trim();
-    }
-
-    final categoryId = item['categoryId'];
-    if (categoryId is Map) {
-      final nestedName = categoryId['name'];
-      if (nestedName is String && nestedName.trim().isNotEmpty) {
-        return nestedName.trim();
-      }
-    }
-
-    final category = item['category'];
-    if (category is Map) {
-      final nestedName = category['name'];
-      if (nestedName is String && nestedName.trim().isNotEmpty) {
-        return nestedName.trim();
-      }
-    }
-
-    if (category is String && category.trim().isNotEmpty) {
-      return category.trim();
-    }
-
-    return null;
+    return category?.name ?? 'Uncategorized';
   }
 
   String _normalizedCategoryName(String value) {
@@ -282,15 +241,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           (category) => Padding(
                             padding: EdgeInsets.only(bottom: 8),
                             child: _CategoryOptionTile(
-                              title: category['name']?.toString() ?? 'Unnamed',
-                              subtitle:
-                                  '${category['itemCount'] ?? category['totalItems'] ?? 0} items',
-                              isSelected:
-                                  _selectedCategoryId == category['_id'],
-                              onTap: () => Navigator.pop(
-                                context,
-                                category['_id']?.toString(),
-                              ),
+                              title: category.name,
+                              subtitle: '${category.itemCount} items',
+                              isSelected: _selectedCategoryId == category.id,
+                              onTap: () => Navigator.pop(context, category.id),
                             ),
                           ),
                         ),
@@ -309,9 +263,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     setState(() => _selectedCategoryId = selected);
   }
 
-  Future<void> _addItemToCart(Map<String, dynamic> item) async {
-    final itemId = item['_id']?.toString() ?? item['id']?.toString();
-    if (itemId == null || itemId.isEmpty) {
+  Future<void> _addItemToCart(InventoryItem item) async {
+    final itemId = item.id;
+    if (itemId.isEmpty) {
       showErrorSnackbar('Invalid inventory item');
       return;
     }
@@ -323,10 +277,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return;
       }
 
-      await _api.post(
-        CartEndpoints.create,
-        data: {'shopkeeperId': shopkeeperId, 'itemId': itemId, 'quantity': 1},
-      );
+      await _cartRepo.addToCart(shopkeeperId: shopkeeperId, itemId: itemId, quantity: 1);
       if (!mounted) return;
       showSuccessSnackbar('Added to cart');
     } on DioException catch (e) {
@@ -340,12 +291,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  Future<void> _editInventoryItem(Map<String, dynamic> item) async {
+  Future<void> _editInventoryItem(InventoryItem item) async {
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => AddNewDevicePage(
-          initialCategoryId: _categoryIdOf(item),
+          initialCategoryId: item.categoryId,
           initialCategoryName: _categoryNameOf(item),
           initialItem: item,
         ),
@@ -356,9 +307,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     await fetchInventory();
   }
 
-  Future<void> _deleteInventoryItem(Map<String, dynamic> item) async {
-    final itemId = item['_id']?.toString() ?? item['id']?.toString();
-    if (itemId == null || itemId.isEmpty) {
+  Future<void> _deleteInventoryItem(InventoryItem item) async {
+    final itemId = item.id;
+    if (itemId.isEmpty) {
       showErrorSnackbar('Invalid inventory item');
       return;
     }
@@ -377,7 +328,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ),
         content: Text(
-          'Are you sure you want to delete ${item['itemName']?.toString() ?? 'this device'}?',
+          'Are you sure you want to delete ${item.itemName.isNotEmpty ? item.itemName : 'this device'}?',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 14,
@@ -410,12 +361,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (confirmed != true) return;
 
     try {
-      await _api.delete(InventoryEndpoints.byId(itemId));
-      _items.removeWhere(
-        (entry) =>
-            entry['_id']?.toString() == itemId ||
-            entry['id']?.toString() == itemId,
-      );
+      await _inventoryRepo.deleteItem(itemId);
+      _items.removeWhere((entry) => entry.id == itemId);
       await _stockCtrl.fetchCategories();
       if (Get.isRegistered<HomeController>()) {
         await Get.find<HomeController>().fetchAllData();
@@ -730,7 +677,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 }
 
 class _InventoryCard extends StatelessWidget {
-  final Map<String, dynamic> item;
+  final InventoryItem item;
   final String categoryName;
   final VoidCallback onAddToCart;
   final VoidCallback onEdit;
@@ -773,23 +720,16 @@ class _InventoryCard extends StatelessWidget {
         ? const Color(0xFFE6EEF8)
         : AppColors.textPrimary;
 
-    final title = item['itemName']?.toString().trim().isNotEmpty == true
-        ? item['itemName'].toString()
-        : 'Unnamed Item';
-    final brand = item['brand']?.toString() ?? 'Unknown Brand';
-    final storage = item['storage']?.toString() ?? '';
-    final color = item['color']?.toString() ?? '';
-    final imei = item['imeiNumber']?.toString() ?? 'No IMEI';
-    final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
-    final price =
-        (item['expectedPrice'] as num?)?.toDouble() ??
-        (item['purchasePrice'] as num?)?.toDouble() ??
-        0;
-    final imageUrl = item['image'] is Map
-        ? item['image']['url']?.toString()
-        : null;
-    final currentState = item['currentState']?.toString() ?? '';
-    final status = item['status']?.toString() ?? 'inventory';
+    final title = item.itemName.trim().isNotEmpty ? item.itemName : 'Unnamed Item';
+    final brand = item.brand ?? 'Unknown Brand';
+    final storage = item.storage ?? '';
+    final color = item.color ?? '';
+    final imei = item.imeiNumber.isNotEmpty ? item.imeiNumber : 'No IMEI';
+    final quantity = item.quantity;
+    final price = item.price;
+    final imageUrl = item.imageUrl;
+    final currentState = item.currentState;
+    final status = item.status;
 
     return Container(
       padding: EdgeInsets.all(16),

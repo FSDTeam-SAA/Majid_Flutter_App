@@ -63,10 +63,10 @@ class CustomerRepositoryImpl implements CustomerRepository {
       CustomerEndpoints.update(id),
       data: {
         'firstName': firstName,
-        if (lastName != null) 'lastName': lastName,
-        if (email != null) 'email': email,
-        if (phone != null) 'phone': phone,
-        if (address != null) 'address': address,
+        'lastName': ?lastName,
+        'email': ?email,
+        'phone': ?phone,
+        'address': ?address,
       },
     );
     return _fromJson(Map<String, dynamic>.from(res.data['data']));

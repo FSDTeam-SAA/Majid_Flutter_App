@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../invoice/presentation/pages/invoice_page.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../data/repositories/cart_repository_impl.dart';
+import '../../domain/entities/cart_item.dart';
+import '../../domain/repositories/cart_repository.dart';
 
 class CartItemsPage extends StatefulWidget {
   const CartItemsPage({super.key});
@@ -17,11 +20,11 @@ class CartItemsPage extends StatefulWidget {
 }
 
 class _CartItemsPageState extends State<CartItemsPage> {
-  late final ApiClient _api;
+  late final CartRepository _cartRepo;
   late final ProfileController _profileCtrl;
   final TextEditingController _searchCtrl = TextEditingController();
 
-  List<Map<String, dynamic>> _cartItems = [];
+  List<CartItem> _cartItems = [];
   bool _isLoading = true;
   String _errorMessage = '';
   String _searchQuery = '';
@@ -29,7 +32,7 @@ class _CartItemsPageState extends State<CartItemsPage> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    _cartRepo = CartRepositoryImpl(ApiClient(baseUrl));
     _profileCtrl = Get.find<ProfileController>();
     fetchCartItems();
   }
@@ -61,10 +64,9 @@ class _CartItemsPageState extends State<CartItemsPage> {
         throw Exception('Unable to find your profile');
       }
 
-      final res = await _api.get(CartEndpoints.byShopkeeper(shopkeeperId));
-      final data = res.data['data'];
+      final items = await _cartRepo.getCartItems(shopkeeperId);
       setState(() {
-        _cartItems = data is List ? List<Map<String, dynamic>>.from(data) : [];
+        _cartItems = items;
       });
     } on DioException catch (e) {
       setState(() {
@@ -80,8 +82,8 @@ class _CartItemsPageState extends State<CartItemsPage> {
 
   Future<void> _deleteCartItem(String cartId) async {
     try {
-      await _api.delete(CartEndpoints.delete(cartId));
-      _cartItems.removeWhere((item) => item['_id']?.toString() == cartId);
+      await _cartRepo.deleteCartItem(cartId);
+      _cartItems.removeWhere((item) => item.id == cartId);
       if (!mounted) return;
       setState(() {});
       showSuccessSnackbar('Cart item removed');
@@ -92,15 +94,15 @@ class _CartItemsPageState extends State<CartItemsPage> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredItems {
+  List<CartItem> get _filteredItems {
     return _cartItems.where((entry) {
-      final item = entry['itemId'];
+      final item = entry.item;
       final haystack = [
-        if (item is Map) item['itemName'],
-        if (item is Map) item['brand'],
-        if (item is Map) item['imeiNumber'],
-        if (item is Map) item['storage'],
-        if (item is Map) item['color'],
+        item?.itemName,
+        item?.brand,
+        item?.imeiNumber,
+        item?.storage,
+        item?.color,
       ].whereType<String>().join(' ').toLowerCase();
 
       return _searchQuery.isEmpty || haystack.contains(_searchQuery);
@@ -108,21 +110,12 @@ class _CartItemsPageState extends State<CartItemsPage> {
   }
 
   int get _totalUnits {
-    return _filteredItems.fold<int>(0, (sum, entry) {
-      return sum + ((entry['quantity'] as num?)?.toInt() ?? 0);
-    });
+    return _filteredItems.fold<int>(0, (sum, entry) => sum + entry.quantity);
   }
 
   double get _totalValue {
     return _filteredItems.fold<double>(0, (sum, entry) {
-      final item = entry['itemId'];
-      final quantity = (entry['quantity'] as num?)?.toInt() ?? 0;
-      final unitPrice = item is Map
-          ? ((item['expectedPrice'] as num?)?.toDouble() ??
-                (item['purchasePrice'] as num?)?.toDouble() ??
-                0)
-          : 0;
-      return sum + unitPrice * quantity;
+      return sum + entry.totalPrice;
     });
   }
 
@@ -333,7 +326,7 @@ class _CartItemsPageState extends State<CartItemsPage> {
           final entry = _filteredItems[index];
           return _CartItemCard(
             entry: entry,
-            onDelete: () => _deleteCartItem(entry['_id']?.toString() ?? ''),
+            onDelete: () => _deleteCartItem(entry.id),
           );
         },
       ),
@@ -374,32 +367,25 @@ class _CartItemsPageState extends State<CartItemsPage> {
 }
 
 class _CartItemCard extends StatelessWidget {
-  final Map<String, dynamic> entry;
+  final CartItem entry;
   final VoidCallback onDelete;
 
   const _CartItemCard({required this.entry, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
-    final item = entry['itemId'] is Map<String, dynamic>
-        ? entry['itemId'] as Map<String, dynamic>
-        : <String, dynamic>{};
-    final title = item['itemName']?.toString() ?? 'Unnamed Item';
-    final brand = item['brand']?.toString() ?? 'Unknown Brand';
-    final storage = item['storage']?.toString() ?? '';
-    final color = item['color']?.toString() ?? '';
-    final imei = item['imeiNumber']?.toString() ?? 'No IMEI';
-    final condition = item['currentState']?.toString().toUpperCase() ?? 'NEW';
-    final imageUrl = item['image'] is Map
-        ? item['image']['url']?.toString()
-        : null;
-    final quantity = (entry['quantity'] as num?)?.toInt() ?? 1;
-    final unitPrice =
-        (item['expectedPrice'] as num?)?.toDouble() ??
-        (item['purchasePrice'] as num?)?.toDouble() ??
-        0;
-    final totalPrice = unitPrice * quantity;
-    final createdAt = DateTime.tryParse(entry['createdAt']?.toString() ?? '');
+    final item = entry.item;
+    final title = item?.itemName ?? 'Unnamed Item';
+    final brand = item?.brand ?? 'Unknown Brand';
+    final storage = item?.storage ?? '';
+    final color = item?.color ?? '';
+    final imei = item != null && item.imeiNumber.isNotEmpty ? item.imeiNumber : 'No IMEI';
+    final condition = (item?.currentState ?? 'new').toUpperCase();
+    final imageUrl = item?.imageUrl;
+    final quantity = entry.quantity;
+    final unitPrice = entry.unitPrice;
+    final totalPrice = entry.totalPrice;
+    final createdAt = entry.createdAt;
 
     final isDark = AppColors.isDark;
     final cardBackground = isDark

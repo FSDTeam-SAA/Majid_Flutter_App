@@ -38,13 +38,15 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
           AppHeader(title: 'Shopkeeper Id Card'),
           Expanded(
             child: Obx(() {
-              final data = profileCtrl.profileData;
+              final data = profileCtrl.profile.value;
               final name = profileCtrl.fullName;
               final email = profileCtrl.email;
-              final phone = data['whatsappNumber'] ?? data['phone'] ?? '';
-              final shop = data['shopName'] ?? '';
-              final address = data['shopAddress'] ?? '';
-              final id = data['_id'] ?? '';
+              final phone = (data?.whatsappNumber.isNotEmpty ?? false)
+                  ? data!.whatsappNumber
+                  : (data?.phone ?? '');
+              final shop = data?.shopName ?? '';
+              final address = data?.shopAddress ?? '';
+              final id = data?.id ?? '';
               final shortId = id.length > 8
                   ? 'IMS-${id.substring(id.length - 8).toUpperCase()}'
                   : id;

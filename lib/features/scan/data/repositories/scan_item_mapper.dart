@@ -1,4 +1,4 @@
-import '../controller/scan_data.dart';
+import '../../domain/entities/scan_item.dart';
 
 String _resolveDeviceName(Map<String, dynamic> item) {
   final deviceName = item['deviceName']?.toString();
@@ -49,6 +49,8 @@ String _resolveStatus(String? status) {
   return status[0].toUpperCase() + status.substring(1);
 }
 
+/// Parses a single raw scan-history JSON object (as returned by
+/// `ImeiEndpoints.history`) into a [ScanItem].
 ScanItem scanItemFromJson(Map<String, dynamic> item) {
   final imei = item['imei']?.toString() ?? item['IMEI']?.toString() ?? '';
   final name = _resolveDeviceName(item);

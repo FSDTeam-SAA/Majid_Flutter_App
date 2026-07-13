@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +14,8 @@ import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../../../scan/presentation/pages/device_report_page.dart';
 import '../../../scan/presentation/widgets/carrier_dropdown.dart';
 import '../../../scan/presentation/widgets/scan_search_bar.dart';
+import '../../data/repositories/onboarding_repository_impl.dart';
+import '../../domain/repositories/onboarding_repository.dart';
 
 class AiHomePreviewScreen extends StatefulWidget {
   const AiHomePreviewScreen({super.key});
@@ -28,7 +29,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
   static const _scanCountKey = 'anonymous_free_scan_count';
 
   final AuthController _auth = Get.find<AuthController>();
-  late final ApiClient _api;
+  late final OnboardingRepository _onboardingRepository;
   final _imeiController = TextEditingController();
   bool _hasStoredLogin = false;
   bool _isScanning = false;
@@ -40,7 +41,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
+    _onboardingRepository = OnboardingRepositoryImpl(ApiClient(baseUrl));
     _loadLoginState();
     _loadFreeServices();
   }
@@ -72,29 +73,7 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     if (_isLoadingServices) return;
     setState(() => _isLoadingServices = true);
     try {
-      final res = await _api.get(ImeiEndpoints.services);
-      final data = res.data['data'];
-      if (data is! List) return;
-      final options = <ScanDropdownOption>[];
-      for (final group in data) {
-        if (group is! Map) continue;
-        final groupServices = group['services'];
-        if (groupServices is! List) continue;
-        for (final service in groupServices) {
-          if (service is! Map) continue;
-          if (service['isFree'] != true) continue;
-          final id = (service['serviceId'] as num?)?.toInt();
-          final ids = service['serviceIds'];
-          final fallbackId = ids is List && ids.isNotEmpty ? (ids.first as num?)?.toInt() : null;
-          final serviceId = id ?? fallbackId;
-          if (serviceId == null || serviceId <= 0) continue;
-          options.add(ScanDropdownOption(
-            service['name']?.toString() ?? 'Free Check',
-            'Free',
-            serviceId: serviceId,
-          ));
-        }
-      }
+      final options = await _onboardingRepository.getFreeServices();
       if (!mounted) return;
       setState(() {
         _freeServices = options;
@@ -202,32 +181,21 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
         return;
       }
 
-      final res = await _api.post(ImeiEndpoints.checkV2, data: {'imei': imei, 'serviceId': serviceId});
+      final report = await _onboardingRepository.checkImeiFree(
+        imei: imei,
+        serviceId: serviceId,
+      );
       if (!mounted) return;
-      final data = res.data['data'];
-      if (data is! List || data.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
-        return;
-      }
-      final first = data.first;
-      if (first is! Map || first['ok'] != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(first is Map ? first['message']?.toString() ?? 'Device data not found.' : 'Device data not found.')),
-        );
-        return;
-      }
 
       await _incrementFreeScanCount();
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => DeviceReportPage(report: Map<String, dynamic>.from(first))),
+        MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)),
       );
-    } on DioException catch (e) {
+    } on OnboardingScanException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.response?.data?['message']?.toString() ?? 'Scan failed. Please try again.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));

@@ -32,11 +32,7 @@ class StockPage extends StatelessWidget {
               child: Obx(() {
                 final totalItems = stockCtrl.inventoryCategoryCards.fold<int>(
                   0,
-                  (sum, category) =>
-                      sum +
-                      ((category['itemCount'] ?? category['totalItems'] ?? 0)
-                              as num)
-                          .toInt(),
+                  (sum, category) => sum + category.itemCount,
                 );
 
                 return Row(
@@ -119,12 +115,10 @@ class StockPage extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => InventoryScreen(
-                                  initialCategoryId: stockCtrl
-                                      .inventoryCategoryCards[i]['_id']
-                                      ?.toString(),
-                                  initialCategoryName: stockCtrl
-                                      .inventoryCategoryCards[i]['name']
-                                      ?.toString(),
+                                  initialCategoryId:
+                                      stockCtrl.inventoryCategoryCards[i].id,
+                                  initialCategoryName:
+                                      stockCtrl.inventoryCategoryCards[i].name,
                                 ),
                               ),
                             ),
