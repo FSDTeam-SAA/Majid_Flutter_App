@@ -41,6 +41,8 @@
 	<string>This app needs permission to save certificates and invoices to your photo library.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app does not record audio, but the camera may request microphone access for video capture.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app does not use your location, but a linked library may request access.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
