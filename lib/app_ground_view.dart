@@ -6,8 +6,8 @@ import 'core/animation/app_motion.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
-import 'features/home/presentation/pages/home_page.dart';
 import 'features/invoice/presentation/pages/invoice_page.dart';
+import 'features/orders/presentation/pages/orders_page.dart';
 import 'features/repair/presentation/pages/repair_page.dart';
 import 'features/scan/presentation/pages/scan_device_page.dart';
 import 'features/stock/presentation/pages/stock_page.dart';
@@ -38,7 +38,7 @@ class _AppGroundViewState extends State<AppGroundView> {
   Widget build(BuildContext context) {
     final themeCtrl = Get.find<ProfileThemeController>();
     final pages = [
-      HomePage(onOpenTab: _selectTab),
+      OrdersPage(),
       StockPage(),
       ScanDevicePage(),
       RepairPage(),
@@ -67,15 +67,16 @@ class _AppGroundViewState extends State<AppGroundView> {
                   switchInCurve: AppMotion.easeOutCubic,
                   switchOutCurve: AppMotion.easeInOut,
                   transitionBuilder: (child, animation) {
-                    final slideAnimation = Tween<Offset>(
-                      begin: const Offset(0.04, 0),
-                      end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.easeOutCubic,
-                      ),
-                    );
+                    final slideAnimation =
+                        Tween<Offset>(
+                          begin: const Offset(0.04, 0),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: AppMotion.easeOutCubic,
+                          ),
+                        );
 
                     return FadeTransition(
                       opacity: animation,

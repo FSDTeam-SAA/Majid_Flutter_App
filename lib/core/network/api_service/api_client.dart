@@ -87,7 +87,14 @@ class ApiClient {
 
           if (err.response?.statusCode == 401) {
             final currentToken = await TokenManager.getToken();
-            if (currentToken != null) {
+            final storedRefreshToken = await TokenManager.getRefreshToken();
+            // Only worth a refresh round-trip when we actually hold a refresh
+            // token. The forgot-password flow stores an access token on its
+            // own, so without this guard every 401 there ran a refresh that
+            // could never succeed.
+            if (currentToken != null &&
+                storedRefreshToken != null &&
+                storedRefreshToken.isNotEmpty) {
               try {
                 await _handleRefresh();
 
@@ -98,9 +105,10 @@ class ApiClient {
                 final clonedResponse = await dio.fetch(clonedRequest);
                 return handler.resolve(clonedResponse);
               } catch (refreshError) {
-                // Refresh fail → clear token & reject
-                await TokenManager.clearToken();
-                // Optional: Get.offAll(LoginScreen());
+                // Keep the session and surface the original 401. Clearing here
+                // dropped the access token, so every later request went out
+                // with no Authorization header and the whole screen answered
+                // "You are not authorized" instead of the real error.
                 return handler.reject(err);
               }
             }
@@ -185,8 +193,8 @@ class ApiClient {
         }
       }
       _refreshCompleters.clear();
-      await TokenManager.clearToken();
-      // Optional: logout logic here
+      // Deliberately not clearing the session here — a failed refresh should
+      // not log the user out mid-flow. The caller decides what to do.
       rethrow;
     } finally {
       _isRefreshing = false;

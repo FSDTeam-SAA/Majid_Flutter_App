@@ -19,6 +19,7 @@ class OtpVerificationScreenView extends StatefulWidget {
 
 class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
   late final List<FocusNode> _focusNodes;
+  bool _isResending = false;
 
   @override
   void initState() {
@@ -112,12 +113,28 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
           ),
           SizedBox(height: 24),
           Center(
-            child: Obx(
-              () => GestureDetector(
-                onTap: auth.isLoading.value
+            child: Obx(() {
+              final disabled = auth.isLoading.value || _isResending;
+
+              if (_isResending) {
+                return SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: AppColors.primary,
+                  ),
+                );
+              }
+
+              return GestureDetector(
+                onTap: disabled
                     ? null
                     : () async {
+                        setState(() => _isResending = true);
                         final success = await auth.resendOtp();
+                        if (!mounted) return;
+                        setState(() => _isResending = false);
                         if (success) {
                           showSuccessSnackbar('OTP resent successfully');
                         } else if (auth.errorMessage.isNotEmpty) {
@@ -127,13 +144,15 @@ class _OtpVerificationScreenViewState extends State<OtpVerificationScreenView> {
                 child: Text(
                   'Resend Code',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: disabled
+                        ? AppColors.textSecondary
+                        : AppColors.primary,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
           Spacer(),
         ],

@@ -63,8 +63,28 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   final List<_BulkDeviceRowForm> _bulkRows = [];
 
   static const _tabs = ['Add Item', 'Bulk Upload', 'Import CSV'];
-  static const _brands = ['Apple', 'Samsung', 'Xiaomi', 'Oppo', 'Vivo', 'Realme', 'Google', 'OnePlus', 'Huawei', 'Nokia'];
-  static const _colors = ['Black', 'White', 'Blue', 'Silver', 'Gold', 'Green', 'Purple', 'Gray'];
+  static const _brands = [
+    'Apple',
+    'Samsung',
+    'Xiaomi',
+    'Oppo',
+    'Vivo',
+    'Realme',
+    'Google',
+    'OnePlus',
+    'Huawei',
+    'Nokia',
+  ];
+  static const _colors = [
+    'Black',
+    'White',
+    'Blue',
+    'Silver',
+    'Gold',
+    'Green',
+    'Purple',
+    'Gray',
+  ];
   static const _storages = ['32GB', '64GB', '128GB', '256GB', '512GB', '1TB'];
   static const _conditions = {'New': 'new', 'Good Condition': 'good condition'};
   bool get _isEditing => widget.initialItem != null;
@@ -88,8 +108,14 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
     _skuCtrl.text = item.sku ?? '';
     _modelCtrl.text = item.modelNumber ?? '';
     _imeiCtrl.text = item.imeiNumber;
-    _purchasePriceCtrl.text = _displayNumber(item.purchasePrice, fallback: '0.00');
-    _expectedPriceCtrl.text = _displayNumber(item.expectedPrice, fallback: '0.00');
+    _purchasePriceCtrl.text = _displayNumber(
+      item.purchasePrice,
+      fallback: '0.00',
+    );
+    _expectedPriceCtrl.text = _displayNumber(
+      item.expectedPrice,
+      fallback: '0.00',
+    );
     _quantityCtrl.text = _displayNumber(item.quantity, fallback: '1');
     _minStockCtrl.text = _displayNumber(item.minStockLevel, fallback: '0');
     _groupKeyCtrl.text = item.groupKey ?? '';
@@ -115,7 +141,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   }
 
   Future<void> _openScanner(TextEditingController target) async {
-    final scannedValue = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const BarcodeScannerPage()));
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
     if (!mounted || scannedValue == null || scannedValue.trim().isEmpty) return;
     target.text = scannedValue.trim();
     setState(() {});
@@ -177,7 +205,11 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   }
 
   Future<void> _pickCsvFile() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['csv', 'xls', 'xlsx'], withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv', 'xls', 'xlsx'],
+      withData: true,
+    );
 
     if (result == null || result.files.isEmpty) return;
 
@@ -239,7 +271,11 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
           throw Exception('Missing inventory item id');
         }
 
-        await _inventoryRepo.updateItem(id: itemId, data: data, imagePath: _imagePath);
+        await _inventoryRepo.updateItem(
+          id: itemId,
+          data: data,
+          imagePath: _imagePath,
+        );
       } else {
         await _inventoryRepo.createItem(data: data, imagePath: _imagePath);
       }
@@ -249,7 +285,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       }
       if (!mounted) return;
       showSuccessSnackbar(
-        _isEditing ? 'Device updated successfully' : 'Device added to inventory',
+        _isEditing
+            ? 'Device updated successfully'
+            : 'Device added to inventory',
       );
       Navigator.pop(context, true);
     } on DioException catch (e) {
@@ -261,7 +299,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       );
     } catch (_) {
       showErrorSnackbar(
-        _isEditing ? 'Failed to update device' : 'Failed to add device to inventory',
+        _isEditing
+            ? 'Failed to update device'
+            : 'Failed to add device to inventory',
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -269,7 +309,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   }
 
   Future<void> _submitBulk() async {
-    final validRows = _bulkRows.where((row) => row.barcodeCtrl.text.trim().isNotEmpty).toList();
+    final validRows = _bulkRows
+        .where((row) => row.barcodeCtrl.text.trim().isNotEmpty)
+        .toList();
 
     if (validRows.isEmpty) {
       showErrorSnackbar('At least one barcode is required');
@@ -298,7 +340,10 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         }
       }
 
-      await _inventoryRepo.createFromBarcodeBulk(currentState: _selectedCondition, items: items);
+      await _inventoryRepo.createFromBarcodeBulk(
+        currentState: _selectedCondition,
+        items: items,
+      );
       await _stockCtrl.fetchCategories();
       if (Get.isRegistered<HomeController>()) {
         await Get.find<HomeController>().fetchAllData();
@@ -308,7 +353,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       Navigator.pop(context, true);
     } on DioException catch (e) {
       final responseData = e.response?.data;
-      final message = responseData is Map ? responseData['message']?.toString() : null;
+      final message = responseData is Map
+          ? responseData['message']?.toString()
+          : null;
       showErrorSnackbar(message ?? e.message ?? 'Bulk import failed');
     } catch (_) {
       showErrorSnackbar('Bulk import failed');
@@ -353,7 +400,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       Navigator.pop(context, true);
     } on DioException catch (e) {
       final responseData = e.response?.data;
-      final message = responseData is Map ? responseData['message']?.toString() : null;
+      final message = responseData is Map
+          ? responseData['message']?.toString()
+          : null;
       showErrorSnackbar(message ?? e.message ?? 'CSV import failed');
     } catch (_) {
       showErrorSnackbar('CSV import failed');
@@ -489,12 +538,19 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       padding: EdgeInsets.fromLTRB(16, 12, 16, 10),
       child: Row(
         children: [
-          _CircleActionButton(icon: Icons.arrow_back_ios_new, onTap: () => Navigator.maybePop(context)),
+          _CircleActionButton(
+            icon: Icons.arrow_back_ios_new,
+            onTap: () => Navigator.maybePop(context),
+          ),
           Expanded(
             child: Text(
               _isEditing ? 'Edit Device' : 'Add New Device',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           SizedBox(width: 44),
@@ -562,12 +618,20 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       children: [
         const _FieldLabel('Product Name *'),
         SizedBox(height: 8),
-        _ScanInputField(controller: _itemNameCtrl, hint: 'Enter product name', onScanTap: () => _openScanner(_itemNameCtrl)),
+        _ScanInputField(
+          controller: _itemNameCtrl,
+          hint: 'Enter product name',
+          onScanTap: () => _openScanner(_itemNameCtrl),
+        ),
         SizedBox(height: 14),
         Row(
           children: [
             Expanded(
-              child: _AppTextField(controller: _skuCtrl, label: 'SKU', hint: 'SKU-0000'),
+              child: _AppTextField(
+                controller: _skuCtrl,
+                label: 'SKU',
+                hint: 'SKU-0000',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -613,10 +677,15 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.surfaceForeground,
               padding: EdgeInsets.symmetric(vertical: 17),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(26),
+              ),
               elevation: 0,
             ),
-            child: Text('Add New Row', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            child: Text(
+              'Add New Row',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
           ),
         ),
         SizedBox(height: 16),
@@ -624,7 +693,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
           final index = entry.key;
           final row = entry.value;
           return Padding(
-            padding: EdgeInsets.only(bottom: index == _bulkRows.length - 1 ? 14 : 16),
+            padding: EdgeInsets.only(
+              bottom: index == _bulkRows.length - 1 ? 14 : 16,
+            ),
             child: _buildBulkRowCard(index, row),
           );
         }),
@@ -650,31 +721,55 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF181F26) : AppColors.fieldBackground,
+                  color: isDark
+                      ? const Color(0xFF181F26)
+                      : AppColors.fieldBackground,
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.fieldBorder),
                 ),
-                child: Icon(Icons.delete_outline_rounded, color: AppColors.textPrimary.withValues(alpha: isDark ? 0.78 : 0.72), size: 18),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.textPrimary.withValues(
+                    alpha: isDark ? 0.78 : 0.72,
+                  ),
+                  size: 18,
+                ),
               ),
             )
           : null,
       children: [
         const _FieldLabel('Barcode / Code *'),
         SizedBox(height: 8),
-        _ScanInputField(controller: row.barcodeCtrl, hint: 'Scan or type device ID...', onScanTap: () => _openScanner(row.barcodeCtrl)),
+        _ScanInputField(
+          controller: row.barcodeCtrl,
+          hint: 'Scan or type device ID...',
+          onScanTap: () => _openScanner(row.barcodeCtrl),
+        ),
         SizedBox(height: 14),
         const _FieldLabel('Supplier Name'),
         SizedBox(height: 8),
-        _ScanInputField(controller: row.supplierCtrl, hint: 'Scan or type supplier...', onScanTap: () => _openScanner(row.supplierCtrl)),
+        _ScanInputField(
+          controller: row.supplierCtrl,
+          hint: 'Scan or type supplier...',
+          onScanTap: () => _openScanner(row.supplierCtrl),
+        ),
         SizedBox(height: 14),
         Row(
           children: [
             Expanded(
-              child: _AppTextField(controller: row.colorCtrl, label: 'Color', hint: 'e.g. Black'),
+              child: _AppTextField(
+                controller: row.colorCtrl,
+                label: 'Color',
+                hint: 'e.g. Black',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _AppTextField(controller: row.storageCtrl, label: 'Storage / Size', hint: 'e.g. 128GB'),
+              child: _AppTextField(
+                controller: row.storageCtrl,
+                label: 'Storage / Size',
+                hint: 'e.g. 128GB',
+              ),
             ),
           ],
         ),
@@ -684,7 +779,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
           value: row.currentState,
           hint: 'Select state',
           items: _conditions.values.toList(),
-          itemLabel: (value) => _conditions.entries.firstWhere((entry) => entry.value == value).key,
+          itemLabel: (value) => _conditions.entries
+              .firstWhere((entry) => entry.value == value)
+              .key,
           onChanged: (value) {
             if (value != null) {
               setState(() => row.currentState = value);
@@ -714,7 +811,12 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
           ],
         ),
         SizedBox(height: 14),
-        _AppTextField(controller: row.quantityCtrl, label: 'Quantity', hint: '1', keyboardType: TextInputType.number),
+        _AppTextField(
+          controller: row.quantityCtrl,
+          label: 'Quantity',
+          hint: '1',
+          keyboardType: TextInputType.number,
+        ),
         SizedBox(height: 14),
         const _FieldLabel('Device Image Upload'),
         SizedBox(height: 8),
@@ -735,10 +837,15 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               children: [
                 Expanded(
                   child: Text(
-                    row.imagePath == null ? 'No file chosen' : row.imagePath!.split('/').last,
+                    row.imagePath == null
+                        ? 'No file chosen'
+                        : row.imagePath!.split('/').last,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
                 Container(
@@ -756,7 +863,11 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                   ),
                   child: Text(
                     row.imagePath == null ? 'In Progress' : 'Selected',
-                    style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -801,7 +912,11 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         Row(
           children: [
             Expanded(
-              child: _AppTextField(controller: _modelCtrl, label: 'Model Number', hint: 'Model number'),
+              child: _AppTextField(
+                controller: _modelCtrl,
+                label: 'Model Number',
+                hint: 'Model number',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -848,11 +963,21 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         Row(
           children: [
             Expanded(
-              child: _AppTextField(controller: _quantityCtrl, label: 'Quantity', hint: '1', keyboardType: TextInputType.number),
+              child: _AppTextField(
+                controller: _quantityCtrl,
+                label: 'Quantity',
+                hint: '1',
+                keyboardType: TextInputType.number,
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _AppTextField(controller: _minStockCtrl, label: 'Min Stock Level', hint: '0', keyboardType: TextInputType.number),
+              child: _AppTextField(
+                controller: _minStockCtrl,
+                label: 'Min Stock Level',
+                hint: '0',
+                keyboardType: TextInputType.number,
+              ),
             ),
           ],
         ),
@@ -865,7 +990,11 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
       title: 'Management & Status',
       subtitle: 'Organize batches and condition state',
       children: [
-        _AppTextField(controller: _groupKeyCtrl, label: 'Batch / Group Key', hint: 'Batch key'),
+        _AppTextField(
+          controller: _groupKeyCtrl,
+          label: 'Batch / Group Key',
+          hint: 'Batch key',
+        ),
         SizedBox(height: 14),
         _AppDropdownField<String>(
           label: 'Condition',
@@ -873,7 +1002,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
           hint: 'Select condition',
           items: _conditions.values.toList(),
           itemLabel: (value) {
-            final match = _conditions.entries.firstWhere((entry) => entry.value == value);
+            final match = _conditions.entries.firstWhere(
+              (entry) => entry.value == value,
+            );
             return match.key;
           },
           onChanged: (value) {
@@ -905,7 +1036,10 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
             style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
             decoration: InputDecoration(
               hintText: 'e.g. Used phone, good condition...',
-              hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+              hintStyle: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 15,
+              ),
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(16),
             ),
@@ -917,7 +1051,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
 
   Widget _buildMediaSection() {
     final isDark = AppColors.isDark;
-    final uploadBg = isDark ? AppColors.primary.withValues(alpha: 0.06) : AppColors.primary.withValues(alpha: 0.04);
+    final uploadBg = isDark
+        ? AppColors.primary.withValues(alpha: 0.06)
+        : AppColors.primary.withValues(alpha: 0.04);
     final imageUrl = _imagePath == null ? _existingImageUrl : null;
 
     return _SectionCard(
@@ -936,8 +1072,12 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
             child: Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-              decoration: BoxDecoration(color: uploadBg, borderRadius: BorderRadius.circular(14)),
-              child: _imagePath == null && (imageUrl == null || imageUrl.isEmpty)
+              decoration: BoxDecoration(
+                color: uploadBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child:
+                  _imagePath == null && (imageUrl == null || imageUrl.isEmpty)
                   ? const _UploadPlaceholder()
                   : Column(
                       children: [
@@ -955,11 +1095,18 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                                   height: 180,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => const _UploadPlaceholder(),
+                                  errorBuilder: (_, _, _) =>
+                                      const _UploadPlaceholder(),
                                 ),
                         ),
                         SizedBox(height: 12),
-                        Text('Tap to change image', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                        Text(
+                          'Tap to change image',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
             ),
@@ -980,7 +1127,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               foregroundColor: AppColors.primary,
               backgroundColor: Colors.transparent,
               padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
             ),
             child: Text(
               'Cancel',
@@ -1000,11 +1149,20 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.buttonText,
               padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
               elevation: 0,
             ),
             child: _isSaving
-                ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.buttonText))
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.buttonText,
+                    ),
+                  )
                 : Text(
                     _isEditing ? 'Update Device' : 'Add To Inventory',
                     style: TextStyle(
@@ -1020,7 +1178,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
   }
 
   Widget _buildBulkBottomActions() {
-    final activeRows = _bulkRows.where((row) => row.barcodeCtrl.text.trim().isNotEmpty).length;
+    final activeRows = _bulkRows
+        .where((row) => row.barcodeCtrl.text.trim().isNotEmpty)
+        .length;
 
     return Row(
       children: [
@@ -1031,11 +1191,20 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.buttonText,
               padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
               elevation: 0,
             ),
             child: _isSaving
-                ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.buttonText))
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.buttonText,
+                    ),
+                  )
                 : Text(
                     'Import $activeRows Devices',
                     style: TextStyle(
@@ -1055,7 +1224,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               foregroundColor: AppColors.primary,
               backgroundColor: Colors.transparent,
               padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
             ),
             child: Text(
               'Cancel',
@@ -1085,9 +1256,14 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
             width: double.infinity,
             padding: EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF203826) : AppColors.cardBackground.withValues(alpha: 0.96),
+              color: isDark
+                  ? const Color(0xFF203826)
+                  : AppColors.cardBackground.withValues(alpha: 0.96),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.28), style: BorderStyle.solid),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.28),
+                style: BorderStyle.solid,
+              ),
             ),
             child: Column(
               children: [
@@ -1097,23 +1273,43 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                    ),
                   ),
-                  child: Icon(Icons.file_upload_outlined, color: AppColors.primary, size: 34),
+                  child: Icon(
+                    Icons.file_upload_outlined,
+                    color: AppColors.primary,
+                    size: 34,
+                  ),
                 ),
                 SizedBox(height: 18),
                 Text(
                   'Browse File',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   'SUPPORTS .CSV . XLS . XLSX',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13, letterSpacing: 0.6),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    letterSpacing: 0.6,
+                  ),
                 ),
                 SizedBox(height: 8),
-                Text('Maximum file size 5MB', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(
+                  'Maximum file size 5MB',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1136,9 +1332,15 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                    ),
                   ),
-                  child: Icon(Icons.description_outlined, color: AppColors.primary, size: 34),
+                  child: Icon(
+                    Icons.description_outlined,
+                    color: AppColors.primary,
+                    size: 34,
+                  ),
                 ),
                 SizedBox(width: 14),
                 Expanded(
@@ -1149,18 +1351,36 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                         csvFile.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       SizedBox(height: 6),
                       Row(
                         children: [
-                          Text(_formatFileSize(csvFile.size), style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          Text(
+                            _formatFileSize(csvFile.size),
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
                           SizedBox(width: 10),
-                          Icon(Icons.check_circle_outline_rounded, size: 18, color: AppColors.primary),
+                          Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             'Uploaded',
-                            style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
@@ -1174,11 +1394,17 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
                     width: 54,
                     height: 54,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF181F26) : AppColors.fieldBackground,
+                      color: isDark
+                          ? const Color(0xFF181F26)
+                          : AppColors.fieldBackground,
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.fieldBorder),
                     ),
-                    child: Icon(Icons.delete_outline_rounded, color: AppColors.textPrimary, size: 24),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.textPrimary,
+                      size: 24,
+                    ),
                   ),
                 ),
               ],
@@ -1194,11 +1420,20 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.buttonText,
               padding: EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
               elevation: 0,
             ),
             child: _isSaving
-                ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.buttonText))
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.buttonText,
+                    ),
+                  )
                 : Text(
                     'Submit & Import',
                     style: TextStyle(
@@ -1219,7 +1454,9 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
               foregroundColor: AppColors.primary,
               backgroundColor: Colors.transparent,
               padding: EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
             ),
             child: Text(
               'Cancel',
@@ -1242,14 +1479,25 @@ class _SectionCard extends StatelessWidget {
   final List<Widget> children;
   final Widget? trailing;
 
-  const _SectionCard({required this.title, required this.subtitle, required this.children, this.trailing});
+  const _SectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.children,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark;
-    final cardColor = isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.5);
-    final borderColor = isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC);
-    final shadowColor = isDark ? Colors.black.withValues(alpha: 0.22) : const Color(0xFF6BA0C8).withValues(alpha: 0.10);
+    final cardColor = isDark
+        ? AppColors.cardBackground
+        : Colors.white.withValues(alpha: 0.5);
+    final borderColor = isDark
+        ? AppColors.fieldBorder
+        : const Color(0xFFE4E7EC);
+    final shadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.22)
+        : const Color(0xFF6BA0C8).withValues(alpha: 0.10);
 
     return Container(
       width: double.infinity,
@@ -1259,7 +1507,12 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
         boxShadow: [
-          BoxShadow(color: shadowColor, blurRadius: isDark ? 18 : 20, spreadRadius: isDark ? 0 : 1, offset: Offset(0, isDark ? 6 : 6)),
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: isDark ? 18 : 20,
+            spreadRadius: isDark ? 0 : 1,
+            offset: Offset(0, isDark ? 6 : 6),
+          ),
         ],
       ),
       child: Column(
@@ -1270,14 +1523,25 @@ class _SectionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               if (trailing case final Widget trailingWidget) trailingWidget,
             ],
           ),
           SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.45)),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
           SizedBox(height: 16),
           ...children,
         ],
@@ -1295,7 +1559,11 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+      style: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }
@@ -1306,7 +1574,12 @@ class _AppTextField extends StatelessWidget {
   final String hint;
   final TextInputType? keyboardType;
 
-  const _AppTextField({required this.controller, required this.label, required this.hint, this.keyboardType});
+  const _AppTextField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.keyboardType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1327,9 +1600,15 @@ class _AppTextField extends StatelessWidget {
             style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+              hintStyle: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 15,
+              ),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
             ),
           ),
         ),
@@ -1344,7 +1623,12 @@ class _ScanInputField extends StatelessWidget {
   final String hint;
   final VoidCallback onScanTap;
 
-  const _ScanInputField({required this.controller, this.label, required this.hint, required this.onScanTap});
+  const _ScanInputField({
+    required this.controller,
+    this.label,
+    required this.hint,
+    required this.onScanTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1362,9 +1646,15 @@ class _ScanInputField extends StatelessWidget {
               style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                ),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
               ),
             ),
           ),
@@ -1384,7 +1674,10 @@ class _ScanInputField extends StatelessWidget {
 
     if (label == null) return field;
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_FieldLabel(label!), SizedBox(height: 8), field]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_FieldLabel(label!), SizedBox(height: 8), field],
+    );
   }
 }
 
@@ -1428,10 +1721,23 @@ class _AppDropdownField<T> extends StatelessWidget {
               dropdownColor: isDark
                   ? AppColors.fieldBackground
                   : AppColors.cardBackground,
-              icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
-              hint: Text(hint, style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.textSecondary,
+              ),
+              hint: Text(
+                hint,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+              ),
               style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
-              items: items.map((item) => DropdownMenuItem<T>(value: item, child: Text(itemLabel(item)))).toList(),
+              items: items
+                  .map(
+                    (item) => DropdownMenuItem<T>(
+                      value: item,
+                      child: Text(itemLabel(item)),
+                    ),
+                  )
+                  .toList(),
               onChanged: onChanged,
             ),
           ),
@@ -1452,16 +1758,26 @@ class _UploadPlaceholder extends StatelessWidget {
         Container(
           width: 72,
           height: 72,
-          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
           child: Icon(Icons.upload_rounded, color: AppColors.primary, size: 32),
         ),
         SizedBox(height: 20),
         Text(
           'Click to Upload',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         SizedBox(height: 6),
-        Text('PNG, JPG or WEBP up to 5MB', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        Text(
+          'PNG, JPG or WEBP up to 5MB',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
       ],
     );
   }
@@ -1473,7 +1789,12 @@ class _DashedBorderPainter extends CustomPainter {
   final double dashWidth;
   final double dashGap;
 
-  const _DashedBorderPainter({required this.color, this.radius = 12, this.dashWidth = 6, this.dashGap = 4});
+  const _DashedBorderPainter({
+    required this.color,
+    this.radius = 12,
+    this.dashWidth = 6,
+    this.dashGap = 4,
+  });
 
   static const double _strokeWidth = 1.5;
 
@@ -1484,7 +1805,12 @@ class _DashedBorderPainter extends CustomPainter {
       ..strokeWidth = _strokeWidth
       ..style = PaintingStyle.stroke;
 
-    final rect = Rect.fromLTWH(_strokeWidth / 2, _strokeWidth / 2, size.width - _strokeWidth, size.height - _strokeWidth);
+    final rect = Rect.fromLTWH(
+      _strokeWidth / 2,
+      _strokeWidth / 2,
+      size.width - _strokeWidth,
+      size.height - _strokeWidth,
+    );
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
     final path = Path()..addRRect(rrect);
 
@@ -1502,7 +1828,10 @@ class _DashedBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedBorderPainter old) =>
-      old.color != color || old.radius != radius || old.dashWidth != dashWidth || old.dashGap != dashGap;
+      old.color != color ||
+      old.radius != radius ||
+      old.dashWidth != dashWidth ||
+      old.dashGap != dashGap;
 }
 
 class _CircleActionButton extends StatelessWidget {
@@ -1514,9 +1843,15 @@ class _CircleActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark;
-    final backgroundColor = isDark ? AppColors.fieldBackground : AppColors.fieldBackground.withValues(alpha: 0.96);
-    final borderColor = isDark ? AppColors.fieldBorder : AppColors.fieldBorder.withValues(alpha: 0.82);
-    final iconColor = AppColors.textPrimary.withValues(alpha: isDark ? 0.95 : 0.82);
+    final backgroundColor = isDark
+        ? AppColors.fieldBackground
+        : AppColors.fieldBackground.withValues(alpha: 0.96);
+    final borderColor = isDark
+        ? AppColors.fieldBorder
+        : AppColors.fieldBorder.withValues(alpha: 0.82);
+    final iconColor = AppColors.textPrimary.withValues(
+      alpha: isDark ? 0.95 : 0.82,
+    );
 
     return GestureDetector(
       onTap: onTap,

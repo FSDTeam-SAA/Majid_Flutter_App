@@ -108,7 +108,47 @@ class AuthController extends GetxController {
     });
   }
 
+  /// Re-posts the signup for an account that exists but is still unverified.
+  /// The server answers that with a fresh token pair and a newly mailed OTP,
+  /// which is the only way to get back into the verification flow when we
+  /// hold no token — logging in as an unverified user is rejected before any
+  /// token is issued.
+  Future<bool> _restoreVerificationSession() async {
+    try {
+      final response = await _repo.register(
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      await TokenManager.saveToken(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+      user.value = response.user;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> resendOtp() async {
+    // Without a session both resend endpoints answer "You are not authorized",
+    // and so does Verify right after — the screen looks completely dead.
+    // Re-issuing the signup restores the token and mails a new code in one go.
+    if (isEmailVerification.value && !await TokenManager.isLoggedIn()) {
+      errorMessage.value = '';
+      isLoading.value = true;
+      final restored = await _restoreVerificationSession();
+      isLoading.value = false;
+      if (!restored) {
+        errorMessage.value =
+            'Could not resend the code. Please sign up again.';
+      }
+      return restored;
+    }
+
     return _execute(() async {
       if (isEmailVerification.value) {
         await _repo.resendOtp();
@@ -153,6 +193,8 @@ class AuthController extends GetxController {
       if (message.toString().toLowerCase().contains('verify your email')) {
         isEmailNotVerified.value = true;
         isEmailVerification.value = true;
+
+        var hasSession = false;
         if (responseData is Map) {
           final data = responseData['data'];
           if (data is Map && data['accessToken'] != null) {
@@ -160,7 +202,15 @@ class AuthController extends GetxController {
               accessToken: data['accessToken'],
               refreshToken: data['refreshToken'] ?? '',
             );
+            hasSession = true;
           }
+        }
+
+        // The rejection carries no token of its own, so the OTP screen used to
+        // open with an empty session and every button on it failed.
+        if (!hasSession && !await _restoreVerificationSession()) {
+          errorMessage.value =
+              'Could not start email verification. Please sign up again.';
         }
       }
       return false;
