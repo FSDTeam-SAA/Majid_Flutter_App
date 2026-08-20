@@ -18,22 +18,23 @@ class AppLoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final indicator = SizedBox(
-      width: size,
-      height: size,
-      child: CircularProgressIndicator(
-        strokeWidth: 2.6,
-        color: color ?? AppColors.primary,
-      ),
-    ).animate(onPlay: (controller) => controller.repeat(reverse: true)).scale(
-      begin: const Offset(0.92, 0.92),
-      end: const Offset(1.04, 1.04),
-      duration: AppMotion.slow,
-      curve: AppMotion.easeInOut,
-    ).fadeIn(
-      duration: AppMotion.quick,
-      curve: AppMotion.easeOutCubic,
-    );
+    final indicator =
+        SizedBox(
+              width: size,
+              height: size,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.6,
+                color: color ?? AppColors.primary,
+              ),
+            )
+            .animate(onPlay: (controller) => controller.repeat(reverse: true))
+            .scale(
+              begin: const Offset(0.92, 0.92),
+              end: const Offset(1.04, 1.04),
+              duration: AppMotion.slow,
+              curve: AppMotion.easeInOut,
+            )
+            .fadeIn(duration: AppMotion.quick, curve: AppMotion.easeOutCubic);
 
     if (label == null) {
       return indicator;

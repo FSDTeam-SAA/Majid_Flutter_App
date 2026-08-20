@@ -88,7 +88,8 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
   }
 
   Future<int?> _resolveFreeServiceId() async {
-    if (_selectedFreeService?.serviceId != null) return _selectedFreeService!.serviceId;
+    if (_selectedFreeService?.serviceId != null)
+      return _selectedFreeService!.serviceId;
     await _loadFreeServices();
     return _selectedFreeService?.serviceId;
   }
@@ -98,18 +99,32 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
   Future<void> _showFreeLimitDialog() async {
     await _showLoginPrompt(
       title: 'Free Scan Limit Reached',
-      message: 'You\'ve used your $_freeScanLimit free scans. Login or create a free account to keep scanning.',
+      message:
+          'You\'ve used your $_freeScanLimit free scans. Login or create a free account to keep scanning.',
     );
   }
 
-  Future<void> _showLoginPrompt({required String title, required String message}) async {
+  Future<void> _showLoginPrompt({
+    required String title,
+    required String message,
+  }) async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
-        content: Text(message, style: TextStyle(color: Colors.white70, fontSize: 14)),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -118,17 +133,29 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
           OutlinedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => SignupScreenView()));
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => SignupScreenView()),
+              );
             },
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Color(0xFF8EFC7C))),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: BorderSide(color: Color(0xFF8EFC7C)),
+            ),
             child: Text('Sign Up'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreenView()));
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => LoginScreenView()),
+              );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF8EFC7C), foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF8EFC7C),
+              foregroundColor: Colors.black,
+            ),
             child: Text('Login'),
           ),
         ],
@@ -146,7 +173,9 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
     if (!mounted || scannedValue == null || scannedValue.trim().isEmpty) return;
 
     final normalizedImei = scannedValue.trim().replaceAll(RegExp(r'\D'), '');
-    _imeiController.text = normalizedImei.isNotEmpty ? normalizedImei : scannedValue.trim();
+    _imeiController.text = normalizedImei.isNotEmpty
+        ? normalizedImei
+        : scannedValue.trim();
 
     if (_isValidImei(normalizedImei)) {
       await _scanNow();
@@ -176,7 +205,11 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       if (!mounted) return;
       if (serviceId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No free service available right now. Please try again later.')),
+          SnackBar(
+            content: Text(
+              'No free service available right now. Please try again later.',
+            ),
+          ),
         );
         return;
       }
@@ -195,10 +228,14 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
       );
     } on OnboardingScanException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Scan failed. Please try again.')));
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
@@ -342,16 +379,19 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
             ? SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.black,
+                ),
               )
             : Text(
-          'Scan Now',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+                'Scan Now',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }

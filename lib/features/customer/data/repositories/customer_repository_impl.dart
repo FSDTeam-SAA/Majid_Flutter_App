@@ -9,7 +9,9 @@ class CustomerRepositoryImpl implements CustomerRepository {
   CustomerRepositoryImpl(this.api);
 
   Customer _fromJson(Map<String, dynamic> json) {
-    final createdAt = DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now();
+    final createdAt =
+        DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        DateTime.now();
     return Customer(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       firstName: json['firstName']?.toString() ?? '',
@@ -26,7 +28,10 @@ class CustomerRepositoryImpl implements CustomerRepository {
     final res = await api.get(CustomerEndpoints.byShopkeeper(shopkeeperId));
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => _fromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => _fromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override

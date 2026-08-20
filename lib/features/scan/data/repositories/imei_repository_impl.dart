@@ -143,20 +143,39 @@ class ImeiRepositoryImpl implements ImeiRepository {
     }
 
     if (responseData is Map) {
-      final directList = responseData['imeiNumbers'] ?? responseData['imeis'];
-      if (directList is List) {
-        for (final item in directList) {
-          addCandidate(item);
+      // Check every plausible field name — future-proofing for whenever the
+      // backend OCR prompt learns to detect Serial Numbers separately from
+      // IMEIs, without needing another app update. A Set dedupes, so
+      // checking overlapping names here is harmless.
+      for (final key in ['imeiNumbers', 'imeis', 'serialNumbers', 'serials']) {
+        final list = responseData[key];
+        if (list is List) {
+          for (final item in list) {
+            addCandidate(item);
+          }
         }
       }
 
       addCandidate(responseData['imei']);
       addCandidate(responseData['imeiNumber']);
+      addCandidate(responseData['serial']);
+      addCandidate(responseData['serialNumber']);
 
       final rawText = responseData['rawText'];
       if (rawText is String) {
         for (final match in RegExp(r'\d{15}').allMatches(rawText)) {
           addCandidate(match.group(0));
+        }
+        // Serial Numbers are alphanumeric, not 15 digits — the backend OCR
+        // prompt is currently IMEI-only, but this catches a Serial if one
+        // ever shows up in the raw recognized text.
+        for (final match in RegExp(
+          r'\b[A-Za-z0-9]{8,14}\b',
+        ).allMatches(rawText)) {
+          final candidate = match.group(0)!;
+          if (RegExp(r'[A-Za-z]').hasMatch(candidate)) {
+            addCandidate(candidate);
+          }
         }
       }
     } else if (responseData is List) {
@@ -168,7 +187,14 @@ class ImeiRepositoryImpl implements ImeiRepository {
     return imeis.toList();
   }
 
-  String _normalizeImei(String value) => value.replaceAll(RegExp(r'\D'), '');
+  /// Strips separators but keeps letters — Serial Numbers are alphanumeric,
+  /// unlike IMEIs which are 15 digits.
+  String _normalizeImei(String value) =>
+      value.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
 
-  bool _isValidImei(String value) => RegExp(r'^\d{15}$').hasMatch(value);
+  /// A 15-digit IMEI or an alphanumeric Serial Number — mirrors the
+  /// backend's own `isValidImei` check.
+  bool _isValidImei(String value) =>
+      RegExp(r'^\d{15}$').hasMatch(value) ||
+      RegExp(r'^[A-Za-z0-9]{4,}$').hasMatch(value);
 }

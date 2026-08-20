@@ -6,7 +6,10 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../invoice/presentation/widgets/invoice_input_field.dart';
 import '../controller/supplier_controller.dart';
 
-Future<bool?> showAddSupplierSheet(BuildContext context, SupplierController controller) {
+Future<bool?> showAddSupplierSheet(
+  BuildContext context,
+  SupplierController controller,
+) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -60,7 +63,9 @@ class _AddSupplierSheetState extends State<AddSupplierSheet> {
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to create supplier. Please try again.');
+      setState(
+        () => _errorMessage = 'Failed to create supplier. Please try again.',
+      );
     }
   }
 
@@ -85,32 +90,59 @@ class _AddSupplierSheetState extends State<AddSupplierSheet> {
                   child: Container(
                     width: 40,
                     height: 4,
-                    decoration: BoxDecoration(color: AppColors.fieldBorder, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: AppColors.fieldBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
                 Text(
                   'Add Supplier',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Add a supplier to track deliveries and stock sources.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                InvoiceInputField(hint: 'Supplier Name *', controller: _nameCtrl),
+                InvoiceInputField(
+                  hint: 'Supplier Name *',
+                  controller: _nameCtrl,
+                ),
                 const SizedBox(height: 10),
-                InvoiceInputField(hint: 'Phone', controller: _phoneCtrl, keyboardType: TextInputType.phone),
+                InvoiceInputField(
+                  hint: 'Phone',
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 10),
-                InvoiceInputField(hint: 'Email', controller: _emailCtrl, keyboardType: TextInputType.emailAddress),
+                InvoiceInputField(
+                  hint: 'Email',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 10),
                 InvoiceInputField(hint: 'Address', controller: _addressCtrl),
                 const SizedBox(height: 10),
                 _buildNotesField(),
                 if (_errorMessage.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(_errorMessage, style: TextStyle(color: AppColors.dangerColor, fontSize: 12.5)),
+                  Text(
+                    _errorMessage,
+                    style: TextStyle(
+                      color: AppColors.dangerColor,
+                      fontSize: 12.5,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Obx(() {
@@ -119,11 +151,15 @@ class _AddSupplierSheetState extends State<AddSupplierSheet> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: isCreating ? null : () => Navigator.pop(context),
+                          onPressed: isCreating
+                              ? null
+                              : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
                             side: BorderSide(color: AppColors.fieldBorder),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Cancel'),
@@ -154,7 +190,12 @@ class _AddSupplierSheetState extends State<AddSupplierSheet> {
       decoration: BoxDecoration(
         color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+        border: Border.all(
+          color: AppColors.primary.withValues(
+            alpha: AppColors.isDark ? 0.6 : 0.72,
+          ),
+          width: 1.2,
+        ),
       ),
       child: TextField(
         controller: _notesCtrl,
@@ -164,7 +205,10 @@ class _AddSupplierSheetState extends State<AddSupplierSheet> {
           hintText: 'Notes',
           hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           isDense: true,
         ),
       ),

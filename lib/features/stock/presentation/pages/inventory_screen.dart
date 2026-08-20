@@ -277,7 +277,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return;
       }
 
-      await _cartRepo.addToCart(shopkeeperId: shopkeeperId, itemId: itemId, quantity: 1);
+      await _cartRepo.addToCart(
+        shopkeeperId: shopkeeperId,
+        itemId: itemId,
+        quantity: 1,
+      );
       if (!mounted) return;
       showSuccessSnackbar('Added to cart');
     } on DioException catch (e) {
@@ -672,7 +676,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _formatCurrency(num value) {
     final safeValue = value.isFinite ? value : 0;
     final hasFraction = safeValue % 1 != 0;
-    return '\$${safeValue.toStringAsFixed(hasFraction ? 2 : 0)}';
+    return '${_profileCtrl.currencySymbol}${safeValue.toStringAsFixed(hasFraction ? 2 : 0)}';
   }
 }
 
@@ -720,7 +724,9 @@ class _InventoryCard extends StatelessWidget {
         ? const Color(0xFFE6EEF8)
         : AppColors.textPrimary;
 
-    final title = item.itemName.trim().isNotEmpty ? item.itemName : 'Unnamed Item';
+    final title = item.itemName.trim().isNotEmpty
+        ? item.itemName
+        : 'Unnamed Item';
     final brand = item.brand ?? 'Unknown Brand';
     final storage = item.storage ?? '';
     final color = item.color ?? '';
@@ -950,7 +956,8 @@ class _InventoryCard extends StatelessWidget {
 
   static String _formatPrice(double value) {
     final hasFraction = value % 1 != 0;
-    return '\$${value.toStringAsFixed(hasFraction ? 2 : 0)}';
+    final symbol = Get.find<ProfileController>().currencySymbol;
+    return '$symbol${value.toStringAsFixed(hasFraction ? 2 : 0)}';
   }
 
   static String _statusLabel(String status) {

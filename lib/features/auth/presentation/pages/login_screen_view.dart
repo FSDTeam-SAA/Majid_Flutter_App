@@ -42,9 +42,16 @@ class LoginScreenView extends StatelessWidget {
                             const SizedBox(height: 64),
                             Text(
                               'Welcome Back to',
-                              style: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ).entrance(index: 0, begin: const Offset(0, 0.04)),
-                            const ImoscanTitle().entrance(index: 1, begin: const Offset(0, 0.04)),
+                            const ImoscanTitle().entrance(
+                              index: 1,
+                              begin: const Offset(0, 0.04),
+                            ),
                             const SizedBox(height: 40),
                             AppTextField(
                               hint: 'Enter your email',
@@ -67,7 +74,9 @@ class LoginScreenView extends StatelessWidget {
                                   if (success) {
                                     Get.offAll(() => AppGroundView());
                                   } else if (auth.isEmailNotVerified.value) {
-                                    showErrorSnackbar('Email not verified. Check your inbox for the OTP or register again.');
+                                    showErrorSnackbar(
+                                      'Email not verified. Check your inbox for the OTP or register again.',
+                                    );
                                     Get.to(() => OtpVerificationScreenView());
                                   } else if (auth.errorMessage.isNotEmpty) {
                                     showErrorSnackbar(auth.errorMessage.value);
@@ -78,10 +87,15 @@ class LoginScreenView extends StatelessWidget {
                             const SizedBox(height: 20),
                             Center(
                               child: GestureDetector(
-                                onTap: () => Get.to(() => ForgotPasswordScreenView()),
+                                onTap: () =>
+                                    Get.to(() => ForgotPasswordScreenView()),
                                 child: Text(
                                   'Forgot Password?',
-                                  style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ).entrance(index: 5, enableScale: false),
                               ),
                             ),

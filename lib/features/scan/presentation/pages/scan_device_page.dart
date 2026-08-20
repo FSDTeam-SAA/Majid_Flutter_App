@@ -108,11 +108,11 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     final imei = _normalizeImei(_controller.text);
     final serviceId = _selectedService?.serviceId;
     if (imei.isEmpty) {
-      _showMessage('Please enter an IMEI number.');
+      _showMessage('Please enter an IMEI or Serial Number.');
       return;
     }
     if (!_isValidImei(imei)) {
-      _showMessage('Please enter a valid 15-digit IMEI number.');
+      _showMessage('Please enter a valid IMEI or Serial Number.');
       return;
     }
     if (serviceId == null) {
@@ -131,7 +131,9 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       final scanData = scanResult['data'];
       final hasDeviceData = _hasValidDeviceData(scanData);
       if (!hasDeviceData) {
-        _showMessage('No device information found for this IMEI. Please check the IMEI and selected service.');
+        _showMessage(
+          'No device information found for this IMEI. Please check the IMEI and selected service.',
+        );
         return;
       }
       final newScan = _buildScanItemFromResponse(scanResult, imei);
@@ -146,9 +148,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => DeviceReportPage(report: scanResult),
-        ),
+        MaterialPageRoute(builder: (_) => DeviceReportPage(report: scanResult)),
       );
     } on ImeiScanException catch (e) {
       _showMessage(e.message.isNotEmpty ? e.message : 'IMEI check failed');
@@ -181,7 +181,9 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       );
 
       if (imeiNumbers.isEmpty) {
-        _showMessage('No valid IMEI found in the selected image.');
+        _showMessage(
+          'No valid IMEI or Serial Number found in the selected image.',
+        );
         return;
       }
 
@@ -189,10 +191,12 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       _controller.text = firstImei;
 
       if (imeiNumbers.length == 1) {
-        _showMessage('IMEI extracted successfully. Tap Scan Now to continue.');
+        _showMessage(
+          'Number extracted successfully. Tap Scan Now to continue.',
+        );
       } else {
         _showMessage(
-          '${imeiNumbers.length} IMEIs found. The first one has been filled in.',
+          '${imeiNumbers.length} numbers found. The first one has been filled in.',
         );
       }
     } on ImeiScanException catch (e) {
@@ -221,7 +225,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     final normalizedImei = _normalizeImei(trimmedValue);
     if (_isValidImei(normalizedImei)) {
       _controller.text = normalizedImei;
-      _showMessage('IMEI scanned successfully. Tap Scan Now to continue.');
+      _showMessage('Number scanned successfully. Tap Scan Now to continue.');
       return;
     }
 
@@ -576,14 +580,21 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
 
   Future<void> _openRecentScan(ScanItem item) async {
     if (item.report.containsKey('ok')) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: item.report)));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DeviceReportPage(report: item.report),
+        ),
+      );
       return;
     }
 
     if (item.imei.isEmpty) return;
     final serviceId = item.serviceId;
     if (serviceId == null) {
-      _showMessage('No service info available for this scan. Please scan again.');
+      _showMessage(
+        'No service info available for this scan. Please scan again.',
+      );
       return;
     }
 
@@ -593,13 +604,19 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       builder: (_) => Center(
         child: Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(color: AppColors.primary),
               const SizedBox(height: 16),
-              Text('Loading report...', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+              Text(
+                'Loading report...',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              ),
             ],
           ),
         ),
@@ -613,11 +630,16 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)),
+      );
     } on ImeiScanException catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        _showMessage(e.message.isNotEmpty ? e.message : 'Device data not found.');
+        _showMessage(
+          e.message.isNotEmpty ? e.message : 'Device data not found.',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -633,12 +655,16 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       final parsed = data[key];
       if (parsed is Map && parsed.isNotEmpty) {
         final allValues = parsed.values.join(' ').toLowerCase();
-        if (allValues.contains('not found') || allValues.contains('error')) return false;
+        if (allValues.contains('not found') || allValues.contains('error'))
+          return false;
 
         for (final nameKey in [
-          'model', 'model_name',
-          'description', 'device_description',
-          'device_name', 'full_name',
+          'model',
+          'model_name',
+          'description',
+          'device_description',
+          'device_name',
+          'full_name',
         ]) {
           final value = parsed[nameKey]?.toString();
           if (value != null && value.isNotEmpty) return true;
@@ -657,8 +683,10 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     if (data is Map) {
       final providerResults = data['providerResults'];
       final parsedProviderData = data['parsedProviderData'];
-      if (providerResults is Map) parsed.addAll(Map<String, dynamic>.from(providerResults));
-      if (parsedProviderData is Map) parsed.addAll(Map<String, dynamic>.from(parsedProviderData));
+      if (providerResults is Map)
+        parsed.addAll(Map<String, dynamic>.from(providerResults));
+      if (parsedProviderData is Map)
+        parsed.addAll(Map<String, dynamic>.from(parsedProviderData));
     }
 
     String? name;
@@ -682,7 +710,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     final rawStatus = response['data'] is Map
         ? response['data']['deviceStatus']?.toString()
         : null;
-    final status = (rawStatus == null || rawStatus.isEmpty || rawStatus == 'unknown')
+    final status =
+        (rawStatus == null || rawStatus.isEmpty || rawStatus == 'unknown')
         ? 'Clean'
         : rawStatus[0].toUpperCase() + rawStatus.substring(1);
 
@@ -695,12 +724,18 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     );
   }
 
+  /// Strips separators (spaces, dashes) but keeps letters — Serial Numbers
+  /// are alphanumeric, unlike IMEIs which are 15 digits.
   String _normalizeImei(String value) {
-    return value.replaceAll(RegExp(r'\D'), '');
+    return value.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
   }
 
+  /// A 15-digit IMEI or an alphanumeric Serial Number — mirrors the
+  /// backend's own `isValidImei` check so a Serial that the server would
+  /// accept never gets rejected before the request is even sent.
   bool _isValidImei(String value) {
-    return RegExp(r'^\d{15}$').hasMatch(value);
+    return RegExp(r'^\d{15}$').hasMatch(value) ||
+        RegExp(r'^[A-Za-z0-9]{4,}$').hasMatch(value);
   }
 
   void _showMessage(String message) {

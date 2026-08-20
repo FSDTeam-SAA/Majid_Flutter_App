@@ -14,7 +14,10 @@ class CartRepositoryImpl implements CartRepository {
     final res = await _api.get(CartEndpoints.byShopkeeper(shopkeeperId));
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => _cartItemFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => _cartItemFromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   CartItem _cartItemFromJson(Map<String, dynamic> json) {
@@ -23,7 +26,9 @@ class CartRepositoryImpl implements CartRepository {
       id: json['_id']?.toString() ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 0,
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
-      item: rawItem is Map ? inventoryItemFromJson(Map<String, dynamic>.from(rawItem)) : null,
+      item: rawItem is Map
+          ? inventoryItemFromJson(Map<String, dynamic>.from(rawItem))
+          : null,
     );
   }
 
@@ -35,7 +40,11 @@ class CartRepositoryImpl implements CartRepository {
   }) async {
     await _api.post(
       CartEndpoints.create,
-      data: {'shopkeeperId': shopkeeperId, 'itemId': itemId, 'quantity': quantity},
+      data: {
+        'shopkeeperId': shopkeeperId,
+        'itemId': itemId,
+        'quantity': quantity,
+      },
     );
   }
 

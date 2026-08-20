@@ -40,16 +40,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _periodToFilter(HomePeriod p) => switch (p) {
-        HomePeriod.daily => 'daily',
-        HomePeriod.weekly => 'monthly',
-        HomePeriod.monthly => 'monthly',
-        HomePeriod.yearly => 'yearly',
-      };
+    HomePeriod.daily => 'daily',
+    HomePeriod.weekly => 'monthly',
+    HomePeriod.monthly => 'monthly',
+    HomePeriod.yearly => 'yearly',
+  };
 
   void _selectPeriod(int index) {
     setState(() => _selectedPeriod = index);
     homeCtrl.fetchDashboardForFilter(
-        _periodToFilter(homePeriodFromIndex(index)));
+      _periodToFilter(homePeriodFromIndex(index)),
+    );
   }
 
   Future<void> _showPeriodPicker() async {
@@ -129,9 +130,15 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader().entrance(index: 0, begin: const Offset(0, 0.04)),
+                      _buildHeader().entrance(
+                        index: 0,
+                        begin: const Offset(0, 0.04),
+                      ),
                       const SizedBox(height: 20),
-                      _buildPeriodTabs().entrance(index: 1, begin: const Offset(0, 0.04)),
+                      _buildPeriodTabs().entrance(
+                        index: 1,
+                        begin: const Offset(0, 0.04),
+                      ),
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -146,17 +153,22 @@ class _HomePageState extends State<HomePage> {
                         Obx(() {
                           final d = homeCtrl.dashboardStats.value;
                           return StatsGrid(
-                            totalSales: (d?['totalSales'] as num?)?.toDouble() ?? 0,
-                            totalProfit: (d?['totalProfit'] as num?)?.toDouble() ?? 0,
-                            totalOrders: (d?['totalOrders'] as num?)?.toInt() ?? 0,
-                            avgOrderValue: (d?['avgOrderValue'] as num?)?.toDouble() ?? 0,
+                            totalSales:
+                                (d?['totalSales'] as num?)?.toDouble() ?? 0,
+                            totalProfit:
+                                (d?['totalProfit'] as num?)?.toDouble() ?? 0,
+                            totalOrders:
+                                (d?['totalOrders'] as num?)?.toInt() ?? 0,
+                            avgOrderValue:
+                                (d?['avgOrderValue'] as num?)?.toDouble() ?? 0,
                           ).entrance(index: 2);
                         }),
                         const SizedBox(height: 20),
                         QuickActions(
                           onAddRepair: () => widget.onOpenTab?.call(3),
                           onCreateInvoice: () => widget.onOpenTab?.call(4),
-                          onAddItem: () => Get.to(() => const AddNewDevicePage()),
+                          onAddItem: () =>
+                              Get.to(() => const AddNewDevicePage()),
                         ).entrance(index: 3),
                         const SizedBox(height: 20),
                         SalesTrendChart(

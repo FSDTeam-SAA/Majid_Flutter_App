@@ -15,27 +15,42 @@ class ShopInfoCard extends StatelessWidget {
       final shopName = profileCtrl.shopName.isNotEmpty
           ? profileCtrl.shopName
           : 'Your Shop';
-      final email = profileCtrl.email.isNotEmpty
-          ? profileCtrl.email
-          : 'N/A';
+      final ownerName = profileCtrl.fullName;
+      final email = profileCtrl.email.isNotEmpty ? profileCtrl.email : 'N/A';
       final phone = profileCtrl.whatsappNumber.isNotEmpty
           ? profileCtrl.whatsappNumber
           : (profileCtrl.phone.isNotEmpty ? profileCtrl.phone : 'N/A');
       final address = profileCtrl.shopAddress.isNotEmpty
           ? profileCtrl.shopAddress
           : 'Store Address';
+      final logoUrl = profileCtrl.imageUrl;
 
       return AppCard(
-        padding: EdgeInsets.all(14),
+        padding: EdgeInsets.all(16),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
               child: Container(
-                width: 60,
-                height: 60,
-                color: Color(0xFFD4A853),
-                child: Icon(Icons.store, color: Colors.white, size: 30),
+                width: 84,
+                height: 84,
+                color: AppColors.primary.withValues(alpha: 0.12),
+                child: logoUrl.isNotEmpty
+                    ? Image.network(
+                        logoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Icon(
+                          Icons.storefront,
+                          color: AppColors.primary,
+                          size: 36,
+                        ),
+                      )
+                    : Icon(
+                        Icons.storefront,
+                        color: AppColors.primary,
+                        size: 36,
+                      ),
               ),
             ),
             SizedBox(width: 14),
@@ -47,11 +62,22 @@ class ShopInfoCard extends StatelessWidget {
                     shopName,
                     style: TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  if (ownerName.isNotEmpty) ...[
+                    SizedBox(height: 2),
+                    Text(
+                      ownerName,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: 8),
                   _info(Icons.email_outlined, email),
                   _info(Icons.phone_outlined, phone),
                   _info(Icons.location_on_outlined, address),

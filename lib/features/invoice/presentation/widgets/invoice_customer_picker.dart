@@ -43,7 +43,12 @@ class InvoiceCustomerPicker extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.fieldBackground,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+            border: Border.all(
+              color: AppColors.primary.withValues(
+                alpha: AppColors.isDark ? 0.6 : 0.72,
+              ),
+              width: 1.2,
+            ),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(26),
@@ -54,17 +59,26 @@ class InvoiceCustomerPicker extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      isLoading ? 'Loading customers...' : (selected ?? 'Choose a customer'),
+                      isLoading
+                          ? 'Loading customers...'
+                          : (selected ?? 'Choose a customer'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: selected != null && !isLoading ? AppColors.textPrimary : AppColors.textSecondary,
+                        color: selected != null && !isLoading
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
                         fontSize: 14,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+                  Icon(
+                    isOpen
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: AppColors.textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -108,7 +122,10 @@ class InvoiceCustomerPicker extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text('No customers found', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          child: Text(
+            'No customers found',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
         ),
       );
     }
@@ -127,7 +144,9 @@ class InvoiceCustomerPicker extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               margin: const EdgeInsets.only(bottom: 6),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.fieldBackground : Colors.transparent,
+                color: isSelected
+                    ? AppColors.fieldBackground
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
@@ -138,11 +157,14 @@ class InvoiceCustomerPicker extends StatelessWidget {
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                   ),
-                  if (isSelected) Icon(Icons.check, color: AppColors.primary, size: 18),
+                  if (isSelected)
+                    Icon(Icons.check, color: AppColors.primary, size: 18),
                 ],
               ),
             ),

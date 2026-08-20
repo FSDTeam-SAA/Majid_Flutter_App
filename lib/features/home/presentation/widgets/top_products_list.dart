@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/animation/pressable_scale.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/home_controller.dart';
 
 class TopProductsList extends StatelessWidget {
@@ -39,7 +40,10 @@ class TopProductsList extends StatelessWidget {
                       : () => _showAllProductsSheet(context, products),
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
                     child: Text(
                       'View All',
                       style: TextStyle(
@@ -239,7 +243,7 @@ class TopProductsList extends StatelessWidget {
               Text(
                 price == null
                     ? sold.toStringAsFixed(0)
-                    : '£${price.toStringAsFixed(0)}',
+                    : '${Get.find<ProfileController>().currencySymbol}${price.toStringAsFixed(0)}',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 13,
@@ -248,10 +252,7 @@ class TopProductsList extends StatelessWidget {
               ),
               Text(
                 price == null ? 'Sold' : 'Price',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
               ),
             ],
           ),

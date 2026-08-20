@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/repair_data.dart';
 
 class CheckoutProductItem extends StatelessWidget {
@@ -58,7 +60,7 @@ class CheckoutProductItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '£${product.price.toStringAsFixed(2)}',
+              '${Get.find<ProfileController>().currencySymbol}${product.price.toStringAsFixed(2)}',
               style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 14,

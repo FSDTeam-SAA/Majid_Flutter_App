@@ -24,7 +24,10 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final res = await _api.get(InvoiceEndpoints.byShopkeeper(shopkeeperId));
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => _invoiceFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => _invoiceFromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override
@@ -34,27 +37,37 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     if (data is! List) {
       throw const FormatException('Invalid inventory response');
     }
-    return data.whereType<Map>().map((item) => _productFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => _productFromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override
   Future<String> extractNid({File? frontImage, File? backImage}) async {
     final payload = FormData.fromMap({
-      if (frontImage != null) 'nid_front': await MultipartFile.fromFile(frontImage.path),
-      if (backImage != null) 'nid_back': await MultipartFile.fromFile(backImage.path),
+      if (frontImage != null)
+        'nid_front': await MultipartFile.fromFile(frontImage.path),
+      if (backImage != null)
+        'nid_back': await MultipartFile.fromFile(backImage.path),
     });
 
     final Response res;
     try {
       res = await _api.post(OcrEndpoints.extractNid, data: payload);
     } on DioException catch (e) {
-      throw InvoiceException(e.response?.data?['message']?.toString() ?? 'Failed to extract NID from image.');
+      throw InvoiceException(
+        e.response?.data?['message']?.toString() ??
+            'Failed to extract NID from image.',
+      );
     }
 
     final data = res.data['data'];
     final nidNumber = data is Map ? data['nidNumber']?.toString() : null;
     if (nidNumber == null || nidNumber.isEmpty) {
-      throw const InvoiceException('No valid NID number found in the selected image.');
+      throw const InvoiceException(
+        'No valid NID number found in the selected image.',
+      );
     }
     return nidNumber;
   }
@@ -85,15 +98,27 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   }
 
   InvoiceProduct _productFromJson(Map<String, dynamic> item) {
-    final price = (item['expectedPrice'] as num?)?.toDouble() ?? (item['purchasePrice'] as num?)?.toDouble() ?? 0;
+    final price =
+        (item['expectedPrice'] as num?)?.toDouble() ??
+        (item['purchasePrice'] as num?)?.toDouble() ??
+        0;
     return InvoiceProduct(
       id: item['_id']?.toString() ?? '',
-      name: item['itemName']?.toString() ?? item['brand']?.toString() ?? 'Inventory item',
+      name:
+          item['itemName']?.toString() ??
+          item['brand']?.toString() ??
+          'Inventory item',
       code: item['sku']?.toString() ?? item['imeiNumber']?.toString() ?? 'N/A',
-      imeiSerial: item['imeiNumber']?.toString() ?? item['serialNumber']?.toString() ?? '',
+      imeiSerial:
+          item['imeiNumber']?.toString() ??
+          item['serialNumber']?.toString() ??
+          '',
       price: price,
       color: AppColors.primary,
       category: _categoryFromJson(item),
+      storage: item['storage']?.toString() ?? '',
+      colorName: item['color']?.toString() ?? '',
+      condition: item['currentState']?.toString() ?? '',
     );
   }
 

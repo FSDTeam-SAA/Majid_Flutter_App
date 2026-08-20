@@ -7,11 +7,18 @@ class CustomerCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
-  const CustomerCard({super.key, required this.customer, this.onEdit, this.onDelete});
+  const CustomerCard({
+    super.key,
+    required this.customer,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final displayName = customer.fullName.isEmpty ? customer.email : customer.fullName;
+    final displayName = customer.fullName.isEmpty
+        ? customer.email
+        : customer.fullName;
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
     return Container(
@@ -30,10 +37,17 @@ class CustomerCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
                 child: Text(
                   initial,
-                  style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -42,7 +56,11 @@ class CustomerCard extends StatelessWidget {
                   displayName.isEmpty ? 'Customer' : displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               if (onEdit != null)
@@ -50,7 +68,11 @@ class CustomerCard extends StatelessWidget {
                   onTap: onEdit,
                   child: Padding(
                     padding: const EdgeInsets.all(4),
-                    child: Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 18),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.textSecondary,
+                      size: 18,
+                    ),
                   ),
                 ),
               if (onDelete != null)
@@ -58,7 +80,11 @@ class CustomerCard extends StatelessWidget {
                   onTap: onDelete,
                   child: Padding(
                     padding: const EdgeInsets.all(4),
-                    child: Icon(Icons.delete_outline_rounded, color: AppColors.dangerColor, size: 18),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.dangerColor,
+                      size: 18,
+                    ),
                   ),
                 ),
             ],

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 
 class RepairStatsRow extends StatelessWidget {
   static const _iconAssetScale = 1.9;
@@ -8,7 +10,12 @@ class RepairStatsRow extends StatelessWidget {
   final int completed;
   final double totalSales;
 
-  const RepairStatsRow({super.key, this.inProgress = 0, this.completed = 0, this.totalSales = 0});
+  const RepairStatsRow({
+    super.key,
+    this.inProgress = 0,
+    this.completed = 0,
+    this.totalSales = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -45,10 +52,11 @@ class RepairStatsRow extends StatelessWidget {
   }
 
   String _formatCurrency(double value) {
+    final symbol = Get.find<ProfileController>().currencySymbol;
     if (value >= 1000) {
-      return '£${(value / 1000).toStringAsFixed(1)}k';
+      return '$symbol${(value / 1000).toStringAsFixed(1)}k';
     }
-    return '£${value.toStringAsFixed(0)}';
+    return '$symbol${value.toStringAsFixed(0)}';
   }
 
   Widget _buildCard(
@@ -84,18 +92,25 @@ class RepairStatsRow extends StatelessWidget {
         children: [
           _buildIconBadge(assetPath, glowColor: glowColor),
           const SizedBox(height: 16),
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: valueStyle),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: valueStyle,
+          ),
           const SizedBox(height: 6),
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: labelStyle),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: labelStyle,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildIconBadge(
-    String assetPath, {
-    required Color glowColor,
-  }) {
+  Widget _buildIconBadge(String assetPath, {required Color glowColor}) {
     return Transform.scale(
       scale: _iconAssetScale,
       child: Image.asset(assetPath, fit: BoxFit.cover, height: 36, width: 36),

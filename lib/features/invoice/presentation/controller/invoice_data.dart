@@ -8,6 +8,9 @@ class InvoiceProduct {
   final double price;
   final Color color;
   final String category;
+  final String storage;
+  final String colorName;
+  final String condition;
   InvoiceProduct({
     this.id = '',
     required this.name,
@@ -16,6 +19,9 @@ class InvoiceProduct {
     required this.price,
     required this.color,
     this.category = '',
+    this.storage = '',
+    this.colorName = '',
+    this.condition = '',
   });
 }
 

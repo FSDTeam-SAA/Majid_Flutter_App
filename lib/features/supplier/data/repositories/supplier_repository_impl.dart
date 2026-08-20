@@ -21,7 +21,10 @@ class SupplierRepositoryImpl implements SupplierRepository {
     );
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => SupplierModel.fromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => SupplierModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override

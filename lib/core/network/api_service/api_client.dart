@@ -7,6 +7,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'api_endpoints.dart';
 
+import 'session_events.dart';
 import 'token_meneger.dart';
 
 class ApiClient {
@@ -105,10 +106,14 @@ class ApiClient {
                 final clonedResponse = await dio.fetch(clonedRequest);
                 return handler.resolve(clonedResponse);
               } catch (refreshError) {
-                // Keep the session and surface the original 401. Clearing here
-                // dropped the access token, so every later request went out
-                // with no Authorization header and the whole screen answered
-                // "You are not authorized" instead of the real error.
+                // A refresh token existed but genuinely failed to renew the
+                // session — this is a real, dead session (not the temporary
+                // access-token-only forgot-password/OTP state, which never
+                // has a refresh token and so never reaches this branch).
+                // Clear it and let the app route back to login instead of
+                // leaving every screen stuck on a stale token forever.
+                await TokenManager.clearToken();
+                SessionEvents.onSessionExpired?.call();
                 return handler.reject(err);
               }
             }

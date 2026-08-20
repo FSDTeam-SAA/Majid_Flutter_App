@@ -45,10 +45,7 @@ class _FadeSlidePageTransitionsBuilder extends PageTransitionsBuilder {
       begin: const Offset(0, 0.05),
       end: Offset.zero,
     ).animate(curvedAnimation);
-    final scaleAnimation = Tween<double>(
-      begin: 0.985,
-      end: 1,
-    ).animate(
+    final scaleAnimation = Tween<double>(begin: 0.985, end: 1).animate(
       CurvedAnimation(
         parent: animation,
         curve: AppMotion.easeOutExpo,
@@ -83,20 +80,15 @@ class _AppGetPageTransition extends CustomTransition {
       curve: const Interval(0, 0.88, curve: AppMotion.easeOutExpo),
       reverseCurve: const Interval(0, 1, curve: AppMotion.easeInOut),
     );
-    final slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.05),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: animation,
-        curve: AppMotion.easeOutCubic,
-        reverseCurve: AppMotion.easeInOut,
-      ),
-    );
-    final scaleAnimation = Tween<double>(
-      begin: 0.985,
-      end: 1,
-    ).animate(
+    final slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: animation,
+            curve: AppMotion.easeOutCubic,
+            reverseCurve: AppMotion.easeInOut,
+          ),
+        );
+    final scaleAnimation = Tween<double>(begin: 0.985, end: 1).animate(
       CurvedAnimation(
         parent: animation,
         curve: AppMotion.easeOutExpo,

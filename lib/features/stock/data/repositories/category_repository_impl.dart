@@ -8,7 +8,8 @@ import '../../domain/repositories/category_repository.dart';
 Category categoryFromJson(Map<String, dynamic> json) {
   final image = json['image'];
   final imageUrl = image is Map ? image['url']?.toString() : null;
-  final itemCount = (json['itemCount'] as num?) ?? (json['totalItems'] as num?) ?? 0;
+  final itemCount =
+      (json['itemCount'] as num?) ?? (json['totalItems'] as num?) ?? 0;
 
   return Category(
     id: json['_id']?.toString() ?? '',
@@ -25,10 +26,15 @@ class CategoryRepositoryImpl implements CategoryRepository {
 
   @override
   Future<List<Category>> getCategoriesWithCount(String shopkeeperId) async {
-    final res = await _api.get('${CategoryEndpoints.withCount}?shopkeeperId=$shopkeeperId');
+    final res = await _api.get(
+      '${CategoryEndpoints.withCount}?shopkeeperId=$shopkeeperId',
+    );
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => categoryFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => categoryFromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override
@@ -37,7 +43,10 @@ class CategoryRepositoryImpl implements CategoryRepository {
     required String shopkeeperId,
     String? imagePath,
   }) async {
-    final res = await _api.post(CategoryEndpoints.create, data: await _payload(name, shopkeeperId, imagePath));
+    final res = await _api.post(
+      CategoryEndpoints.create,
+      data: await _payload(name, shopkeeperId, imagePath),
+    );
     return categoryFromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
@@ -48,7 +57,10 @@ class CategoryRepositoryImpl implements CategoryRepository {
     required String shopkeeperId,
     String? imagePath,
   }) async {
-    final res = await _api.put(CategoryEndpoints.byId(id), data: await _payload(name, shopkeeperId, imagePath));
+    final res = await _api.put(
+      CategoryEndpoints.byId(id),
+      data: await _payload(name, shopkeeperId, imagePath),
+    );
     return categoryFromJson(Map<String, dynamic>.from(res.data['data']));
   }
 
@@ -65,7 +77,11 @@ class CategoryRepositoryImpl implements CategoryRepository {
     return resolvedId.isEmpty ? null : resolvedId;
   }
 
-  Future<dynamic> _payload(String name, String shopkeeperId, String? imagePath) async {
+  Future<dynamic> _payload(
+    String name,
+    String shopkeeperId,
+    String? imagePath,
+  ) async {
     if (imagePath == null || imagePath.isEmpty) {
       return {'name': name, 'shopkeeperId': shopkeeperId};
     }

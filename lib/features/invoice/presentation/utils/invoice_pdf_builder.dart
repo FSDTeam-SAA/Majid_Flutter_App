@@ -39,6 +39,8 @@ class InvoicePdfBuilder {
     required String paymentType,
     required List<InvoicePdfItem> items,
     required double totalAmount,
+    String currencySymbol = '\$',
+    double? amountPaid,
     String? footerNote,
   }) async {
     final pdf = pw.Document();
@@ -87,7 +89,7 @@ class InvoicePdfBuilder {
                   borderRadius: pw.BorderRadius.circular(8),
                 ),
                 child: pw.Text(
-                  _formatCurrency(totalAmount),
+                  _formatCurrency(totalAmount, currencySymbol),
                   style: pw.TextStyle(
                     fontSize: 16,
                     fontWeight: pw.FontWeight.bold,
@@ -126,7 +128,7 @@ class InvoicePdfBuilder {
             ],
           ),
           pw.SizedBox(height: 24),
-          _buildItemsTable(items),
+          _buildItemsTable(items, currencySymbol),
           pw.SizedBox(height: 18),
           pw.Align(
             alignment: pw.Alignment.centerRight,
@@ -142,19 +144,29 @@ class InvoicePdfBuilder {
                 children: [
                   pw.Text(
                     'Total Amount',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      color: PdfColors.grey700,
-                    ),
+                    style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    _formatCurrency(totalAmount),
+                    _formatCurrency(totalAmount, currencySymbol),
                     style: pw.TextStyle(
                       fontSize: 20,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
+                  if (amountPaid != null) ...[
+                    pw.SizedBox(height: 10),
+                    pw.Divider(color: PdfColors.grey300),
+                    pw.SizedBox(height: 6),
+                    _buildAmountRow('Amount Paid', amountPaid, currencySymbol),
+                    pw.SizedBox(height: 4),
+                    _buildAmountRow(
+                      'Balance Due',
+                      totalAmount - amountPaid,
+                      currencySymbol,
+                      bold: true,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -175,7 +187,10 @@ class InvoicePdfBuilder {
     );
 
     final directory = await getTemporaryDirectory();
-    final safePrefix = fileNamePrefix.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final safePrefix = fileNamePrefix.replaceAll(
+      RegExp(r'[^a-zA-Z0-9_-]'),
+      '_',
+    );
     final safeNumber = invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
     final file = File('${directory.path}/${safePrefix}_$safeNumber.pdf');
     await file.writeAsBytes(await pdf.save());
@@ -194,6 +209,7 @@ class InvoicePdfBuilder {
     required String customerIdNumber,
     required List<InvoicePdfItem> items,
     required double totalAmount,
+    String currencySymbol = '\$',
   }) async {
     final pdf = pw.Document();
     const navy = PdfColor.fromInt(0xFF0F172A);
@@ -252,9 +268,11 @@ class InvoicePdfBuilder {
                       child: _buildShadedCard(
                         title: 'SHOP INFORMATION',
                         rows: [],
-                        plainLines: [shopName, shopAddress, shopPhone]
-                            .map(_safeValue)
-                            .toList(),
+                        plainLines: [
+                          shopName,
+                          shopAddress,
+                          shopPhone,
+                        ].map(_safeValue).toList(),
                       ),
                     ),
                   ],
@@ -271,7 +289,7 @@ class InvoicePdfBuilder {
                 pw.SizedBox(height: 8),
                 pw.Divider(color: PdfColors.grey400),
                 pw.SizedBox(height: 8),
-                _buildPurchaseDevicesTable(items, navy),
+                _buildPurchaseDevicesTable(items, navy, currencySymbol),
                 pw.SizedBox(height: 18),
                 pw.Align(
                   alignment: pw.Alignment.centerRight,
@@ -294,7 +312,7 @@ class InvoicePdfBuilder {
                           ),
                         ),
                         pw.Text(
-                          _formatCurrency(totalAmount),
+                          _formatCurrency(totalAmount, currencySymbol),
                           style: pw.TextStyle(
                             fontSize: 16,
                             fontWeight: pw.FontWeight.bold,
@@ -312,7 +330,10 @@ class InvoicePdfBuilder {
     );
 
     final directory = await getTemporaryDirectory();
-    final safePrefix = fileNamePrefix.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final safePrefix = fileNamePrefix.replaceAll(
+      RegExp(r'[^a-zA-Z0-9_-]'),
+      '_',
+    );
     final safeNumber = invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
     final file = File('${directory.path}/${safePrefix}_$safeNumber.pdf');
     await file.writeAsBytes(await pdf.save());
@@ -378,17 +399,18 @@ class InvoicePdfBuilder {
   static pw.Widget _buildPurchaseDevicesTable(
     List<InvoicePdfItem> items,
     PdfColor headerColor,
+    String currencySymbol,
   ) {
     final rows = items.isEmpty
         ? [
-            ['No devices added', '0', _formatCurrency(0)],
+            ['No devices added', '0', _formatCurrency(0, currencySymbol)],
           ]
         : items
               .map(
                 (item) => [
                   item.code.isEmpty ? item.name : '${item.name}\n${item.code}',
                   '${item.quantity}',
-                  _formatCurrency(item.lineTotal),
+                  _formatCurrency(item.lineTotal, currencySymbol),
                 ],
               )
               .toList();
@@ -419,8 +441,18 @@ class InvoicePdfBuilder {
 
   static String _formatLongDate(DateTime value) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[value.month - 1]} ${value.day}, ${value.year}';
   }
@@ -448,10 +480,7 @@ class InvoicePdfBuilder {
         children: [
           pw.Text(
             title,
-            style: pw.TextStyle(
-              fontSize: 12,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           ...lines.map(
@@ -465,10 +494,20 @@ class InvoicePdfBuilder {
     );
   }
 
-  static pw.Widget _buildItemsTable(List<InvoicePdfItem> items) {
+  static pw.Widget _buildItemsTable(
+    List<InvoicePdfItem> items,
+    String currencySymbol,
+  ) {
     final rows = items.isEmpty
         ? [
-            ['No items selected', '-', '-', '0', _formatCurrency(0), _formatCurrency(0)],
+            [
+              'No items selected',
+              '-',
+              '-',
+              '0',
+              _formatCurrency(0, currencySymbol),
+              _formatCurrency(0, currencySymbol),
+            ],
           ]
         : items
               .map(
@@ -477,8 +516,8 @@ class InvoicePdfBuilder {
                   item.code.isEmpty ? '-' : item.code,
                   item.imeiSerial.isEmpty ? '-' : item.imeiSerial,
                   '${item.quantity}',
-                  _formatCurrency(item.unitPrice),
-                  _formatCurrency(item.lineTotal),
+                  _formatCurrency(item.unitPrice, currencySymbol),
+                  _formatCurrency(item.lineTotal, currencySymbol),
                 ],
               )
               .toList();
@@ -486,13 +525,37 @@ class InvoicePdfBuilder {
     return pw.TableHelper.fromTextArray(
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      headerStyle: pw.TextStyle(
-        fontSize: 11,
-        fontWeight: pw.FontWeight.bold,
-      ),
+      headerStyle: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
       cellStyle: const pw.TextStyle(fontSize: 10),
-      headers: const ['Item', 'Code', 'IMEI/Serial', 'Qty', 'Unit Price', 'Total'],
+      headers: const [
+        'Item',
+        'Code',
+        'IMEI/Serial',
+        'Qty',
+        'Unit Price',
+        'Total',
+      ],
       data: rows,
+    );
+  }
+
+  static pw.Widget _buildAmountRow(
+    String label,
+    double value,
+    String currencySymbol, {
+    bool bold = false,
+  }) {
+    final style = pw.TextStyle(
+      fontSize: bold ? 13 : 11,
+      fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+      color: bold ? PdfColors.black : PdfColors.grey700,
+    );
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: style),
+        pw.Text(_formatCurrency(value, currencySymbol), style: style),
+      ],
     );
   }
 
@@ -507,11 +570,13 @@ class InvoicePdfBuilder {
     return '${value.year}-$month-$day';
   }
 
-  static String _formatCurrency(double value) {
-    final amount = value.toStringAsFixed(2).replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]},',
-    );
-    return '£$amount';
+  static String _formatCurrency(double value, String symbol) {
+    final amount = value
+        .toStringAsFixed(2)
+        .replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+          (match) => '${match[1]},',
+        );
+    return '$symbol$amount';
   }
 }

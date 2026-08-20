@@ -24,15 +24,15 @@ class AppEntrance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalDelay = delay + (AppMotion.stagger * index);
-    var animated = child.animate(delay: totalDelay).fadeIn(
-      duration: duration,
-      curve: AppMotion.easeOutCubic,
-    ).slide(
-      begin: begin,
-      end: Offset.zero,
-      duration: duration,
-      curve: AppMotion.easeOutCubic,
-    );
+    var animated = child
+        .animate(delay: totalDelay)
+        .fadeIn(duration: duration, curve: AppMotion.easeOutCubic)
+        .slide(
+          begin: begin,
+          end: Offset.zero,
+          duration: duration,
+          curve: AppMotion.easeOutCubic,
+        );
 
     if (enableScale) {
       animated = animated.scale(

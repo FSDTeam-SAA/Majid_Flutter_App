@@ -23,7 +23,9 @@ class _CustomerPageState extends State<CustomerPage> {
   @override
   void initState() {
     super.initState();
-    _controller = Get.isRegistered<CustomerController>() ? Get.find<CustomerController>() : Get.put(CustomerController());
+    _controller = Get.isRegistered<CustomerController>()
+        ? Get.find<CustomerController>()
+        : Get.put(CustomerController());
   }
 
   @override
@@ -41,16 +43,25 @@ class _CustomerPageState extends State<CustomerPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        title: Text('Remove customer?', style: TextStyle(color: AppColors.textPrimary)),
+        title: Text(
+          'Remove customer?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: Text(
           'Are you sure you want to remove ${customer.fullName.isEmpty ? customer.email : customer.fullName}?',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Remove', style: TextStyle(color: AppColors.dangerColor)),
+            child: Text(
+              'Remove',
+              style: TextStyle(color: AppColors.dangerColor),
+            ),
           ),
         ],
       ),
@@ -73,8 +84,15 @@ class _CustomerPageState extends State<CustomerPage> {
               child: Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                child: Icon(Icons.add_rounded, color: AppColors.surfaceForeground, size: 22),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add_rounded,
+                  color: AppColors.surfaceForeground,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -84,7 +102,12 @@ class _CustomerPageState extends State<CustomerPage> {
               decoration: BoxDecoration(
                 color: AppColors.fieldBackground,
                 borderRadius: BorderRadius.circular(50),
-                border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+                border: Border.all(
+                  color: AppColors.primary.withValues(
+                    alpha: AppColors.isDark ? 0.6 : 0.72,
+                  ),
+                  width: 1.2,
+                ),
               ),
               child: TextField(
                 controller: _searchCtrl,
@@ -92,8 +115,15 @@ class _CustomerPageState extends State<CustomerPage> {
                 style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Search name, email, phone...',
-                  hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  prefixIcon: Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                  hintStyle: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -104,7 +134,9 @@ class _CustomerPageState extends State<CustomerPage> {
           Expanded(
             child: Obx(() {
               if (_controller.isLoading.value) {
-                return Center(child: CircularProgressIndicator(color: AppColors.primary));
+                return Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
               }
               if (_controller.errorMessage.value.isNotEmpty) {
                 return Center(
@@ -119,7 +151,10 @@ class _CustomerPageState extends State<CustomerPage> {
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton(onPressed: _controller.fetchCustomers, child: const Text('Retry')),
+                        OutlinedButton(
+                          onPressed: _controller.fetchCustomers,
+                          child: const Text('Retry'),
+                        ),
                       ],
                     ),
                   ),
@@ -138,14 +173,20 @@ class _CustomerPageState extends State<CustomerPage> {
                   children: [
                     Text(
                       '${customers.length} customers found',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     if (customers.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 48),
                         child: Center(
-                          child: Text('No customers found.', style: TextStyle(color: AppColors.textSecondary)),
+                          child: Text(
+                            'No customers found.',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
                         ),
                       )
                     else
@@ -154,7 +195,8 @@ class _CustomerPageState extends State<CustomerPage> {
                           padding: const EdgeInsets.only(bottom: 10),
                           child: CustomerCard(
                             customer: customer,
-                            onEdit: () => _openAddCustomerSheet(existing: customer),
+                            onEdit: () =>
+                                _openAddCustomerSheet(existing: customer),
                             onDelete: () => _confirmDelete(customer),
                           ),
                         ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/invoice_data.dart';
 
 class InvoiceProductItem extends StatelessWidget {
@@ -57,7 +59,11 @@ class InvoiceProductItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: isSelected
-                  ? Icon(Icons.check, color: AppColors.surfaceForeground, size: 15)
+                  ? Icon(
+                      Icons.check,
+                      color: AppColors.surfaceForeground,
+                      size: 15,
+                    )
                   : null,
             ),
             SizedBox(width: 12),
@@ -105,7 +111,7 @@ class InvoiceProductItem extends StatelessWidget {
               ),
             ),
             Text(
-              '£${product.price.toStringAsFixed(2)}',
+              '${Get.find<ProfileController>().currencySymbol}${product.price.toStringAsFixed(2)}',
               style: TextStyle(
                 color: isSelected ? AppColors.primary : AppColors.textPrimary,
                 fontSize: 14,

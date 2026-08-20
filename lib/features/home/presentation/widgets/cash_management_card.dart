@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/home_controller.dart';
 
 class CashManagementCard extends StatefulWidget {
@@ -13,6 +14,7 @@ class CashManagementCard extends StatefulWidget {
 
 class _CashManagementCardState extends State<CashManagementCard> {
   final _controller = TextEditingController();
+  final _currencySymbol = Get.find<ProfileController>().currencySymbol;
 
   @override
   void dispose() {
@@ -26,7 +28,8 @@ class _CashManagementCardState extends State<CashManagementCard> {
 
     return Obx(() {
       final cash = homeCtrl.cashManagement.value;
-      final startingDayCash = (cash?['startingDayCash'] as num?)?.toDouble() ?? 0;
+      final startingDayCash =
+          (cash?['startingDayCash'] as num?)?.toDouble() ?? 0;
       final banked = (cash?['banked'] as num?)?.toDouble() ?? 0;
       final cashInDrawer = (cash?['cashInDrawer'] as num?)?.toDouble() ?? 0;
       final submitting = homeCtrl.isSubmittingCash.value;
@@ -80,7 +83,7 @@ class _CashManagementCardState extends State<CashManagementCard> {
             ),
             const SizedBox(height: 4),
             Text(
-              '£${startingDayCash.toStringAsFixed(0)}',
+              '$_currencySymbol${startingDayCash.toStringAsFixed(0)}',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 26,
@@ -93,8 +96,9 @@ class _CashManagementCardState extends State<CashManagementCard> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     style: TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Enter starting cash',
@@ -102,7 +106,9 @@ class _CashManagementCardState extends State<CashManagementCard> {
                       filled: true,
                       fillColor: AppColors.background,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide(color: AppColors.fieldBorder),
@@ -121,7 +127,9 @@ class _CashManagementCardState extends State<CashManagementCard> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.background,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -153,23 +161,27 @@ class _CashManagementCardState extends State<CashManagementCard> {
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Cash drawer £${cashInDrawer.toStringAsFixed(0)}',
+                    'Cash drawer $_currencySymbol${cashInDrawer.toStringAsFixed(0)}',
                     style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 11),
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              '£${banked.toStringAsFixed(0)}',
+              '$_currencySymbol${banked.toStringAsFixed(0)}',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 22,
@@ -185,18 +197,27 @@ class _CashManagementCardState extends State<CashManagementCard> {
   void _submit(HomeController homeCtrl) async {
     final value = double.tryParse(_controller.text.trim());
     if (value == null) {
-      Get.snackbar('Invalid amount', 'Please enter a valid number',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Invalid amount',
+        'Please enter a valid number',
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return;
     }
     final success = await homeCtrl.submitStartingDayCash(value);
     if (success) {
       _controller.clear();
-      Get.snackbar('Saved', 'Cash management record saved',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Saved',
+        'Cash management record saved',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } else {
-      Get.snackbar('Error', 'Failed to save cash management record',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to save cash management record',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 }

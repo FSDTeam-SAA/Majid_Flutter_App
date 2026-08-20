@@ -1,12 +1,14 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'core/animation/app_motion.dart';
 import 'core/animation/app_page_transition.dart';
+import 'core/network/api_service/session_events.dart';
 import 'core/network/api_service/token_meneger.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'features/auth/presentation/controller/auth_controller.dart';
+import 'features/auth/presentation/pages/login_screen_view.dart';
 import 'features/home/presentation/controller/home_controller.dart';
 import 'features/onboarding/presentation/pages/splash_screen_view.dart';
 import 'features/profile/presentation/controller/profile_controller.dart';
@@ -20,6 +22,8 @@ Future<void> main() async {
   Get.lazyPut(() => HomeController(), fenix: true);
   Get.lazyPut(() => ProfileController(), fenix: true);
   Get.lazyPut(() => StockController(), fenix: true);
+  SessionEvents.onSessionExpired = () =>
+      Get.offAll(() => const LoginScreenView());
   runApp(MyApp());
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/home_controller.dart';
 import 'score_card_header.dart';
 
@@ -44,7 +45,8 @@ class HomeHealthSection extends StatelessWidget {
                   iconBg: const Color(0xFF1A2A1A),
                   iconColor: const Color(0xFF4EE86A),
                   label: 'Sales',
-                  value: '£${_fmt(totalSales)}',
+                  value:
+                      '${Get.find<ProfileController>().currencySymbol}${_fmt(totalSales)}',
                   growthPercent: rawSalesGrowth,
                   lineColor: const Color(0xFF4EE86A),
                 ),
@@ -72,7 +74,8 @@ class HomeHealthSection extends StatelessWidget {
                   iconBg: const Color(0xFF182232),
                   iconColor: const Color(0xFF2E76C4),
                   label: 'Inventory',
-                  value: '£${_fmt(inventoryValue)}',
+                  value:
+                      '${Get.find<ProfileController>().currencySymbol}${_fmt(inventoryValue)}',
                   growthPercent: null,
                   lineColor: const Color(0xFF2E76C4),
                 ),
@@ -118,47 +121,51 @@ class HomeHealthSection extends StatelessWidget {
                 'A blended score across sales growth, profit margin, stock management and customer satisfaction.',
           ),
           const SizedBox(height: 20),
-          LayoutBuilder(builder: (ctx, c) {
-            final w = c.maxWidth;
-            final h = w * 0.46;
-            return SizedBox(
-              width: w,
-              height: h,
-              child: Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _GaugePainter(value: overall / 100.0),
+          LayoutBuilder(
+            builder: (ctx, c) {
+              final w = c.maxWidth;
+              final h = w * 0.46;
+              return SizedBox(
+                width: w,
+                height: h,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _GaugePainter(value: overall / 100.0),
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$overall%',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            height: 1.1,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '$overall%',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Health Score',
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            'Health Score',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                  ],
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 12),
           if (rating.isNotEmpty)
             Text(
@@ -221,8 +228,7 @@ class HomeHealthSection extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 'vs last month',
-                style:
-                    TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -273,8 +279,8 @@ class _MetricCard extends StatelessWidget {
     final pctLabel = pct == null
         ? 'No comparison data'
         : pct >= 0
-            ? '+${pct.abs().toStringAsFixed(1)}% vs last month'
-            : '-${pct.abs().toStringAsFixed(1)}% vs last month';
+        ? '+${pct.abs().toStringAsFixed(1)}% vs last month'
+        : '-${pct.abs().toStringAsFixed(1)}% vs last month';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -291,17 +297,20 @@ class _MetricCard extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration:
-                    BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(icon, color: iconColor, size: 18),
               ),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500),
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -352,16 +361,15 @@ class _GaugePainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: Offset(cx, cy), radius: radius);
     canvas.drawArc(
-      rect, pi, pi, false,
+      rect,
+      pi,
+      pi,
+      false,
       Paint()
         ..shader = const SweepGradient(
           startAngle: pi,
           endAngle: 2 * pi,
-          colors: [
-            Color(0xFFE85050),
-            Color(0xFFE8920A),
-            Color(0xFF4EE86A),
-          ],
+          colors: [Color(0xFFE85050), Color(0xFFE8920A), Color(0xFF4EE86A)],
         ).createShader(rect)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeW
@@ -418,11 +426,14 @@ class _TrendPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 
-    canvas.drawLine(start, end,
-        Paint()
-          ..color = color
-          ..strokeWidth = 2.0
-          ..strokeCap = StrokeCap.round);
+    canvas.drawLine(
+      start,
+      end,
+      Paint()
+        ..color = color
+        ..strokeWidth = 2.0
+        ..strokeCap = StrokeCap.round,
+    );
   }
 
   @override

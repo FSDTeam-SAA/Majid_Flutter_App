@@ -26,15 +26,18 @@ class OnboardingRepositoryImpl implements OnboardingRepository {
         if (service['isFree'] != true) continue;
         final id = (service['serviceId'] as num?)?.toInt();
         final ids = service['serviceIds'];
-        final fallbackId =
-            ids is List && ids.isNotEmpty ? (ids.first as num?)?.toInt() : null;
+        final fallbackId = ids is List && ids.isNotEmpty
+            ? (ids.first as num?)?.toInt()
+            : null;
         final serviceId = id ?? fallbackId;
         if (serviceId == null || serviceId <= 0) continue;
-        options.add(ScanDropdownOption(
-          service['name']?.toString() ?? 'Free Check',
-          'Free',
-          serviceId: serviceId,
-        ));
+        options.add(
+          ScanDropdownOption(
+            service['name']?.toString() ?? 'Free Check',
+            'Free',
+            serviceId: serviceId,
+          ),
+        );
       }
     }
     return options;
@@ -53,7 +56,8 @@ class OnboardingRepositoryImpl implements OnboardingRepository {
       );
     } on DioException catch (e) {
       throw OnboardingScanException(
-        e.response?.data?['message']?.toString() ?? 'Scan failed. Please try again.',
+        e.response?.data?['message']?.toString() ??
+            'Scan failed. Please try again.',
       );
     }
 

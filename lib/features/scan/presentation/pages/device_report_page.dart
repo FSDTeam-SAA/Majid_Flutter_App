@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../../app_ground_view.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/app_header.dart';
+import '../../../invoice/presentation/pages/invoice_page.dart';
 import '../utils/device_certificate_pdf.dart';
 import '../widgets/ai_risk_card.dart';
 import '../widgets/device_field_card.dart';
@@ -56,9 +56,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => AppGroundView(initialIndex: 4),
-                            ),
+                            MaterialPageRoute(builder: (_) => InvoicePage()),
                           ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(

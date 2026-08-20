@@ -42,7 +42,8 @@ abstract class ImeiRepository {
   /// it could find in the image (deduplicated, order preserved).
   ///
   /// Throws an [ImeiScanException] when the request fails.
-  Future<List<String>> extractImeiFromImage(String imagePath, {
+  Future<List<String>> extractImeiFromImage(
+    String imagePath, {
     required String fileName,
   });
 

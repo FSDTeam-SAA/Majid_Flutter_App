@@ -14,7 +14,10 @@ class StaffRepositoryImpl implements StaffRepository {
     final res = await api.get(UserEndpoints.staffByShopkeeper(shopkeeperId));
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => StaffModel.fromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => StaffModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override

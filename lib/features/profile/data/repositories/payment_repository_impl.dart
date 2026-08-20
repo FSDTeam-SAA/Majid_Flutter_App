@@ -19,11 +19,11 @@ SubscriptionPlan _subscriptionPlanFromJson(Map<String, dynamic> json) {
   final rawFeatures = json['features'];
   final includedFeatures = rawFeatures is List
       ? rawFeatures
-          .whereType<Map>()
-          .where((f) => f['included'] == true)
-          .map((f) => f['name']?.toString() ?? '')
-          .where((name) => name.isNotEmpty)
-          .toList()
+            .whereType<Map>()
+            .where((f) => f['included'] == true)
+            .map((f) => f['name']?.toString() ?? '')
+            .where((name) => name.isNotEmpty)
+            .toList()
       : <String>[];
 
   return SubscriptionPlan(
@@ -51,7 +51,10 @@ class PaymentRepositoryImpl implements PaymentRepository {
     final res = await _api.get(PaymentEndpoints.myPayments);
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => _paymentFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => _paymentFromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override
@@ -59,7 +62,12 @@ class PaymentRepositoryImpl implements PaymentRepository {
     final res = await _api.get(SubscriptionEndpoints.all);
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => _subscriptionPlanFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map(
+          (item) => _subscriptionPlanFromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList();
   }
 
   @override
@@ -71,7 +79,8 @@ class PaymentRepositoryImpl implements PaymentRepository {
       PaymentEndpoints.createPayment,
       data: {
         'amount': amount,
-        if (subscriptionId != null && subscriptionId.isNotEmpty) 'subscriptionId': subscriptionId,
+        if (subscriptionId != null && subscriptionId.isNotEmpty)
+          'subscriptionId': subscriptionId,
       },
     );
     final data = Map<String, dynamic>.from(res.data['data']);

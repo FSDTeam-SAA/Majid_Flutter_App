@@ -43,50 +43,53 @@ class _CashInsightCardState extends State<CashInsightCard> {
                   'Reflects how well your starting day cash, banked cash and cash in drawer reconcile. A low score means cash handling needs urgent review.',
             ),
             const SizedBox(height: 20),
-            LayoutBuilder(builder: (ctx, c) {
-              final w = c.maxWidth;
-              final h = w * 0.46;
-              return SizedBox(
-                width: w,
-                height: h,
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _CashGaugePainter(value: score / 100.0),
+            LayoutBuilder(
+              builder: (ctx, c) {
+                final w = c.maxWidth;
+                final h = w * 0.46;
+                return SizedBox(
+                  width: w,
+                  height: h,
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _CashGaugePainter(value: score / 100.0),
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '$score',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              height: 1.1,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$score',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                height: 1.1,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '/100',
-                            style: TextStyle(
-                                color: AppColors.textSecondary, fontSize: 13),
-                          ),
-                        ],
+                            Text(
+                              '/100',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                    ],
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 12),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: const Color(0xFF1A2A1A),
                 borderRadius: BorderRadius.circular(20),
@@ -113,7 +116,9 @@ class _CashInsightCardState extends State<CashInsightCard> {
                 insight,
                 textAlign: TextAlign.center,
                 maxLines: _expanded ? null : 4,
-                overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                overflow: _expanded
+                    ? TextOverflow.visible
+                    : TextOverflow.ellipsis,
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
@@ -153,7 +158,9 @@ class _CashGaugePainter extends CustomPainter {
 
     canvas.drawArc(
       Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      pi, pi, false,
+      pi,
+      pi,
+      false,
       Paint()
         ..color = Colors.white.withValues(alpha: 0.10)
         ..style = PaintingStyle.stroke
@@ -164,7 +171,10 @@ class _CashGaugePainter extends CustomPainter {
     if (value > 0) {
       final rect = Rect.fromCircle(center: Offset(cx, cy), radius: radius);
       canvas.drawArc(
-        rect, pi, pi * value, false,
+        rect,
+        pi,
+        pi * value,
+        false,
         Paint()
           ..shader = SweepGradient(
             startAngle: pi,

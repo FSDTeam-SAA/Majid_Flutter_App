@@ -15,6 +15,7 @@ import 'payment_history_page.dart';
 import 'shopkeeper_id_card_page.dart';
 import 'upgrade_plan_page.dart';
 import '../../../customer/presentation/pages/customer_page.dart';
+import '../../../invoice/presentation/pages/invoice_page.dart';
 import '../../../staff/presentation/pages/staff_page.dart';
 import '../../../supplier/presentation/pages/supplier_page.dart';
 
@@ -91,18 +92,23 @@ class _ProfilePageViewState extends State<ProfilePageView>
                 }
 
                 if (profileCtrl.hasNoProfile) {
+                  final sessionExpired = profileCtrl.isSessionExpired.value;
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.cloud_off_outlined,
+                          sessionExpired
+                              ? Icons.lock_clock_outlined
+                              : Icons.cloud_off_outlined,
                           color: palette.textSecondary,
                           size: 48,
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Could not load profile',
+                          sessionExpired
+                              ? 'Your session has expired'
+                              : 'Could not load profile',
                           style: TextStyle(
                             color: palette.textSecondary,
                             fontSize: 14,
@@ -110,15 +116,28 @@ class _ProfilePageViewState extends State<ProfilePageView>
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton(
-                          onPressed: profileCtrl.fetchProfile,
+                          onPressed: sessionExpired
+                              ? () async {
+                                  await Get.find<AuthController>().logout();
+                                  Get.offAll(() => const LoginScreenView());
+                                }
+                              : profileCtrl.fetchProfile,
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: palette.primaryColor),
-                            foregroundColor: palette.primaryColor,
+                            side: BorderSide(
+                              color: sessionExpired
+                                  ? palette.dangerColor
+                                  : palette.primaryColor,
+                            ),
+                            foregroundColor: sessionExpired
+                                ? palette.dangerColor
+                                : palette.primaryColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: const Text('Retry'),
+                          child: Text(
+                            sessionExpired ? 'Log in again' : 'Retry',
+                          ),
                         ),
                       ],
                     ),
@@ -166,6 +185,13 @@ class _ProfilePageViewState extends State<ProfilePageView>
                         SizedBox(height: 32),
                         _buildSection('Account', [
                           (
+                            'Invoice',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => InvoicePage()),
+                            ),
+                          ),
+                          (
                             'Shopkeeper Id Card',
                             () => Navigator.push(
                               context,
@@ -196,14 +222,18 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             'Customers',
                             () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const CustomerPage()),
+                              MaterialPageRoute(
+                                builder: (_) => const CustomerPage(),
+                              ),
                             ),
                           ),
                           (
                             'Suppliers',
                             () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const SupplierPage()),
+                              MaterialPageRoute(
+                                builder: (_) => const SupplierPage(),
+                              ),
                             ),
                           ),
                           // Staff Management is shopkeeper-only — staff

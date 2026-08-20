@@ -379,7 +379,9 @@ class _CartItemCard extends StatelessWidget {
     final brand = item?.brand ?? 'Unknown Brand';
     final storage = item?.storage ?? '';
     final color = item?.color ?? '';
-    final imei = item != null && item.imeiNumber.isNotEmpty ? item.imeiNumber : 'No IMEI';
+    final imei = item != null && item.imeiNumber.isNotEmpty
+        ? item.imeiNumber
+        : 'No IMEI';
     final condition = (item?.currentState ?? 'new').toUpperCase();
     final imageUrl = item?.imageUrl;
     final quantity = entry.quantity;
@@ -405,13 +407,15 @@ class _CartItemCard extends StatelessWidget {
         color: cardBackground,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cardBorder),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: lightShadowColor,
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: lightShadowColor,
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         children: [
@@ -453,7 +457,9 @@ class _CartItemCard extends StatelessWidget {
                     Text(
                       'IMEI:  $imei',
                       style: TextStyle(
-                        color: isDark ? const Color(0xFFA8B4C5) : lightMetaColor,
+                        color: isDark
+                            ? const Color(0xFFA8B4C5)
+                            : lightMetaColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),

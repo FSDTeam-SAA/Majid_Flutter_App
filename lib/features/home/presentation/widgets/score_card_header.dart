@@ -33,9 +33,14 @@ class ScoreCardHeader extends StatelessWidget {
           onTap: () => Get.dialog(
             AlertDialog(
               backgroundColor: AppColors.cardBackground,
-              title: Text(title, style: TextStyle(color: AppColors.textPrimary)),
-              content: Text(infoMessage,
-                  style: TextStyle(color: AppColors.textSecondary)),
+              title: Text(
+                title,
+                style: TextStyle(color: AppColors.textPrimary),
+              ),
+              content: Text(
+                infoMessage,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Get.back(),
@@ -44,7 +49,11 @@ class ScoreCardHeader extends StatelessWidget {
               ],
             ),
           ),
-          child: Icon(Icons.info_outline, color: AppColors.textSecondary, size: 20),
+          child: Icon(
+            Icons.info_outline,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
         ),
       ],
     );

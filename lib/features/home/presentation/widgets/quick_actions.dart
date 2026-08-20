@@ -9,7 +9,12 @@ class QuickActions extends StatelessWidget {
   final VoidCallback onCreateInvoice;
   final VoidCallback onAddItem;
 
-  const QuickActions({super.key, required this.onAddRepair, required this.onCreateInvoice, required this.onAddItem});
+  const QuickActions({
+    super.key,
+    required this.onAddRepair,
+    required this.onCreateInvoice,
+    required this.onAddItem,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,21 +23,37 @@ class QuickActions extends StatelessWidget {
       children: [
         Text(
           'Quick Actions',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: _ActionBtn(label: 'Add Repair', icon: Icons.build_outlined, onTap: onAddRepair).entrance(index: 0),
+              child: _ActionBtn(
+                label: 'Add Repair',
+                icon: Icons.build_outlined,
+                onTap: onAddRepair,
+              ).entrance(index: 0),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _ActionBtn(label: 'Create Invoice', icon: Icons.note_add_outlined, onTap: onCreateInvoice).entrance(index: 1),
+              child: _ActionBtn(
+                label: 'Create Invoice',
+                icon: Icons.note_add_outlined,
+                onTap: onCreateInvoice,
+              ).entrance(index: 1),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _ActionBtn(label: 'Add Item', icon: Icons.shopping_bag_outlined, onTap: onAddItem).entrance(index: 2),
+              child: _ActionBtn(
+                label: 'Add Item',
+                icon: Icons.shopping_bag_outlined,
+                onTap: onAddItem,
+              ).entrance(index: 2),
             ),
           ],
         ),
@@ -46,7 +67,11 @@ class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _ActionBtn({required this.label, required this.icon, required this.onTap});
+  const _ActionBtn({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +88,20 @@ class _ActionBtn extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.fieldBorder),
               ),
-              child: Center(child: Icon(icon, color: AppColors.primary, size: 26)),
+              child: Center(
+                child: Icon(icon, color: AppColors.primary, size: 26),
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w400, height: 1.2),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                height: 1.2,
+              ),
             ),
           ],
         ),

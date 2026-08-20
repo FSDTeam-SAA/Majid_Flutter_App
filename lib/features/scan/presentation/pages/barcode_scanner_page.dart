@@ -135,7 +135,8 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                               onDetect: _handleDetection,
                               errorBuilder: (context, error) {
                                 return _CameraErrorView(
-                                  message: error.errorDetails?.message ??
+                                  message:
+                                      error.errorDetails?.message ??
                                       error.errorCode.name,
                                   onRetry: _retryCamera,
                                 );
@@ -146,7 +147,9 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.8),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.8,
+                                  ),
                                   width: 2,
                                 ),
                               ),
@@ -157,7 +160,9 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                               child: Container(
                                 width: double.infinity,
                                 height: 130,
-                                margin: const EdgeInsets.symmetric(horizontal: 24),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(18),
                                   border: Border.all(
@@ -226,10 +231,7 @@ class _CameraErrorView extends StatelessWidget {
             Text(
               'Camera error: $message',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 14),
             OutlinedButton(

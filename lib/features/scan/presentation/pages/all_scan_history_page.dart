@@ -81,7 +81,12 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
   Future<void> _openScan(ScanItem item) async {
     if (item.report.containsKey('ok')) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: item.report)));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DeviceReportPage(report: item.report),
+        ),
+      );
       return;
     }
 
@@ -89,7 +94,14 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
     final serviceId = item.serviceId;
     if (serviceId == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No service info available for this scan. Please scan again.')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No service info available for this scan. Please scan again.',
+            ),
+          ),
+        );
       return;
     }
 
@@ -99,7 +111,10 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
       builder: (_) => Center(
         child: Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: const AppLoadingIndicator(label: 'Loading report...'),
         ),
       ),
@@ -112,16 +127,27 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)),
+      );
     } on ImeiScanException catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message.isNotEmpty ? e.message : 'Device data not found.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.message.isNotEmpty ? e.message : 'Device data not found.',
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load device report.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load device report.')),
+        );
       }
     }
   }
@@ -140,7 +166,9 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: AppLoadingIndicator(label: 'Loading scans...'));
+      return const Center(
+        child: AppLoadingIndicator(label: 'Loading scans...'),
+      );
     }
 
     if (_errorMessage.isNotEmpty) {

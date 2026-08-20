@@ -6,11 +6,11 @@ import 'core/animation/app_motion.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
-import 'features/invoice/presentation/pages/invoice_page.dart';
 import 'features/orders/presentation/pages/orders_page.dart';
 import 'features/repair/presentation/pages/repair_page.dart';
 import 'features/scan/presentation/pages/scan_device_page.dart';
 import 'features/stock/presentation/pages/stock_page.dart';
+import 'features/transactions/presentation/pages/transactions_home_page.dart';
 
 class AppGroundView extends StatefulWidget {
   final int initialIndex;
@@ -41,8 +41,8 @@ class _AppGroundViewState extends State<AppGroundView> {
       OrdersPage(),
       StockPage(),
       ScanDevicePage(),
+      const TransactionsHomePage(),
       RepairPage(),
-      InvoicePage(),
     ];
 
     return Obx(() {

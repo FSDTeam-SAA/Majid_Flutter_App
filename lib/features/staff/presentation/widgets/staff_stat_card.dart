@@ -31,7 +31,9 @@ class StaffStatCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: AppColors.isDark ? 0.18 : 0.12),
+              color: accentColor.withValues(
+                alpha: AppColors.isDark ? 0.18 : 0.12,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: accentColor, size: 18),
@@ -41,14 +43,24 @@ class StaffStatCard extends StatelessWidget {
             '$value',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.35),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.35,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.4),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
           ),
         ],
       ),

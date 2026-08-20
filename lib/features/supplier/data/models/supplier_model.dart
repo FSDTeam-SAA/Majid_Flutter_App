@@ -21,7 +21,9 @@ class SupplierModel extends Supplier {
       address: json['address']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
       isActive: json['isActive'] != false,
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 }

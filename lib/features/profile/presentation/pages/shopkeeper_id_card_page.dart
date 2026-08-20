@@ -46,6 +46,7 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
                   : (data?.phone ?? '');
               final shop = data?.shopName ?? '';
               final address = data?.shopAddress ?? '';
+              final logoUrl = data?.imageUrl ?? '';
               final id = data?.id ?? '';
               final shortId = id.length > 8
                   ? 'IMS-${id.substring(id.length - 8).toUpperCase()}'
@@ -59,6 +60,60 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Center(
+                        child: Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                width: 96,
+                                height: 96,
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                child: logoUrl.isNotEmpty
+                                    ? Image.network(
+                                        logoUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Icon(
+                                          Icons.storefront,
+                                          color: AppColors.primary,
+                                          size: 44,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.storefront,
+                                        color: AppColors.primary,
+                                        size: 44,
+                                      ),
+                              ),
+                            ),
+                            SizedBox(height: 14),
+                            Text(
+                              shop.isNotEmpty ? shop : 'Your Shop',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (name.isNotEmpty) ...[
+                              SizedBox(height: 2),
+                              Text(
+                                name,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 24),
                       InfoField(
                         label: 'NAME',
                         value: name.isNotEmpty ? name : 'N/A',
@@ -90,7 +145,9 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
                       SizedBox(height: 14),
                       AppButton(
                         label: _isSaving ? 'Saving...' : 'Download QR',
-                        onPressed: _isSaving ? null : () => _downloadQr(shortId),
+                        onPressed: _isSaving
+                            ? null
+                            : () => _downloadQr(shortId),
                       ),
                     ],
                   ),
@@ -154,10 +211,7 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.cardBackground,
-              AppColors.fieldBackground,
-            ],
+            colors: [AppColors.cardBackground, AppColors.fieldBackground],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
@@ -221,7 +275,8 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
   Future<void> _downloadQr(String shopkeeperId) async {
     setState(() => _isSaving = true);
     try {
-      final boundary = _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final boundary =
+          _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -233,12 +288,14 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
       await file.writeAsBytes(byteData.buffer.asUint8List());
 
       if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: 'Shopkeeper QR: $shopkeeperId');
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: 'Shopkeeper QR: $shopkeeperId');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save QR code.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save QR code.')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

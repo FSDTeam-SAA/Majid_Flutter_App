@@ -12,7 +12,9 @@ ScoreMetric _metricFromJson(dynamic json) {
 DashboardStats _statsFromJson(Map<String, dynamic> json) {
   final health = json['businessHealthScore'] as Map? ?? {};
   final metrics = json['metrics'] as Map? ?? {};
-  final insights = (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+  final insights =
+      (json['insights'] as List?)?.map((e) => e.toString()).toList() ??
+      const <String>[];
 
   return DashboardStats(
     healthScoreOverall: (health['overall'] as num?)?.toInt() ?? 0,
@@ -38,7 +40,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
   DashboardRepositoryImpl(this._api, this._inventoryRepository);
 
   @override
-  Future<DashboardStats> getStats({required String filter, String? shopkeeperId}) async {
+  Future<DashboardStats> getStats({
+    required String filter,
+    String? shopkeeperId,
+  }) async {
     final query = shopkeeperId != null && shopkeeperId.isNotEmpty
         ? '?filter=$filter&shopkeeperId=$shopkeeperId'
         : '?filter=$filter';

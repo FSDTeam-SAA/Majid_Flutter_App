@@ -55,7 +55,9 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                 child: Obx(() {
                   if (_profileCtrl.isDashboardLoading.value) {
                     return Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     );
                   }
                   final stats = _profileCtrl.dashboardStats.value;
@@ -64,12 +66,19 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.cloud_off_outlined,
-                              color: AppColors.textSecondary, size: 48),
+                          Icon(
+                            Icons.cloud_off_outlined,
+                            color: AppColors.textSecondary,
+                            size: 48,
+                          ),
                           const SizedBox(height: 12),
-                          Text('Could not load dashboard',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 14)),
+                          Text(
+                            'Could not load dashboard',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           OutlinedButton(
                             onPressed: _refresh,
@@ -77,7 +86,8 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                               side: BorderSide(color: AppColors.primary),
                               foregroundColor: AppColors.primary,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30)),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
                             ),
                             child: const Text('Retry'),
                           ),
@@ -131,7 +141,8 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                 iconBgColor: AppColors.fieldBackground,
                 iconColor: AppColors.primary,
                 label: 'Sales',
-                value: '£${totalSales.toStringAsFixed(0)}',
+                value:
+                    '${_profileCtrl.currencySymbol}${totalSales.toStringAsFixed(0)}',
                 change: 'Total revenue',
                 changePositive: true,
                 lineColor: AppColors.primary,
@@ -163,11 +174,23 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
   Widget _buildFilterRow() {
     return Row(
       children: [
-        _FilterChip(label: 'Daily', selected: _filter == 'daily', onTap: () => _setFilter('daily')),
+        _FilterChip(
+          label: 'Daily',
+          selected: _filter == 'daily',
+          onTap: () => _setFilter('daily'),
+        ),
         const SizedBox(width: 8),
-        _FilterChip(label: 'Monthly', selected: _filter == 'monthly', onTap: () => _setFilter('monthly')),
+        _FilterChip(
+          label: 'Monthly',
+          selected: _filter == 'monthly',
+          onTap: () => _setFilter('monthly'),
+        ),
         const SizedBox(width: 8),
-        _FilterChip(label: 'Yearly', selected: _filter == 'yearly', onTap: () => _setFilter('yearly')),
+        _FilterChip(
+          label: 'Yearly',
+          selected: _filter == 'yearly',
+          onTap: () => _setFilter('yearly'),
+        ),
       ],
     );
   }
@@ -195,7 +218,8 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                   children: [
                     Positioned.fill(
                       child: CustomPaint(
-                          painter: _GaugePainter(value: overall / 100.0)),
+                        painter: _GaugePainter(value: overall / 100.0),
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -231,13 +255,13 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
           const SizedBox(height: 16),
           if (rating.isNotEmpty)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
                 color: _ratingColor(rating).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: _ratingColor(rating).withValues(alpha: 0.4)),
+                  color: _ratingColor(rating).withValues(alpha: 0.4),
+                ),
               ),
               child: Text(
                 rating,
@@ -253,10 +277,7 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ],
         ],
@@ -408,14 +429,20 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => Container(
                         color: AppColors.fieldBorder,
-                        child: Icon(Icons.person,
-                            color: AppColors.textPrimary, size: 24),
+                        child: Icon(
+                          Icons.person,
+                          color: AppColors.textPrimary,
+                          size: 24,
+                        ),
                       ),
                     )
                   : Container(
                       color: AppColors.fieldBorder,
-                      child: Icon(Icons.person,
-                          color: AppColors.textPrimary, size: 24),
+                      child: Icon(
+                        Icons.person,
+                        color: AppColors.textPrimary,
+                        size: 24,
+                      ),
                     ),
             );
           }),
@@ -491,10 +518,7 @@ class _ScoreRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               Text(
                 '$score/100',
@@ -591,8 +615,9 @@ class _MetricCard extends StatelessWidget {
           Text(
             change,
             style: TextStyle(
-              color:
-                  changePositive ? AppColors.primary : const Color(0xFFE85050),
+              color: changePositive
+                  ? AppColors.primary
+                  : const Color(0xFFE85050),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -692,10 +717,7 @@ class _TrendLinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.30),
-            color.withValues(alpha: 0.0)
-          ],
+          colors: [color.withValues(alpha: 0.30), color.withValues(alpha: 0.0)],
         ).createShader(Rect.fromLTWH(0, 0, w, h)),
     );
 

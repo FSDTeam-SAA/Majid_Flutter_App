@@ -91,9 +91,15 @@ class RepairCard extends StatelessWidget {
                 runSpacing: 4,
                 children: [
                   if (item.imei.isNotEmpty)
-                    _MetaChip(icon: Icons.sim_card_outlined, label: 'IMEI: ${item.imei}'),
+                    _MetaChip(
+                      icon: Icons.sim_card_outlined,
+                      label: 'IMEI: ${item.imei}',
+                    ),
                   if (item.technicianName.isNotEmpty)
-                    _MetaChip(icon: Icons.person_outline, label: item.technicianName),
+                    _MetaChip(
+                      icon: Icons.person_outline,
+                      label: item.technicianName,
+                    ),
                 ],
               ),
             ],
@@ -126,7 +132,10 @@ class RepairCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),

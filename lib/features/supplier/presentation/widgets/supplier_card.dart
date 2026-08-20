@@ -10,8 +10,12 @@ class SupplierCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = supplier.isActive ? const Color(0xFF34C759) : AppColors.textSecondary;
-    final initial = supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?';
+    final statusColor = supplier.isActive
+        ? const Color(0xFF34C759)
+        : AppColors.textSecondary;
+    final initial = supplier.name.isNotEmpty
+        ? supplier.name[0].toUpperCase()
+        : '?';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -29,10 +33,17 @@ class SupplierCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
                 child: Text(
                   initial,
-                  style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -44,7 +55,11 @@ class SupplierCard extends StatelessWidget {
                       supplier.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Row(
@@ -54,7 +69,12 @@ class SupplierCard extends StatelessWidget {
                         const SizedBox(width: 5),
                         Text(
                           supplier.isActive ? 'ACTIVE' : 'INACTIVE',
-                          style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
                         ),
                       ],
                     ),
@@ -64,7 +84,11 @@ class SupplierCard extends StatelessWidget {
               if (onDelete != null)
                 GestureDetector(
                   onTap: onDelete,
-                  child: Icon(Icons.more_vert_rounded, color: AppColors.textSecondary, size: 20),
+                  child: Icon(
+                    Icons.more_vert_rounded,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
                 ),
             ],
           ),

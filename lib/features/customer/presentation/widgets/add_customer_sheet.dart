@@ -16,7 +16,8 @@ Future<bool?> showAddCustomerSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => AddCustomerSheet(controller: controller, existing: existing),
+    builder: (_) =>
+        AddCustomerSheet(controller: controller, existing: existing),
   );
 }
 
@@ -88,7 +89,9 @@ class _AddCustomerSheetState extends State<AddCustomerSheet> {
             );
       if (mounted && success) Navigator.pop(context, true);
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to save customer. Please try again.');
+      setState(
+        () => _errorMessage = 'Failed to save customer. Please try again.',
+      );
     }
   }
 
@@ -113,40 +116,70 @@ class _AddCustomerSheetState extends State<AddCustomerSheet> {
                   child: Container(
                     width: 40,
                     height: 4,
-                    decoration: BoxDecoration(color: AppColors.fieldBorder, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: AppColors.fieldBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
                 Text(
                   _isEditing ? 'Edit Customer' : 'Add Customer',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Keep customer details handy for invoices and follow-ups.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
-                      child: InvoiceInputField(hint: 'First Name *', controller: _firstNameCtrl),
+                      child: InvoiceInputField(
+                        hint: 'First Name *',
+                        controller: _firstNameCtrl,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: InvoiceInputField(hint: 'Last Name', controller: _lastNameCtrl),
+                      child: InvoiceInputField(
+                        hint: 'Last Name',
+                        controller: _lastNameCtrl,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                InvoiceInputField(hint: 'Phone', controller: _phoneCtrl, keyboardType: TextInputType.phone),
+                InvoiceInputField(
+                  hint: 'Phone',
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 10),
-                InvoiceInputField(hint: 'Email', controller: _emailCtrl, keyboardType: TextInputType.emailAddress),
+                InvoiceInputField(
+                  hint: 'Email',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 10),
                 InvoiceInputField(hint: 'Address', controller: _addressCtrl),
                 if (_errorMessage.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(_errorMessage, style: TextStyle(color: AppColors.dangerColor, fontSize: 12.5)),
+                  Text(
+                    _errorMessage,
+                    style: TextStyle(
+                      color: AppColors.dangerColor,
+                      fontSize: 12.5,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Obx(() {
@@ -155,11 +188,15 @@ class _AddCustomerSheetState extends State<AddCustomerSheet> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: isSaving ? null : () => Navigator.pop(context),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
                             side: BorderSide(color: AppColors.fieldBorder),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Cancel'),

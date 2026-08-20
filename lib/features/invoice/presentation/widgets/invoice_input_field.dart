@@ -22,7 +22,9 @@ class InvoiceInputField extends StatelessWidget {
         color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(50),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72),
+          color: AppColors.primary.withValues(
+            alpha: AppColors.isDark ? 0.6 : 0.72,
+          ),
           width: 1.2,
         ),
       ),

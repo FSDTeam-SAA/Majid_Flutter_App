@@ -38,7 +38,10 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
 
     setState(() => _processingPlanId = planId);
     try {
-      final session = await _profileCtrl.createPayment(amount: price, subscriptionId: planId);
+      final session = await _profileCtrl.createPayment(
+        amount: price,
+        subscriptionId: planId,
+      );
       final checkoutUrl = session.url;
       if (checkoutUrl.isEmpty) {
         showErrorSnackbar('Failed to start checkout. Please try again.');
@@ -47,14 +50,20 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
       if (!mounted) return;
       final success = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(builder: (_) => PaymentCheckoutPage(checkoutUrl: checkoutUrl)),
+        MaterialPageRoute(
+          builder: (_) => PaymentCheckoutPage(checkoutUrl: checkoutUrl),
+        ),
       );
       if (success == true) {
-        showSuccessSnackbar('Payment submitted! It may take a moment to reflect on your account.');
+        showSuccessSnackbar(
+          'Payment submitted! It may take a moment to reflect on your account.',
+        );
         _profileCtrl.fetchPayments();
       }
     } on DioException catch (e) {
-      showErrorSnackbar(e.response?.data?['message']?.toString() ?? 'Failed to start checkout.');
+      showErrorSnackbar(
+        e.response?.data?['message']?.toString() ?? 'Failed to start checkout.',
+      );
     } catch (_) {
       showErrorSnackbar('Failed to start checkout. Please try again.');
     } finally {
@@ -300,7 +309,12 @@ class _PlanCard extends StatelessWidget {
           SizedBox(height: 16),
           _FeaturesGrid(features: features),
           SizedBox(height: 16),
-          _ActionBtn(label: buttonLabel, filled: buttonFilled, isProcessing: isProcessing, onPressed: onSelect),
+          _ActionBtn(
+            label: buttonLabel,
+            filled: buttonFilled,
+            isProcessing: isProcessing,
+            onPressed: onSelect,
+          ),
         ],
       ),
     );

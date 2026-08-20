@@ -13,7 +13,9 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileCtrl = Get.isRegistered<ProfileController>() ? Get.find<ProfileController>() : null;
+    final profileCtrl = Get.isRegistered<ProfileController>()
+        ? Get.find<ProfileController>()
+        : null;
 
     if (profileCtrl == null) {
       return _wrapWithTap(_buildFallbackAvatar());
@@ -32,7 +34,11 @@ class UserAvatar extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: imageUrl.isNotEmpty
-              ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => _buildFallbackContent())
+              ? Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _buildFallbackContent(),
+                )
               : _buildFallbackContent(),
         ),
       );
@@ -40,7 +46,10 @@ class UserAvatar extends StatelessWidget {
   }
 
   Widget _wrapWithTap(Widget child) {
-    return GestureDetector(onTap: () => Get.to(() => const ProfilePageView()), child: child);
+    return GestureDetector(
+      onTap: () => Get.to(() => const ProfilePageView()),
+      child: child,
+    );
   }
 
   Widget _buildFallbackAvatar() {

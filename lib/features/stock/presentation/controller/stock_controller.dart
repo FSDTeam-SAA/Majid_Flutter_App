@@ -42,7 +42,9 @@ class StockController extends GetxController {
         return;
       }
 
-      categories.value = await _categoryRepo.getCategoriesWithCount(shopkeeperId);
+      categories.value = await _categoryRepo.getCategoriesWithCount(
+        shopkeeperId,
+      );
       await _refreshInventoryCategoryCards(shopkeeperId);
     } on DioException catch (e) {
       debugPrint('Categories fetch error: $e');
@@ -93,7 +95,9 @@ class StockController extends GetxController {
     for (final item in items) {
       final categoryId = item.categoryId;
       final categoryName = _normalizedCategoryName(item.categoryName ?? '');
-      final key = categoryId?.isNotEmpty == true ? categoryId! : (categoryName.isNotEmpty ? categoryName : '');
+      final key = categoryId?.isNotEmpty == true
+          ? categoryId!
+          : (categoryName.isNotEmpty ? categoryName : '');
       if (key.isEmpty) continue;
 
       countByKey.update(key, (value) => value + 1, ifAbsent: () => 1);
@@ -104,19 +108,27 @@ class StockController extends GetxController {
       }
 
       if (!templateByKey.containsKey(key) && categoryName.isNotEmpty) {
-        templateByKey[key] = Category(id: categoryId ?? '', name: item.categoryName ?? 'Category');
+        templateByKey[key] = Category(
+          id: categoryId ?? '',
+          name: item.categoryName ?? 'Category',
+        );
       }
     }
 
     final visibleCategories = <Category>[];
 
     for (final entry in countByKey.entries) {
-      final template = templateByKey[entry.key] ?? Category(id: entry.key, name: 'Category');
+      final template =
+          templateByKey[entry.key] ?? Category(id: entry.key, name: 'Category');
       final imageUrl = template.imageUrl ?? fallbackImageByKey[entry.key];
-      visibleCategories.add(template.copyWith(imageUrl: imageUrl, itemCount: entry.value));
+      visibleCategories.add(
+        template.copyWith(imageUrl: imageUrl, itemCount: entry.value),
+      );
     }
 
-    visibleCategories.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    visibleCategories.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
 
     return visibleCategories;
   }
@@ -152,11 +164,16 @@ class StockController extends GetxController {
         return false;
       }
 
-      await _categoryRepo.createCategory(name: name, shopkeeperId: shopkeeperId, imagePath: imagePath);
+      await _categoryRepo.createCategory(
+        name: name,
+        shopkeeperId: shopkeeperId,
+        imagePath: imagePath,
+      );
       await fetchCategories();
       return true;
     } on DioException catch (e) {
-      errorMessage.value = e.response?.data?['message'] ?? 'Failed to create category';
+      errorMessage.value =
+          e.response?.data?['message'] ?? 'Failed to create category';
       return false;
     } finally {
       isSaving.value = false;
@@ -177,11 +194,17 @@ class StockController extends GetxController {
         return false;
       }
 
-      await _categoryRepo.updateCategory(id: id, name: name, shopkeeperId: shopkeeperId, imagePath: imagePath);
+      await _categoryRepo.updateCategory(
+        id: id,
+        name: name,
+        shopkeeperId: shopkeeperId,
+        imagePath: imagePath,
+      );
       await fetchCategories();
       return true;
     } on DioException catch (e) {
-      errorMessage.value = e.response?.data?['message'] ?? 'Failed to update category';
+      errorMessage.value =
+          e.response?.data?['message'] ?? 'Failed to update category';
       return false;
     } finally {
       isSaving.value = false;
@@ -196,7 +219,8 @@ class StockController extends GetxController {
       inventoryCategoryCards.removeWhere((c) => c.id == id);
       return true;
     } on DioException catch (e) {
-      errorMessage.value = e.response?.data?['message'] ?? 'Failed to delete category';
+      errorMessage.value =
+          e.response?.data?['message'] ?? 'Failed to delete category';
       return false;
     }
   }

@@ -23,7 +23,9 @@ class _SupplierPageState extends State<SupplierPage> {
   @override
   void initState() {
     super.initState();
-    _controller = Get.isRegistered<SupplierController>() ? Get.find<SupplierController>() : Get.put(SupplierController());
+    _controller = Get.isRegistered<SupplierController>()
+        ? Get.find<SupplierController>()
+        : Get.put(SupplierController());
   }
 
   @override
@@ -41,16 +43,25 @@ class _SupplierPageState extends State<SupplierPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        title: Text('Remove supplier?', style: TextStyle(color: AppColors.textPrimary)),
+        title: Text(
+          'Remove supplier?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: Text(
           'Are you sure you want to remove ${supplier.name}?',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Remove', style: TextStyle(color: AppColors.dangerColor)),
+            child: Text(
+              'Remove',
+              style: TextStyle(color: AppColors.dangerColor),
+            ),
           ),
         ],
       ),
@@ -75,7 +86,9 @@ class _SupplierPageState extends State<SupplierPage> {
     final choice = await showModalBottomSheet<SupplierStatusFilter>(
       context: context,
       backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetCtx) {
         return SafeArea(
           child: Padding(
@@ -84,13 +97,28 @@ class _SupplierPageState extends State<SupplierPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Filter by status', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(
+                  'Filter by status',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 14),
                 ...SupplierStatusFilter.values.map(
                   (filter) => ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                    title: Text(_filterLabel(filter), style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-                    trailing: _controller.statusFilter.value == filter ? Icon(Icons.check, color: AppColors.primary, size: 18) : null,
+                    title: Text(
+                      _filterLabel(filter),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: _controller.statusFilter.value == filter
+                        ? Icon(Icons.check, color: AppColors.primary, size: 18)
+                        : null,
                     onTap: () => Navigator.pop(sheetCtx, filter),
                   ),
                 ),
@@ -118,8 +146,15 @@ class _SupplierPageState extends State<SupplierPage> {
               child: Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                child: Icon(Icons.add_rounded, color: AppColors.surfaceForeground, size: 22),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add_rounded,
+                  color: AppColors.surfaceForeground,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -132,19 +167,36 @@ class _SupplierPageState extends State<SupplierPage> {
                     decoration: BoxDecoration(
                       color: AppColors.fieldBackground,
                       borderRadius: BorderRadius.circular(50),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(
+                          alpha: AppColors.isDark ? 0.6 : 0.72,
+                        ),
+                        width: 1.2,
+                      ),
                     ),
                     child: TextField(
                       controller: _searchCtrl,
                       onChanged: _controller.setSearchQuery,
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Search name, email, phone...',
-                        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                        prefixIcon: Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                        hintStyle: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -155,7 +207,10 @@ class _SupplierPageState extends State<SupplierPage> {
                     borderRadius: BorderRadius.circular(50),
                     onTap: _showStatusFilterSheet,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.fieldBackground,
                         borderRadius: BorderRadius.circular(50),
@@ -166,10 +221,18 @@ class _SupplierPageState extends State<SupplierPage> {
                         children: [
                           Text(
                             _filterLabel(_controller.statusFilter.value),
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary, size: 18),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            color: AppColors.textSecondary,
+                            size: 18,
+                          ),
                         ],
                       ),
                     ),
@@ -181,7 +244,9 @@ class _SupplierPageState extends State<SupplierPage> {
           Expanded(
             child: Obx(() {
               if (_controller.isLoading.value) {
-                return Center(child: CircularProgressIndicator(color: AppColors.primary));
+                return Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
               }
               if (_controller.errorMessage.value.isNotEmpty) {
                 return Center(
@@ -196,7 +261,10 @@ class _SupplierPageState extends State<SupplierPage> {
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton(onPressed: _controller.fetchSuppliers, child: const Text('Retry')),
+                        OutlinedButton(
+                          onPressed: _controller.fetchSuppliers,
+                          child: const Text('Retry'),
+                        ),
                       ],
                     ),
                   ),
@@ -213,21 +281,30 @@ class _SupplierPageState extends State<SupplierPage> {
                   children: [
                     Text(
                       '${_controller.suppliers.length} suppliers found',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     if (_controller.suppliers.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 48),
                         child: Center(
-                          child: Text('No suppliers found.', style: TextStyle(color: AppColors.textSecondary)),
+                          child: Text(
+                            'No suppliers found.',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
                         ),
                       )
                     else
                       ..._controller.suppliers.map(
                         (supplier) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: SupplierCard(supplier: supplier, onDelete: () => _confirmDelete(supplier)),
+                          child: SupplierCard(
+                            supplier: supplier,
+                            onDelete: () => _confirmDelete(supplier),
+                          ),
                         ),
                       ),
                   ],

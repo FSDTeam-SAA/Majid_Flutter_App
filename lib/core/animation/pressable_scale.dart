@@ -31,9 +31,10 @@ class _PressableScaleState extends State<PressableScale>
       duration: AppMotion.quick,
       reverseDuration: AppMotion.quick,
     );
-    _scale = Tween<double>(begin: 1, end: widget.pressedScale).animate(
-      CurvedAnimation(parent: _controller, curve: AppMotion.easeInOut),
-    );
+    _scale = Tween<double>(
+      begin: 1,
+      end: widget.pressedScale,
+    ).animate(CurvedAnimation(parent: _controller, curve: AppMotion.easeInOut));
   }
 
   @override

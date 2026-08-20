@@ -36,10 +36,9 @@ class AppColors {
       isDark ? _palette.onPrimaryColor : Colors.white;
   static Color get secondaryButtonText =>
       isDark ? _palette.textPrimary : Colors.white;
-  static Color get secondaryButtonBackground =>
-      isDark
-          ? Colors.transparent
-          : _palette.primaryColor.withValues(alpha: 0.82);
+  static Color get secondaryButtonBackground => isDark
+      ? Colors.transparent
+      : _palette.primaryColor.withValues(alpha: 0.82);
   static Color get navBackground =>
       isDark ? const Color(0xFF0D171B) : Colors.white;
   static Color get navActiveBackground =>
@@ -62,13 +61,9 @@ class AppColors {
   static Color get successText => _palette.textPrimary;
   static Color get errorText => _palette.textPrimary;
   static Color get successBackground =>
-      isDark
-          ? const Color(0xFF182722)
-          : const Color(0xFFF3FFF6);
+      isDark ? const Color(0xFF182722) : const Color(0xFFF3FFF6);
   static Color get errorBackground =>
-      isDark
-          ? const Color(0xFF2A1B1D)
-          : const Color(0xFFFFF4F4);
+      isDark ? const Color(0xFF2A1B1D) : const Color(0xFFFFF4F4);
 
   static String authBg = 'assets/images/bgimg.png';
 

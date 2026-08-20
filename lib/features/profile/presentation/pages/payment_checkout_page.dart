@@ -35,7 +35,8 @@ class _PaymentCheckoutPageState extends State<PaymentCheckoutPage> {
           },
           onNavigationRequest: (request) {
             final uri = Uri.tryParse(request.url);
-            final isStripeCheckout = uri?.host.contains('checkout.stripe.com') ?? true;
+            final isStripeCheckout =
+                uri?.host.contains('checkout.stripe.com') ?? true;
             if (!isStripeCheckout && !_resolved) {
               _resolved = true;
               final isSuccess = request.url.toLowerCase().contains('success');
@@ -65,7 +66,8 @@ class _PaymentCheckoutPageState extends State<PaymentCheckoutPage> {
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          if (_isLoading) Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
         ],
       ),
     );

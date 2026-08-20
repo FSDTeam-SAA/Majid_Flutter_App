@@ -24,7 +24,10 @@ import '../widgets/invoice_customer_picker.dart';
 import '../widgets/invoice_input_field.dart';
 import '../widgets/invoice_product_item.dart';
 import '../widgets/shop_info_card.dart';
+import 'record_payment_page.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../../auth/presentation/controller/auth_controller.dart';
+import '../../../auth/presentation/pages/login_screen_view.dart';
 
 class InvoicePage extends StatefulWidget {
   const InvoicePage({super.key});
@@ -45,13 +48,13 @@ class _InvoicePageState extends State<InvoicePage> {
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _addressCtrl = TextEditingController();
-  final TextEditingController _customerIdCtrl = TextEditingController();
   final TextEditingController _searchCtrl = TextEditingController();
   int _tabIndex = 0;
   String? _selectedCustomer;
   String? _selectedCustomerId;
-  String? _selectedPaymentType;
   String? _selectedCategory;
+  String? _recordedPaymentMethod;
+  double? _recordedAmountPaid;
   final Set<String> _selectedProductIds = {};
   bool _isLoading = true;
   bool _isCustomersLoading = false;
@@ -59,10 +62,13 @@ class _InvoicePageState extends State<InvoicePage> {
 
   String? _selectedPurchaseCustomer;
   bool _isPurchaseCustomerDropdownOpen = false;
+  bool _purchaseAddToInventory = false;
+  String? _purchaseCategory;
 
   String? _selectedDeliveryCustomer;
   bool _isDeliveryCustomerDropdownOpen = false;
   String _errorMessage = '';
+  bool _sessionExpired = false;
   List<InvoiceProduct> _products = [];
   List<Customer> _customers = [];
   bool _isSendingInvoice = false;
@@ -77,6 +83,8 @@ class _InvoicePageState extends State<InvoicePage> {
   final _pCustomerNameCtrl = TextEditingController();
   final List<_PurchaseItem> _purchaseItems = [_PurchaseItem()];
   bool _isSendingPurchase = false;
+  // Placeholder until the backend exposes a real cash-balance endpoint.
+  static const _kSampleAvailableCash = 2450.00;
   File? _nidFrontImage;
   File? _nidBackImage;
   bool _isExtractingNid = false;
@@ -96,19 +104,70 @@ class _InvoicePageState extends State<InvoicePage> {
   String _viewInvoicesError = '';
   List<invoice_entity.Invoice> _viewInvoices = [];
 
-  double get _totalAmount =>
-      _products.where((product) => _selectedProductIds.contains(product.id)).fold(0, (sum, product) => sum + product.price);
+  double get _totalAmount => _products
+      .where((product) => _selectedProductIds.contains(product.id))
+      .fold(0, (sum, product) => sum + product.price);
 
   List<String> get _categoryOptions {
-    final categories = _products.map((product) => product.category.trim()).where((category) => category.isNotEmpty).toSet().toList()
-      ..sort();
+    final categories =
+        _products
+            .map((product) => product.category.trim())
+            .where((category) => category.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     return ['All', ...categories];
+  }
+
+  List<String> get _purchaseCategoryOptions {
+    final categories =
+        _products
+            .map((product) => product.category.trim())
+            .where((category) => category.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    return categories;
+  }
+
+  static const _itemStorageOptions = [
+    '32GB',
+    '64GB',
+    '128GB',
+    '256GB',
+    '512GB',
+    '1TB',
+  ];
+
+  static const _itemColorOptions = [
+    'Black',
+    'White',
+    'Blue',
+    'Silver',
+    'Gold',
+    'Green',
+    'Purple',
+    'Gray',
+  ];
+
+  List<String> get _itemNameOptions {
+    final names =
+        _products
+            .map((product) => product.name.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    return names;
   }
 
   List<InvoiceProduct> get _filteredProducts {
     final query = _searchCtrl.text.trim().toLowerCase();
     return _products.where((product) {
-      final matchesCategory = _selectedCategory == null || _selectedCategory == 'All' || product.category == _selectedCategory;
+      final matchesCategory =
+          _selectedCategory == null ||
+          _selectedCategory == 'All' ||
+          product.category == _selectedCategory;
       final matchesQuery =
           query.isEmpty ||
           product.name.toLowerCase().contains(query) ||
@@ -135,7 +194,6 @@ class _InvoicePageState extends State<InvoicePage> {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
-    _customerIdCtrl.dispose();
     _searchCtrl.dispose();
     _pFirstNameCtrl.dispose();
     _pLastNameCtrl.dispose();
@@ -162,6 +220,7 @@ class _InvoicePageState extends State<InvoicePage> {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
+      _sessionExpired = false;
     });
     try {
       await Future.wait([_fetchCustomers(), _fetchProducts()]);
@@ -169,7 +228,10 @@ class _InvoicePageState extends State<InvoicePage> {
         _selectedProductIds.add(_products.first.id);
       }
     } on DioException catch (e) {
-      _errorMessage = e.response?.data?['message'] ?? 'Failed to load invoice data';
+      _sessionExpired = e.response?.statusCode == 401;
+      _errorMessage = _sessionExpired
+          ? 'Your session has expired'
+          : (e.response?.data?['message'] ?? 'Failed to load invoice data');
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -200,7 +262,9 @@ class _InvoicePageState extends State<InvoicePage> {
       await _fetchCustomers();
     } on DioException catch (e) {
       if (!mounted) return;
-      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to load customers');
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to load customers',
+      );
     } catch (_) {
       if (!mounted) return;
       showErrorSnackbar('Failed to load customers');
@@ -227,7 +291,6 @@ class _InvoicePageState extends State<InvoicePage> {
       phone: _phoneCtrl,
       address: _addressCtrl,
     );
-    _customerIdCtrl.text = customer?.id ?? '';
   }
 
   void _applyCustomerDataTo(
@@ -255,7 +318,9 @@ class _InvoicePageState extends State<InvoicePage> {
       await _fetchCustomers();
     } on DioException catch (e) {
       if (!mounted) return;
-      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to load customers');
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to load customers',
+      );
     } catch (_) {
       if (!mounted) return;
       showErrorSnackbar('Failed to load customers');
@@ -289,7 +354,9 @@ class _InvoicePageState extends State<InvoicePage> {
       await _fetchCustomers();
     } on DioException catch (e) {
       if (!mounted) return;
-      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to load customers');
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to load customers',
+      );
     } catch (_) {
       if (!mounted) return;
       showErrorSnackbar('Failed to load customers');
@@ -318,7 +385,8 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Future<void> _createInvoice() async {
-    final hasExistingCustomer = _selectedCustomerId != null && _selectedCustomerId!.isNotEmpty;
+    final hasExistingCustomer =
+        _selectedCustomerId != null && _selectedCustomerId!.isNotEmpty;
     final hasManualCustomer = _firstNameCtrl.text.trim().isNotEmpty;
 
     if (!hasExistingCustomer && !hasManualCustomer) {
@@ -332,7 +400,9 @@ class _InvoicePageState extends State<InvoicePage> {
 
     setState(() => _isSendingInvoice = true);
     try {
-      final selectedProducts = _products.where((product) => _selectedProductIds.contains(product.id)).toList();
+      final selectedProducts = _products
+          .where((product) => _selectedProductIds.contains(product.id))
+          .toList();
       var shopkeeperId = _profileCtrl.userId;
       if (shopkeeperId.isEmpty) {
         await _profileCtrl.fetchProfile();
@@ -342,8 +412,11 @@ class _InvoicePageState extends State<InvoicePage> {
       final now = DateTime.now();
       final customerFirstName = _firstNameCtrl.text.trim();
       final customerLastName = _lastNameCtrl.text.trim();
-      final customerName = [customerFirstName, customerLastName].where((value) => value.isNotEmpty).join(' ');
-      final paymentType = _selectedPaymentType ?? 'cash';
+      final customerName = [
+        customerFirstName,
+        customerLastName,
+      ].where((value) => value.isNotEmpty).join(' ');
+      final paymentType = _recordedPaymentMethod ?? 'Cash';
       final pdfFile = await InvoicePdfBuilder.build(
         fileNamePrefix: 'invoice',
         invoiceTitle: 'SALES INVOICE',
@@ -352,12 +425,16 @@ class _InvoicePageState extends State<InvoicePage> {
         shopName: _profileCtrl.shopName,
         shopAddress: _profileCtrl.shopAddress,
         shopEmail: _profileCtrl.email,
-        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty ? _profileCtrl.whatsappNumber : _profileCtrl.phone,
+        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty
+            ? _profileCtrl.whatsappNumber
+            : _profileCtrl.phone,
         customerName: customerName,
         customerEmail: _emailCtrl.text.trim(),
         customerPhone: _phoneCtrl.text.trim(),
         customerAddress: _addressCtrl.text.trim(),
         paymentType: paymentType,
+        currencySymbol: _profileCtrl.currencySymbol,
+        amountPaid: _recordedAmountPaid,
         items: selectedProducts
             .map(
               (product) => InvoicePdfItem(
@@ -404,7 +481,15 @@ class _InvoicePageState extends State<InvoicePage> {
         payload.fields.add(MapEntry('itemsIds', product.id));
       }
 
-      payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
+      payload.files.add(
+        MapEntry(
+          'invoice',
+          await MultipartFile.fromFile(
+            pdfFile.path,
+            filename: pdfFile.uri.pathSegments.last,
+          ),
+        ),
+      );
       await _invoiceRepo.createInvoice(payload);
       if (!mounted) return;
       showSuccessSnackbar('Invoice created successfully!');
@@ -414,19 +499,21 @@ class _InvoicePageState extends State<InvoicePage> {
         _selectedProductIds.clear();
         _selectedCustomer = null;
         _selectedCustomerId = null;
-        _selectedPaymentType = null;
         _selectedCategory = null;
+        _recordedPaymentMethod = null;
+        _recordedAmountPaid = null;
         _firstNameCtrl.clear();
         _lastNameCtrl.clear();
         _emailCtrl.clear();
         _phoneCtrl.clear();
         _addressCtrl.clear();
-        _customerIdCtrl.clear();
         _searchCtrl.clear();
       });
     } on DioException catch (e) {
       if (!mounted) return;
-      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to create invoice');
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to create invoice',
+      );
     } catch (e) {
       if (!mounted) return;
       showErrorSnackbar('Failed to create invoice');
@@ -449,7 +536,8 @@ class _InvoicePageState extends State<InvoicePage> {
       _viewInvoices = await _invoiceRepo.getInvoices(shopkeeperId);
       _isViewInvoicesLoaded = true;
     } on DioException catch (e) {
-      _viewInvoicesError = e.response?.data?['message'] ?? 'Failed to load invoices';
+      _viewInvoicesError =
+          e.response?.data?['message'] ?? 'Failed to load invoices';
     } catch (_) {
       _viewInvoicesError = 'Failed to load invoices';
     } finally {
@@ -469,8 +557,11 @@ class _InvoicePageState extends State<InvoicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Create Invoice', showBackButton: false),
-          Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), child: _buildTabBar()),
+          AppHeader(title: 'Create Invoice'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: _buildTabBar(),
+          ),
           Expanded(
             child: _tabIndex == 3
                 ? RefreshIndicator(
@@ -510,7 +601,10 @@ class _InvoicePageState extends State<InvoicePage> {
                           _buildCreateInvoiceTab(),
                         if (_tabIndex == 1) _buildPurchaseInvoiceTab(),
                         if (_tabIndex == 2) _buildDeliveryInvoiceTab(),
-                        if (_tabIndex == 0 && !_isLoading && _errorMessage.isEmpty) SizedBox(height: 100),
+                        if (_tabIndex == 0 &&
+                            !_isLoading &&
+                            _errorMessage.isEmpty)
+                          SizedBox(height: 100),
                       ],
                     ),
                   ),
@@ -529,7 +623,9 @@ class _InvoicePageState extends State<InvoicePage> {
 
   Widget _buildTabBar() {
     final isDark = AppColors.isDark;
-    final tabBg = isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.6);
+    final tabBg = isDark
+        ? AppColors.cardBackground
+        : Colors.white.withValues(alpha: 0.6);
 
     return Container(
       height: 54,
@@ -537,10 +633,16 @@ class _InvoicePageState extends State<InvoicePage> {
       decoration: BoxDecoration(
         color: tabBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isDark ? AppColors.fieldBorder : AppColors.primary.withValues(alpha: 0.16)),
+        border: Border.all(
+          color: isDark
+              ? AppColors.fieldBorder
+              : AppColors.primary.withValues(alpha: 0.16),
+        ),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withValues(alpha: 0.25) : AppColors.primary.withValues(alpha: 0.08),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.25)
+                : AppColors.primary.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -571,7 +673,15 @@ class _InvoicePageState extends State<InvoicePage> {
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isActive ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 3))] : null,
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Center(
           child: FittedBox(
@@ -582,13 +692,17 @@ class _InvoicePageState extends State<InvoicePage> {
                 Icon(
                   spec.icon,
                   size: 16,
-                  color: isActive ? AppColors.surfaceForeground : AppColors.textSecondary,
+                  color: isActive
+                      ? AppColors.surfaceForeground
+                      : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 5),
                 Text(
                   spec.label,
                   style: TextStyle(
-                    color: isActive ? AppColors.surfaceForeground : AppColors.textSecondary,
+                    color: isActive
+                        ? AppColors.surfaceForeground
+                        : AppColors.textSecondary,
                     fontSize: 12.5,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -607,7 +721,11 @@ class _InvoicePageState extends State<InvoicePage> {
       children: [
         Text(
           'Customer Information',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         SizedBox(height: 14),
         _buildCustomerDropdown(),
@@ -615,46 +733,42 @@ class _InvoicePageState extends State<InvoicePage> {
         Row(
           children: [
             Expanded(
-              child: InvoiceInputField(hint: 'First Name', controller: _firstNameCtrl),
+              child: InvoiceInputField(
+                hint: 'First Name',
+                controller: _firstNameCtrl,
+              ),
             ),
             SizedBox(width: 10),
             Expanded(
-              child: InvoiceInputField(hint: 'Last Name', controller: _lastNameCtrl),
+              child: InvoiceInputField(
+                hint: 'Last Name',
+                controller: _lastNameCtrl,
+              ),
             ),
           ],
         ),
         SizedBox(height: 10),
         InvoiceInputField(hint: 'Customer Email', controller: _emailCtrl),
         SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer Phone Number', controller: _phoneCtrl),
-        SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer Billing Address', controller: _addressCtrl),
-        SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdown(
-                context,
-                _selectedPaymentType,
-                'Payment Type',
-                (v) => setState(() {
-                  _selectedPaymentType = v;
-                }),
-                paymentTypes,
-              ),
-            ),
-            SizedBox(width: 10),
-            Expanded(child: InvoiceInputField(hint: 'Already Paid')),
-          ],
+        InvoiceInputField(
+          hint: 'Customer Phone Number',
+          controller: _phoneCtrl,
         ),
         SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer ID', controller: _customerIdCtrl, readOnly: true),
+        InvoiceInputField(
+          hint: 'Customer Billing Address',
+          controller: _addressCtrl,
+        ),
         SizedBox(height: 14),
         ShopInfoCard(),
         SizedBox(height: 24),
         Text(
           'Products',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         SizedBox(height: 14),
         _buildProductSearch(),
@@ -663,14 +777,20 @@ class _InvoicePageState extends State<InvoicePage> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: Text('No inventory products available', style: TextStyle(color: AppColors.textSecondary)),
+              child: Text(
+                'No inventory products available',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
             ),
           )
         else if (_filteredProducts.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: Text('No products match this filter', style: TextStyle(color: AppColors.textSecondary)),
+              child: Text(
+                'No products match this filter',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
             ),
           )
         else
@@ -679,8 +799,9 @@ class _InvoicePageState extends State<InvoicePage> {
               product: product,
               isSelected: _selectedProductIds.contains(product.id),
               onTap: () => setState(
-                () =>
-                    _selectedProductIds.contains(product.id) ? _selectedProductIds.remove(product.id) : _selectedProductIds.add(product.id),
+                () => _selectedProductIds.contains(product.id)
+                    ? _selectedProductIds.remove(product.id)
+                    : _selectedProductIds.add(product.id),
               ),
             ),
           ),
@@ -702,7 +823,15 @@ class _InvoicePageState extends State<InvoicePage> {
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: _loadInvoiceData, child: const Text('Retry')),
+            OutlinedButton(
+              onPressed: _sessionExpired
+                  ? () async {
+                      await Get.find<AuthController>().logout();
+                      Get.offAll(() => const LoginScreenView());
+                    }
+                  : _loadInvoiceData,
+              child: Text(_sessionExpired ? 'Log in again' : 'Retry'),
+            ),
           ],
         ),
       ),
@@ -727,6 +856,90 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
+  Widget _buildStepperField({
+    required String hint,
+    required TextEditingController controller,
+    double step = 1,
+    double min = 0,
+  }) {
+    void adjust(double delta) {
+      final current = double.tryParse(controller.text.trim()) ?? 0;
+      var next = current + delta;
+      if (next < min) next = min;
+      setState(
+        () => controller.text = next == next.roundToDouble()
+            ? next.toInt().toString()
+            : next.toString(),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(
+          color: AppColors.primary.withValues(
+            alpha: AppColors.isDark ? 0.6 : 0.72,
+          ),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                isDense: true,
+              ),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: () => adjust(step),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12, top: 6),
+                  child: Icon(
+                    Icons.keyboard_arrow_up,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => adjust(-step),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12, bottom: 6),
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDropdown(
     BuildContext context,
     String? selected,
@@ -737,13 +950,26 @@ class _InvoicePageState extends State<InvoicePage> {
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(50),
-      onTap: onTap ?? () => _showSelectionSheet(context, title: hint, selected: selected, items: items, onSelect: onSelect),
+      onTap:
+          onTap ??
+          () => _showSelectionSheet(
+            context,
+            title: hint,
+            selected: selected,
+            items: items,
+            onSelect: onSelect,
+          ),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.fieldBackground,
           borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+          border: Border.all(
+            color: AppColors.primary.withValues(
+              alpha: AppColors.isDark ? 0.6 : 0.72,
+            ),
+            width: 1.2,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,7 +982,12 @@ class _InvoicePageState extends State<InvoicePage> {
                     selected ?? hint,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: selected != null ? AppColors.textPrimary : AppColors.textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: selected != null
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 SizedBox(width: 8),
@@ -779,39 +1010,97 @@ class _InvoicePageState extends State<InvoicePage> {
     final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.fieldBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Text(
                   title,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 if (items.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Text('No $title found', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            color: AppColors.textSecondary,
+                            size: 36,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Nothing to choose from yet',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Options will show up here once available.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ...items.map(
                   (item) => ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    tileColor: selected == item ? AppColors.fieldBackground : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    tileColor: selected == item
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : Colors.transparent,
                     title: Text(
                       item,
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
-                        fontWeight: selected == item ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: selected == item
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
-                    trailing: selected == item ? Icon(Icons.check, color: AppColors.primary, size: 18) : null,
+                    trailing: selected == item
+                        ? Icon(
+                            Icons.check_circle,
+                            color: AppColors.primary,
+                            size: 20,
+                          )
+                        : null,
                     onTap: () => Navigator.pop(sheetContext, item),
                   ),
                 ),
@@ -835,7 +1124,12 @@ class _InvoicePageState extends State<InvoicePage> {
             decoration: BoxDecoration(
               color: AppColors.fieldBackground,
               borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+              border: Border.all(
+                color: AppColors.primary.withValues(
+                  alpha: AppColors.isDark ? 0.6 : 0.72,
+                ),
+                width: 1.2,
+              ),
             ),
             child: TextField(
               controller: _searchCtrl,
@@ -844,7 +1138,11 @@ class _InvoicePageState extends State<InvoicePage> {
               decoration: InputDecoration(
                 hintText: 'Search items...',
                 hintStyle: TextStyle(color: AppColors.primary, fontSize: 14),
-                prefixIcon: Icon(Icons.search, color: AppColors.primary, size: 20),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 12),
                 isDense: true,
@@ -885,10 +1183,17 @@ class _InvoicePageState extends State<InvoicePage> {
       children: [
         Text(
           'Customer Information',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         SizedBox(height: 4),
-        Text('Identity validation framework controls', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(
+          'Identity validation framework controls',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
         SizedBox(height: 14),
         InvoiceCustomerPicker(
           customers: _customers,
@@ -909,27 +1214,45 @@ class _InvoicePageState extends State<InvoicePage> {
         Row(
           children: [
             Expanded(
-              child: InvoiceInputField(hint: 'First Name', controller: _pFirstNameCtrl),
+              child: InvoiceInputField(
+                hint: 'First Name',
+                controller: _pFirstNameCtrl,
+              ),
             ),
             SizedBox(width: 10),
             Expanded(
-              child: InvoiceInputField(hint: 'Last Name', controller: _pLastNameCtrl),
+              child: InvoiceInputField(
+                hint: 'Last Name',
+                controller: _pLastNameCtrl,
+              ),
             ),
           ],
         ),
         SizedBox(height: 10),
         InvoiceInputField(hint: 'Customer Email', controller: _pEmailCtrl),
         SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer Phone Number', controller: _pPhoneCtrl),
+        InvoiceInputField(
+          hint: 'Customer Phone Number',
+          controller: _pPhoneCtrl,
+        ),
         SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer Billing Address', controller: _pAddressCtrl),
+        InvoiceInputField(
+          hint: 'Customer Billing Address',
+          controller: _pAddressCtrl,
+        ),
         SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer ID Number', controller: _pIdNumberCtrl),
+        InvoiceInputField(
+          hint: 'Customer ID Number',
+          controller: _pIdNumberCtrl,
+        ),
         SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: InvoiceInputField(hint: 'Customer Name', controller: _pCustomerNameCtrl),
+              child: InvoiceInputField(
+                hint: 'Customer Name',
+                controller: _pCustomerNameCtrl,
+              ),
             ),
             SizedBox(width: 10),
             OutlinedButton(
@@ -937,14 +1260,19 @@ class _InvoicePageState extends State<InvoicePage> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               child: _isExtractingNid
                   ? SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: AppColors.primary,
+                      ),
                     )
                   : Text('Capture NID'),
             ),
@@ -961,40 +1289,239 @@ class _InvoicePageState extends State<InvoicePage> {
               children: [
                 Text(
                   'Purchase Items',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(height: 4),
                 Text(
                   'Configure specifications and accumulate tracking logs',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
             OutlinedButton(
-              onPressed: () => setState(() => _purchaseItems.add(_PurchaseItem())),
+              onPressed: () =>
+                  setState(() => _purchaseItems.add(_PurchaseItem())),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               child: Text('Add Item', style: TextStyle(fontSize: 13)),
             ),
           ],
         ),
-        SizedBox(height: 14),
-        ...List.generate(_purchaseItems.length, (i) => _buildPurchaseItemCard(i)),
-        SizedBox(height: 20),
-        AppButton(
-          label: _isSendingPurchase ? 'Creating...' : 'Create Purchase Receipt',
-          onPressed: _isSendingPurchase ? null : _createPurchaseInvoice,
+        SizedBox(height: 10),
+        GestureDetector(
+          onTap: () => setState(
+            () => _purchaseAddToInventory = !_purchaseAddToInventory,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: _purchaseAddToInventory,
+                  activeThumbColor: AppColors.primary,
+                  onChanged: (value) =>
+                      setState(() => _purchaseAddToInventory = value),
+                ),
+              ),
+              Text(
+                'Add to inventory',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
+        if (_purchaseAddToInventory) ...[
+          SizedBox(height: 10),
+          Text(
+            'Category Name',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 6),
+          _buildDropdown(
+            context,
+            _purchaseCategory,
+            'Select category',
+            (value) => setState(() => _purchaseCategory = value),
+            _purchaseCategoryOptions,
+          ),
+        ],
+        SizedBox(height: 14),
+        ...List.generate(
+          _purchaseItems.length,
+          (i) => _buildPurchaseItemCard(i),
+        ),
+        SizedBox(height: 20),
+        _buildRecordPaymentCard(),
         SizedBox(height: 100),
       ],
     );
   }
 
-  Widget _buildPurchaseItemCard(int index) => _buildItemCard(_purchaseItems, index);
+  Widget _buildRecordPaymentCard() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: AppColors.primary,
+                size: 18,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'RECORD PAYMENT',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Select how you would like to receive payment.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          SizedBox(height: 14),
+          _buildPaymentMethodPreviewRow(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Pay from Available Cash',
+            subtitle: 'Deduct from available cash balance',
+          ),
+          SizedBox(height: 10),
+          _buildPaymentMethodPreviewRow(
+            icon: Icons.account_balance_outlined,
+            title: 'Bank Transfer',
+            subtitle: 'Customer will transfer to your account',
+          ),
+          SizedBox(height: 16),
+          AppButton(
+            label: _isSendingPurchase
+                ? 'Please wait...'
+                : 'Continue to Payment',
+            onPressed: _isSendingPurchase
+                ? null
+                : () {
+                    if (!_validatePurchaseForm()) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RecordPaymentPage(
+                          invoiceTotal: _purchaseGrandTotal,
+                          availableCash: _kSampleAvailableCash,
+                          onSubmitPayment: _createPurchaseInvoice,
+                        ),
+                      ),
+                    );
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodPreviewRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.textSecondary, size: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.radio_button_unchecked,
+            color: AppColors.textSecondary,
+            size: 18,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPurchaseItemCard(int index) =>
+      _buildItemCard(_purchaseItems, index);
+
+  void _applyProductDefaults(_PurchaseItem item, String name) {
+    item.nameCtrl.text = name;
+    InvoiceProduct? match;
+    for (final product in _products) {
+      if (product.name == name) {
+        match = product;
+        break;
+      }
+    }
+    if (match == null) return;
+    if (match.storage.isNotEmpty) item.storageCtrl.text = match.storage;
+    if (match.colorName.isNotEmpty) item.colorCtrl.text = match.colorName;
+    if (match.condition.isNotEmpty) item.conditionCtrl.text = match.condition;
+    if (match.price > 0) {
+      item.priceCtrl.text = match.price == match.price.roundToDouble()
+          ? match.price.toInt().toString()
+          : match.price.toString();
+    }
+  }
 
   Widget _buildItemCard(List<_PurchaseItem> items, int index) {
     final item = items[index];
@@ -1007,12 +1534,22 @@ class _InvoicePageState extends State<InvoicePage> {
       margin: EdgeInsets.only(bottom: 14),
       padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardBackground : Colors.white.withValues(alpha: 0.5),
+        color: isDark
+            ? AppColors.cardBackground
+            : Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC)),
+        border: Border.all(
+          color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC),
+        ),
         boxShadow: isDark
             ? null
-            : [BoxShadow(color: const Color(0xFF6BA0C8).withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
+            : [
+                BoxShadow(
+                  color: const Color(0xFF6BA0C8).withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1022,7 +1559,12 @@ class _InvoicePageState extends State<InvoicePage> {
             children: [
               Text(
                 'DEVICE #${index + 1}',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
               ),
               GestureDetector(
                 onTap: () {
@@ -1039,24 +1581,52 @@ class _InvoicePageState extends State<InvoicePage> {
                       items[index].conditionCtrl.clear();
                       items[index].quantityCtrl.text = '1';
                       items[index].priceCtrl.text = '0';
+                      for (final c in items[index].imeiControllers.sublist(1)) {
+                        c.dispose();
+                      }
+                      items[index].imeiControllers
+                        ..removeRange(1, items[index].imeiControllers.length)
+                        ..first.clear();
                     });
                   }
                 },
-                child: Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Colors.redAccent,
+                  size: 22,
+                ),
               ),
             ],
           ),
           SizedBox(height: 12),
-          InvoiceInputField(hint: 'Item Name*', controller: item.nameCtrl),
+          _buildDropdown(
+            context,
+            item.nameCtrl.text.isEmpty ? null : item.nameCtrl.text,
+            'Item Name*',
+            (value) => setState(() => _applyProductDefaults(item, value)),
+            _itemNameOptions,
+          ),
           SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: InvoiceInputField(hint: 'Storage', controller: item.storageCtrl),
+                child: _buildDropdown(
+                  context,
+                  item.storageCtrl.text.isEmpty ? null : item.storageCtrl.text,
+                  'Storage',
+                  (value) => setState(() => item.storageCtrl.text = value),
+                  _itemStorageOptions,
+                ),
               ),
               SizedBox(width: 10),
               Expanded(
-                child: InvoiceInputField(hint: 'Color', controller: item.colorCtrl),
+                child: _buildDropdown(
+                  context,
+                  item.colorCtrl.text.isEmpty ? null : item.colorCtrl.text,
+                  'Color',
+                  (value) => setState(() => item.colorCtrl.text = value),
+                  _itemColorOptions,
+                ),
               ),
             ],
           ),
@@ -1064,17 +1634,93 @@ class _InvoicePageState extends State<InvoicePage> {
           Row(
             children: [
               Expanded(
-                child: InvoiceInputField(hint: 'Condition', controller: item.conditionCtrl),
+                child: InvoiceInputField(
+                  hint: 'Condition',
+                  controller: item.conditionCtrl,
+                ),
               ),
               SizedBox(width: 10),
               Expanded(
-                child: InvoiceInputField(hint: 'Quantity', controller: item.quantityCtrl, keyboardType: TextInputType.number),
+                child: _buildStepperField(
+                  hint: 'Quantity',
+                  controller: item.quantityCtrl,
+                  min: 1,
+                ),
               ),
             ],
           ),
           SizedBox(height: 10),
-          InvoiceInputField(hint: 'Price per Unit', controller: item.priceCtrl, keyboardType: TextInputType.number),
-          SizedBox(height: 10),
+          _buildStepperField(
+            hint: 'Price per Unit',
+            controller: item.priceCtrl,
+          ),
+          SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'IMEI / Serial Numbers',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(
+                  () => item.imeiControllers.add(TextEditingController()),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, color: AppColors.primary, size: 16),
+                    const SizedBox(width: 2),
+                    Text(
+                      'Add',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          ...List.generate(item.imeiControllers.length, (imeiIndex) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InvoiceInputField(
+                      hint: 'IMEI / Serial #${imeiIndex + 1}',
+                      controller: item.imeiControllers[imeiIndex],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (item.imeiControllers.length > 1) {
+                        item.imeiControllers[imeiIndex].dispose();
+                        item.imeiControllers.removeAt(imeiIndex);
+                      } else {
+                        item.imeiControllers[imeiIndex].clear();
+                      }
+                    }),
+                    child: Icon(
+                      Icons.remove_circle_outline,
+                      color: Colors.redAccent,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          SizedBox(height: 6),
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1086,10 +1732,20 @@ class _InvoicePageState extends State<InvoicePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Item Calculation Sub Total', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                 Text(
-                  '£${subTotal.toStringAsFixed(2)}',
-                  style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600),
+                  'Item Calculation Sub Total',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  '${_profileCtrl.currencySymbol}${subTotal.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -1107,7 +1763,9 @@ class _InvoicePageState extends State<InvoicePage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetCtx) {
         return StatefulBuilder(
           builder: (sheetCtx, setSheetState) {
@@ -1118,11 +1776,21 @@ class _InvoicePageState extends State<InvoicePage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Capture NID', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Capture NID',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'Add a photo of the front (required) and back (optional) of the NID card.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     _buildNidImageTile(
@@ -1131,9 +1799,12 @@ class _InvoicePageState extends State<InvoicePage> {
                       image: frontImage,
                       onTap: () async {
                         final picked = await _pickNidImage();
-                        if (picked != null) setSheetState(() => frontImage = picked);
+                        if (picked != null)
+                          setSheetState(() => frontImage = picked);
                       },
-                      onClear: frontImage == null ? null : () => setSheetState(() => frontImage = null),
+                      onClear: frontImage == null
+                          ? null
+                          : () => setSheetState(() => frontImage = null),
                     ),
                     const SizedBox(height: 10),
                     _buildNidImageTile(
@@ -1142,14 +1813,19 @@ class _InvoicePageState extends State<InvoicePage> {
                       image: backImage,
                       onTap: () async {
                         final picked = await _pickNidImage();
-                        if (picked != null) setSheetState(() => backImage = picked);
+                        if (picked != null)
+                          setSheetState(() => backImage = picked);
                       },
-                      onClear: backImage == null ? null : () => setSheetState(() => backImage = null),
+                      onClear: backImage == null
+                          ? null
+                          : () => setSheetState(() => backImage = null),
                     ),
                     const SizedBox(height: 20),
                     AppButton(
                       label: 'Extract NID',
-                      onPressed: frontImage == null && backImage == null ? null : () => Navigator.pop(sheetCtx, true),
+                      onPressed: frontImage == null && backImage == null
+                          ? null
+                          : () => Navigator.pop(sheetCtx, true),
                     ),
                   ],
                 ),
@@ -1191,29 +1867,53 @@ class _InvoicePageState extends State<InvoicePage> {
             if (image != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.file(image, width: 44, height: 44, fit: BoxFit.cover),
+                child: Image.file(
+                  image,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                ),
               )
             else
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.badge_outlined, color: AppColors.primary, size: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.badge_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
               ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 image != null ? 'Selected' : label,
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             if (onClear != null)
               GestureDetector(
                 onTap: onClear,
-                child: Icon(Icons.close_rounded, color: AppColors.dangerColor, size: 18),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.dangerColor,
+                  size: 18,
+                ),
               )
             else
-              Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 20),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -1222,7 +1922,10 @@ class _InvoicePageState extends State<InvoicePage> {
 
   Future<File?> _pickNidImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
     if (picked == null) return null;
     return File(picked.path);
   }
@@ -1232,7 +1935,10 @@ class _InvoicePageState extends State<InvoicePage> {
 
     setState(() => _isExtractingNid = true);
     try {
-      final nidNumber = await _invoiceRepo.extractNid(frontImage: _nidFrontImage, backImage: _nidBackImage);
+      final nidNumber = await _invoiceRepo.extractNid(
+        frontImage: _nidFrontImage,
+        backImage: _nidBackImage,
+      );
       _pIdNumberCtrl.text = nidNumber;
       showSuccessSnackbar('NID number extracted successfully.');
     } on InvoiceException catch (e) {
@@ -1244,16 +1950,23 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  Future<void> _createPurchaseInvoice() async {
+  bool _validatePurchaseForm() {
     if (_pFirstNameCtrl.text.trim().isEmpty) {
       showErrorSnackbar('Please enter customer first name');
-      return;
+      return false;
     }
-    final hasItems = _purchaseItems.any((item) => item.nameCtrl.text.trim().isNotEmpty);
+    final hasItems = _purchaseItems.any(
+      (item) => item.nameCtrl.text.trim().isNotEmpty,
+    );
     if (!hasItems) {
       showErrorSnackbar('Please add at least one item');
-      return;
+      return false;
     }
+    return true;
+  }
+
+  Future<File?> _createPurchaseInvoice({String paymentMethod = 'cash'}) async {
+    if (!_validatePurchaseForm()) return null;
     final grandTotal = _purchaseGrandTotal;
 
     setState(() => _isSendingPurchase = true);
@@ -1265,23 +1978,50 @@ class _InvoicePageState extends State<InvoicePage> {
       }
 
       final now = DateTime.now();
-      final customerName = [_pFirstNameCtrl.text.trim(), _pLastNameCtrl.text.trim()].where((v) => v.isNotEmpty).join(' ');
+      final customerName = [
+        _pFirstNameCtrl.text.trim(),
+        _pLastNameCtrl.text.trim(),
+      ].where((v) => v.isNotEmpty).join(' ');
 
-      final pdfItems = _purchaseItems
-          .where((item) => item.nameCtrl.text.trim().isNotEmpty)
-          .map(
-            (item) => InvoicePdfItem(
-              name: item.nameCtrl.text.trim(),
-              code: [
-                item.storageCtrl.text.trim(),
-                item.colorCtrl.text.trim(),
-                item.conditionCtrl.text.trim(),
-              ].where((v) => v.isNotEmpty).join(' / '),
+      final pdfItems = <InvoicePdfItem>[];
+      for (final item in _purchaseItems) {
+        final name = item.nameCtrl.text.trim();
+        if (name.isEmpty) continue;
+
+        final code = [
+          item.storageCtrl.text.trim(),
+          item.colorCtrl.text.trim(),
+          item.conditionCtrl.text.trim(),
+        ].where((v) => v.isNotEmpty).join(' / ');
+        final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+        final imeis = item.imeiControllers
+            .map((c) => c.text.trim())
+            .where((v) => v.isNotEmpty)
+            .toList();
+
+        if (imeis.isEmpty) {
+          pdfItems.add(
+            InvoicePdfItem(
+              name: name,
+              code: code,
               quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
-              unitPrice: double.tryParse(item.priceCtrl.text.trim()) ?? 0,
+              unitPrice: unitPrice,
             ),
-          )
-          .toList();
+          );
+        } else {
+          for (final imei in imeis) {
+            pdfItems.add(
+              InvoicePdfItem(
+                name: name,
+                code: code,
+                imeiSerial: imei,
+                quantity: 1,
+                unitPrice: unitPrice,
+              ),
+            );
+          }
+        }
+      }
 
       final pdfFile = await InvoicePdfBuilder.buildPurchaseReceipt(
         fileNamePrefix: 'purchase_receipt',
@@ -1289,12 +2029,15 @@ class _InvoicePageState extends State<InvoicePage> {
         createdAt: now,
         shopName: _profileCtrl.shopName,
         shopAddress: _profileCtrl.shopAddress,
-        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty ? _profileCtrl.whatsappNumber : _profileCtrl.phone,
+        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty
+            ? _profileCtrl.whatsappNumber
+            : _profileCtrl.phone,
         customerName: customerName,
         customerPhone: _pPhoneCtrl.text.trim(),
         customerIdNumber: _pIdNumberCtrl.text.trim(),
         items: pdfItems,
         totalAmount: grandTotal,
+        currencySymbol: _profileCtrl.currencySymbol,
       );
 
       final payload = FormData();
@@ -1302,12 +2045,20 @@ class _InvoicePageState extends State<InvoicePage> {
         MapEntry('shopkeeperId', shopkeeperId),
         MapEntry('type', 'purchase'),
         MapEntry('totalAmount', grandTotal.toString()),
-        MapEntry('paymentMethod', 'cash'),
+        MapEntry('paymentMethod', paymentMethod),
       ]);
-      payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
+      payload.files.add(
+        MapEntry(
+          'invoice',
+          await MultipartFile.fromFile(
+            pdfFile.path,
+            filename: pdfFile.uri.pathSegments.last,
+          ),
+        ),
+      );
 
       await _invoiceRepo.createInvoice(payload);
-      if (!mounted) return;
+      if (!mounted) return null;
       showSuccessSnackbar('Purchase receipt created successfully!');
       _isViewInvoicesLoaded = false;
       _fetchViewInvoices();
@@ -1328,12 +2079,17 @@ class _InvoicePageState extends State<InvoicePage> {
         _purchaseItems.clear();
         _purchaseItems.add(_PurchaseItem());
       });
+      return pdfFile;
     } on DioException catch (e) {
-      if (!mounted) return;
-      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to create purchase receipt');
+      if (!mounted) return null;
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to create purchase receipt',
+      );
+      return null;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return null;
       showErrorSnackbar('Failed to create purchase receipt');
+      return null;
     } finally {
       if (mounted) setState(() => _isSendingPurchase = false);
     }
@@ -1355,7 +2111,11 @@ class _InvoicePageState extends State<InvoicePage> {
       children: [
         Text(
           'Delivery Information',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         SizedBox(height: 14),
         InvoiceCustomerPicker(
@@ -1377,18 +2137,27 @@ class _InvoicePageState extends State<InvoicePage> {
         Row(
           children: [
             Expanded(
-              child: InvoiceInputField(hint: 'First Name', controller: _dFirstNameCtrl),
+              child: InvoiceInputField(
+                hint: 'First Name',
+                controller: _dFirstNameCtrl,
+              ),
             ),
             SizedBox(width: 10),
             Expanded(
-              child: InvoiceInputField(hint: 'Last Name', controller: _dLastNameCtrl),
+              child: InvoiceInputField(
+                hint: 'Last Name',
+                controller: _dLastNameCtrl,
+              ),
             ),
           ],
         ),
         SizedBox(height: 10),
         InvoiceInputField(hint: 'Customer Email', controller: _dEmailCtrl),
         SizedBox(height: 10),
-        InvoiceInputField(hint: 'Customer Phone Number', controller: _dPhoneCtrl),
+        InvoiceInputField(
+          hint: 'Customer Phone Number',
+          controller: _dPhoneCtrl,
+        ),
         SizedBox(height: 10),
         InvoiceInputField(hint: 'Delivery Address', controller: _dAddressCtrl),
         SizedBox(height: 14),
@@ -1399,14 +2168,21 @@ class _InvoicePageState extends State<InvoicePage> {
           children: [
             Text(
               'Delivery Items',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             OutlinedButton(
-              onPressed: () => setState(() => _deliveryItems.add(_PurchaseItem())),
+              onPressed: () =>
+                  setState(() => _deliveryItems.add(_PurchaseItem())),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               child: Text('Add Item', style: TextStyle(fontSize: 13)),
@@ -1414,7 +2190,10 @@ class _InvoicePageState extends State<InvoicePage> {
           ],
         ),
         SizedBox(height: 14),
-        ...List.generate(_deliveryItems.length, (i) => _buildItemCard(_deliveryItems, i)),
+        ...List.generate(
+          _deliveryItems.length,
+          (i) => _buildItemCard(_deliveryItems, i),
+        ),
         SizedBox(height: 20),
         AppButton(
           label: _isSendingDelivery ? 'Creating...' : 'Create Delivery Invoice',
@@ -1430,7 +2209,9 @@ class _InvoicePageState extends State<InvoicePage> {
       showErrorSnackbar('Please enter customer first name');
       return;
     }
-    final hasItems = _deliveryItems.any((item) => item.nameCtrl.text.trim().isNotEmpty);
+    final hasItems = _deliveryItems.any(
+      (item) => item.nameCtrl.text.trim().isNotEmpty,
+    );
     if (!hasItems) {
       showErrorSnackbar('Please add at least one item');
       return;
@@ -1446,23 +2227,50 @@ class _InvoicePageState extends State<InvoicePage> {
       }
 
       final now = DateTime.now();
-      final customerName = [_dFirstNameCtrl.text.trim(), _dLastNameCtrl.text.trim()].where((v) => v.isNotEmpty).join(' ');
+      final customerName = [
+        _dFirstNameCtrl.text.trim(),
+        _dLastNameCtrl.text.trim(),
+      ].where((v) => v.isNotEmpty).join(' ');
 
-      final pdfItems = _deliveryItems
-          .where((item) => item.nameCtrl.text.trim().isNotEmpty)
-          .map(
-            (item) => InvoicePdfItem(
-              name: item.nameCtrl.text.trim(),
-              code: [
-                item.storageCtrl.text.trim(),
-                item.colorCtrl.text.trim(),
-                item.conditionCtrl.text.trim(),
-              ].where((v) => v.isNotEmpty).join(' / '),
+      final pdfItems = <InvoicePdfItem>[];
+      for (final item in _deliveryItems) {
+        final name = item.nameCtrl.text.trim();
+        if (name.isEmpty) continue;
+
+        final code = [
+          item.storageCtrl.text.trim(),
+          item.colorCtrl.text.trim(),
+          item.conditionCtrl.text.trim(),
+        ].where((v) => v.isNotEmpty).join(' / ');
+        final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+        final imeis = item.imeiControllers
+            .map((c) => c.text.trim())
+            .where((v) => v.isNotEmpty)
+            .toList();
+
+        if (imeis.isEmpty) {
+          pdfItems.add(
+            InvoicePdfItem(
+              name: name,
+              code: code,
               quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
-              unitPrice: double.tryParse(item.priceCtrl.text.trim()) ?? 0,
+              unitPrice: unitPrice,
             ),
-          )
-          .toList();
+          );
+        } else {
+          for (final imei in imeis) {
+            pdfItems.add(
+              InvoicePdfItem(
+                name: name,
+                code: code,
+                imeiSerial: imei,
+                quantity: 1,
+                unitPrice: unitPrice,
+              ),
+            );
+          }
+        }
+      }
 
       final pdfFile = await InvoicePdfBuilder.build(
         fileNamePrefix: 'delivery_invoice',
@@ -1472,12 +2280,15 @@ class _InvoicePageState extends State<InvoicePage> {
         shopName: _profileCtrl.shopName,
         shopAddress: _profileCtrl.shopAddress,
         shopEmail: _profileCtrl.email,
-        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty ? _profileCtrl.whatsappNumber : _profileCtrl.phone,
+        shopPhone: _profileCtrl.whatsappNumber.isNotEmpty
+            ? _profileCtrl.whatsappNumber
+            : _profileCtrl.phone,
         customerName: customerName,
         customerEmail: _dEmailCtrl.text.trim(),
         customerPhone: _dPhoneCtrl.text.trim(),
         customerAddress: _dAddressCtrl.text.trim(),
         paymentType: 'cash',
+        currencySymbol: _profileCtrl.currencySymbol,
         items: pdfItems,
         totalAmount: grandTotal,
         footerNote: 'Delivery invoice generated from iMoScan.',
@@ -1490,7 +2301,15 @@ class _InvoicePageState extends State<InvoicePage> {
         MapEntry('totalAmount', grandTotal.toString()),
         MapEntry('paymentMethod', 'cash'),
       ]);
-      payload.files.add(MapEntry('invoice', await MultipartFile.fromFile(pdfFile.path, filename: pdfFile.uri.pathSegments.last)));
+      payload.files.add(
+        MapEntry(
+          'invoice',
+          await MultipartFile.fromFile(
+            pdfFile.path,
+            filename: pdfFile.uri.pathSegments.last,
+          ),
+        ),
+      );
 
       await _invoiceRepo.createInvoice(payload);
       if (!mounted) return;
@@ -1512,7 +2331,9 @@ class _InvoicePageState extends State<InvoicePage> {
       });
     } on DioException catch (e) {
       if (!mounted) return;
-      showErrorSnackbar(e.response?.data?['message'] ?? 'Failed to create delivery invoice');
+      showErrorSnackbar(
+        e.response?.data?['message'] ?? 'Failed to create delivery invoice',
+      );
     } catch (e) {
       if (!mounted) return;
       showErrorSnackbar('Failed to create delivery invoice');
@@ -1526,7 +2347,10 @@ class _InvoicePageState extends State<InvoicePage> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 48),
-          child: CircularProgressIndicator(strokeWidth: 2.6, color: AppColors.primary),
+          child: CircularProgressIndicator(
+            strokeWidth: 2.6,
+            color: AppColors.primary,
+          ),
         ),
       );
     }
@@ -1536,9 +2360,16 @@ class _InvoicePageState extends State<InvoicePage> {
           padding: const EdgeInsets.symmetric(vertical: 48),
           child: Column(
             children: [
-              Text(_viewInvoicesError, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
+              Text(
+                _viewInvoicesError,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: _fetchViewInvoices, child: const Text('Retry')),
+              OutlinedButton(
+                onPressed: _fetchViewInvoices,
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -1548,7 +2379,10 @@ class _InvoicePageState extends State<InvoicePage> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 48),
-          child: Text('No invoices yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          child: Text(
+            'No invoices yet',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
         ),
       );
     }
@@ -1559,10 +2393,17 @@ class _InvoicePageState extends State<InvoicePage> {
           children: [
             Text(
               'Invoices',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const Spacer(),
-            Text('${_viewInvoices.length} total', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            Text(
+              '${_viewInvoices.length} total',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
           ],
         ),
         SizedBox(height: 14),
@@ -1581,7 +2422,11 @@ class _InvoicePageState extends State<InvoicePage> {
                   showDialog(
                     context: context,
                     useSafeArea: false,
-                    builder: (_) => _PdfViewerPage(url: pdfUrl, title: '${type[0].toUpperCase()}${type.substring(1)} Invoice'),
+                    builder: (_) => _PdfViewerPage(
+                      url: pdfUrl,
+                      title:
+                          '${type[0].toUpperCase()}${type.substring(1)} Invoice',
+                    ),
                   );
                 }
               },
@@ -1597,8 +2442,15 @@ class _InvoicePageState extends State<InvoicePage> {
                     Container(
                       width: 42,
                       height: 42,
-                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                      child: Icon(Icons.receipt_long, color: AppColors.primary, size: 22),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.receipt_long,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1607,10 +2459,20 @@ class _InvoicePageState extends State<InvoicePage> {
                         children: [
                           Text(
                             '${type[0].toUpperCase()}${type.substring(1)} Invoice',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(height: 3),
-                          Text(customer, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          Text(
+                            customer,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1619,10 +2481,21 @@ class _InvoicePageState extends State<InvoicePage> {
                       children: [
                         if (amount != null)
                           Text(
-                            '£${amount.toStringAsFixed(2)}',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                            '${_profileCtrl.currencySymbol}${amount.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        if (date.isNotEmpty) Text(date, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                        if (date.isNotEmpty)
+                          Text(
+                            date,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -1633,6 +2506,215 @@ class _InvoicePageState extends State<InvoicePage> {
         }),
         SizedBox(height: 100),
       ],
+    );
+  }
+
+  Widget _buildRecordPaymentRow() {
+    final method = _recordedPaymentMethod;
+    final paid = _recordedAmountPaid;
+    final hasRecord = method != null || paid != null;
+    final due = hasRecord ? (_totalAmount - (paid ?? 0)) : null;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: _showRecordPaymentSheet,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.fieldBackground,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.fieldBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              hasRecord ? Icons.check_circle : Icons.payments_outlined,
+              color: hasRecord ? AppColors.primary : AppColors.textSecondary,
+              size: 20,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: hasRecord
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${method ?? 'Cash'} · Paid ${_profileCtrl.currencySymbol}${(paid ?? 0).toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Balance due ${_profileCtrl.currencySymbol}${due!.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Record Payment',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+            Icon(
+              hasRecord ? Icons.edit_outlined : Icons.chevron_right,
+              color: AppColors.textSecondary,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRecordPaymentSheet() async {
+    var method = _recordedPaymentMethod ?? paymentTypes.first;
+    final amountCtrl = TextEditingController(
+      text: _recordedAmountPaid != null
+          ? _recordedAmountPaid!.toStringAsFixed(2)
+          : '',
+    );
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                14,
+                20,
+                MediaQuery.viewInsetsOf(sheetContext).bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldBorder,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 18),
+                  Text(
+                    'Record Payment',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'Payment Method',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  _buildDropdown(
+                    sheetContext,
+                    method,
+                    'Payment Method',
+                    (value) => setSheetState(() => method = value),
+                    paymentTypes,
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'Amount Paid',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  InvoiceInputField(
+                    hint: '0.00',
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 14),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: amountCtrl,
+                    builder: (context, value, _) {
+                      final paid = double.tryParse(value.text.trim()) ?? 0;
+                      final due = _totalAmount - paid;
+                      return Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.fieldBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.fieldBorder),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Balance Due',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              '${_profileCtrl.currencySymbol}${due.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  SizedBox(height: 20),
+                  AppButton(
+                    label: 'Save',
+                    onPressed: () {
+                      setState(() {
+                        _recordedPaymentMethod = method;
+                        _recordedAmountPaid = double.tryParse(
+                          amountCtrl.text.trim(),
+                        );
+                      });
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1655,12 +2737,21 @@ class _InvoicePageState extends State<InvoicePage> {
                 children: [
                   Text(
                     'TOTAL AMOUNT DUE',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.1),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.1,
+                    ),
                   ),
                   SizedBox(height: 2),
                   Text(
-                    '£${_totalAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold),
+                    '${_profileCtrl.currencySymbol}${_totalAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -1672,10 +2763,16 @@ class _InvoicePageState extends State<InvoicePage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.fieldBorder),
                 ),
-                child: Icon(Icons.receipt_long_outlined, color: AppColors.textPrimary, size: 22),
+                child: Icon(
+                  Icons.receipt_long_outlined,
+                  color: AppColors.textPrimary,
+                  size: 22,
+                ),
               ),
             ],
           ),
+          SizedBox(height: 12),
+          _buildRecordPaymentRow(),
           SizedBox(height: 12),
           AppButton(
             label: _isSendingInvoice ? 'Creating...' : 'Create Invoice',
@@ -1705,7 +2802,8 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
   @override
   void initState() {
     super.initState();
-    final viewerUrl = 'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(widget.url)}';
+    final viewerUrl =
+        'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(widget.url)}';
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -1728,12 +2826,18 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
           backgroundColor: AppColors.cardBackground,
           foregroundColor: AppColors.textPrimary,
           title: Text(widget.title, style: const TextStyle(fontSize: 16)),
-          leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         ),
         body: Stack(
           children: [
             WebViewWidget(controller: _controller),
-            if (_isLoading) Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            if (_isLoading)
+              Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
           ],
         ),
       ),
@@ -1755,6 +2859,7 @@ class _PurchaseItem {
   final conditionCtrl = TextEditingController();
   final quantityCtrl = TextEditingController(text: '1');
   final priceCtrl = TextEditingController(text: '0');
+  final List<TextEditingController> imeiControllers = [TextEditingController()];
 
   void dispose() {
     nameCtrl.dispose();
@@ -1763,5 +2868,8 @@ class _PurchaseItem {
     conditionCtrl.dispose();
     quantityCtrl.dispose();
     priceCtrl.dispose();
+    for (final c in imeiControllers) {
+      c.dispose();
+    }
   }
 }

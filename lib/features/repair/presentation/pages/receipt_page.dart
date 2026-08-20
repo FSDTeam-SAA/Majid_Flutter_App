@@ -74,24 +74,35 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return 'Your Shop';
   }
 
-  double get _price =>
-      (widget.repair['price'] as num?)?.toDouble() ?? 0;
+  double get _price => (widget.repair['price'] as num?)?.toDouble() ?? 0;
 
   String get _date {
     final parsed = DateTime.tryParse(
-        widget.repair['createdAt']?.toString() ?? '');
+      widget.repair['createdAt']?.toString() ?? '',
+    );
     if (parsed == null) return 'N/A';
     final local = parsed.toLocal();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year}';
   }
 
   String get _time {
     final parsed = DateTime.tryParse(
-        widget.repair['createdAt']?.toString() ?? '');
+      widget.repair['createdAt']?.toString() ?? '',
+    );
     if (parsed == null) return 'N/A';
     final local = parsed.toLocal();
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
@@ -105,7 +116,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
 
   String get _invoiceNumber {
     final id = _orderId;
-    final short = id.length > 6 ? id.substring(id.length - 6).toUpperCase() : id.toUpperCase();
+    final short = id.length > 6
+        ? id.substring(id.length - 6).toUpperCase()
+        : id.toUpperCase();
     return 'IMS-$short';
   }
 
@@ -117,7 +130,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
     }
     return widget.repair['email']?.toString() ?? 'N/A';
   }
-  String get _techFeedback => widget.repair['technicianFeedback']?.toString() ?? '';
+
+  String get _techFeedback =>
+      widget.repair['technicianFeedback']?.toString() ?? '';
 
   List<Map<String, String>> get _techNotes {
     final notes = widget.repair['technicianNotes'];
@@ -167,15 +182,41 @@ class _ReceiptPageState extends State<ReceiptPage> {
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('Repair Invoice', style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                          pw.Text(
+                            'Repair Invoice',
+                            style: pw.TextStyle(
+                              fontSize: 26,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.white,
+                            ),
+                          ),
                           pw.SizedBox(height: 4),
-                          pw.Text('Verified Device Repair Invoice', style: pw.TextStyle(fontSize: 11, color: PdfColor.fromHex('#C8E6C9'))),
+                          pw.Text(
+                            'Verified Device Repair Invoice',
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: PdfColor.fromHex('#C8E6C9'),
+                            ),
+                          ),
                         ],
                       ),
                       pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: pw.BoxDecoration(color: PdfColors.white, borderRadius: pw.BorderRadius.circular(6)),
-                        child: pw.Text('✓  VERIFIED', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: green)),
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: pw.BorderRadius.circular(6),
+                        ),
+                        child: pw.Text(
+                          '✓  VERIFIED',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                            color: green,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -191,20 +232,57 @@ class _ReceiptPageState extends State<ReceiptPage> {
                       // ── Invoice no & date ──
                       pw.Container(
                         padding: const pw.EdgeInsets.all(16),
-                        decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(8)),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColors.grey300),
+                          borderRadius: pw.BorderRadius.circular(8),
+                        ),
                         child: pw.Row(
                           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                           children: [
-                            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                              pw.Text('INVOICE NO', style: pw.TextStyle(fontSize: 9, color: lightText, letterSpacing: 1)),
-                              pw.SizedBox(height: 4),
-                              pw.Text(_invoiceNumber, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: darkText)),
-                            ]),
-                            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                              pw.Text('DATE', style: pw.TextStyle(fontSize: 9, color: lightText, letterSpacing: 1)),
-                              pw.SizedBox(height: 4),
-                              pw.Text(_date, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: darkText)),
-                            ]),
+                            pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text(
+                                  'INVOICE NO',
+                                  style: pw.TextStyle(
+                                    fontSize: 9,
+                                    color: lightText,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                pw.SizedBox(height: 4),
+                                pw.Text(
+                                  _invoiceNumber,
+                                  style: pw.TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: darkText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.end,
+                              children: [
+                                pw.Text(
+                                  'DATE',
+                                  style: pw.TextStyle(
+                                    fontSize: 9,
+                                    color: lightText,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                pw.SizedBox(height: 4),
+                                pw.Text(
+                                  _date,
+                                  style: pw.TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: darkText,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -214,16 +292,41 @@ class _ReceiptPageState extends State<ReceiptPage> {
                       pw.Container(
                         width: double.infinity,
                         padding: const pw.EdgeInsets.all(16),
-                        decoration: pw.BoxDecoration(color: PdfColor.fromHex('#F5F5F5'), borderRadius: pw.BorderRadius.circular(8)),
-                        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                          pw.Text(_deviceModel, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: darkText)),
-                          if (widget.repair['IMEINumber'] != null) ...[
+                        decoration: pw.BoxDecoration(
+                          color: PdfColor.fromHex('#F5F5F5'),
+                          borderRadius: pw.BorderRadius.circular(8),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              _deviceModel,
+                              style: pw.TextStyle(
+                                fontSize: 18,
+                                fontWeight: pw.FontWeight.bold,
+                                color: darkText,
+                              ),
+                            ),
+                            if (widget.repair['IMEINumber'] != null) ...[
+                              pw.SizedBox(height: 4),
+                              pw.Text(
+                                'IMEI: ${widget.repair['IMEINumber']}',
+                                style: pw.TextStyle(
+                                  fontSize: 11,
+                                  color: lightText,
+                                ),
+                              ),
+                            ],
                             pw.SizedBox(height: 4),
-                            pw.Text('IMEI: ${widget.repair['IMEINumber']}', style: pw.TextStyle(fontSize: 11, color: lightText)),
+                            pw.Text(
+                              'Status: $_status',
+                              style: pw.TextStyle(
+                                fontSize: 11,
+                                color: lightText,
+                              ),
+                            ),
                           ],
-                          pw.SizedBox(height: 4),
-                          pw.Text('Status: $_status', style: pw.TextStyle(fontSize: 11, color: lightText)),
-                        ]),
+                        ),
                       ),
                       pw.SizedBox(height: 20),
 
@@ -231,9 +334,21 @@ class _ReceiptPageState extends State<ReceiptPage> {
                       pw.Row(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Expanded(child: _pdfInfoBox('CUSTOMER', _customerName, _email)),
+                          pw.Expanded(
+                            child: _pdfInfoBox(
+                              'CUSTOMER',
+                              _customerName,
+                              _email,
+                            ),
+                          ),
                           pw.SizedBox(width: 16),
-                          pw.Expanded(child: _pdfInfoBox('REPAIR SHOP', _shopName, 'Created: $_date')),
+                          pw.Expanded(
+                            child: _pdfInfoBox(
+                              'REPAIR SHOP',
+                              _shopName,
+                              'Created: $_date',
+                            ),
+                          ),
                         ],
                       ),
                       pw.SizedBox(height: 24),
@@ -249,33 +364,80 @@ class _ReceiptPageState extends State<ReceiptPage> {
                           pw.Expanded(
                             child: pw.Container(
                               padding: const pw.EdgeInsets.all(14),
-                              decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(8)),
-                              child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                                pw.Text('TECHNICIAN FEEDBACK', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: darkText, letterSpacing: 1)),
-                                pw.SizedBox(height: 8),
-                                pw.Text(
-                                  _techFeedback.isNotEmpty ? _techFeedback : 'No feedback provided yet.',
-                                  style: pw.TextStyle(fontSize: 10, color: lightText, lineSpacing: 4),
-                                ),
-                              ]),
+                              decoration: pw.BoxDecoration(
+                                border: pw.Border.all(color: PdfColors.grey300),
+                                borderRadius: pw.BorderRadius.circular(8),
+                              ),
+                              child: pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Text(
+                                    'TECHNICIAN FEEDBACK',
+                                    style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: darkText,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  pw.SizedBox(height: 8),
+                                  pw.Text(
+                                    _techFeedback.isNotEmpty
+                                        ? _techFeedback
+                                        : 'No feedback provided yet.',
+                                    style: pw.TextStyle(
+                                      fontSize: 10,
+                                      color: lightText,
+                                      lineSpacing: 4,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           pw.SizedBox(width: 16),
                           pw.Container(
                             width: 140,
                             padding: const pw.EdgeInsets.all(14),
-                            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(8)),
-                            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                              _pdfTotalLine('Subtotal', _formatCurrency(_price)),
-                              pw.SizedBox(height: 6),
-                              _pdfTotalLine('Tax', _formatCurrency(0)),
-                              pw.Divider(color: PdfColors.grey400),
-                              pw.SizedBox(height: 2),
-                              pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                                pw.Text('TOTAL', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: darkText)),
-                                pw.Text(_formatCurrency(_price), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: darkText)),
-                              ]),
-                            ]),
+                            decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey300),
+                              borderRadius: pw.BorderRadius.circular(8),
+                            ),
+                            child: pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                _pdfTotalLine(
+                                  'Subtotal',
+                                  _formatCurrency(_price),
+                                ),
+                                pw.SizedBox(height: 6),
+                                _pdfTotalLine('Tax', _formatCurrency(0)),
+                                pw.Divider(color: PdfColors.grey400),
+                                pw.SizedBox(height: 2),
+                                pw.Row(
+                                  mainAxisAlignment:
+                                      pw.MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    pw.Text(
+                                      'TOTAL',
+                                      style: pw.TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: darkText,
+                                      ),
+                                    ),
+                                    pw.Text(
+                                      _formatCurrency(_price),
+                                      style: pw.TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: darkText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -289,18 +451,35 @@ class _ReceiptPageState extends State<ReceiptPage> {
                         height: 80,
                       ),
                       pw.SizedBox(height: 4),
-                      pw.Text('Scan to verify invoice', style: pw.TextStyle(fontSize: 9, color: lightText)),
+                      pw.Text(
+                        'Scan to verify invoice',
+                        style: pw.TextStyle(fontSize: 9, color: lightText),
+                      ),
                       pw.SizedBox(height: 20),
                       pw.Divider(color: PdfColors.grey300),
                       pw.SizedBox(height: 10),
 
                       // ── Footer ──
                       pw.Center(
-                        child: pw.Column(children: [
-                          pw.Text('Thank you for choosing $_shopName', style: pw.TextStyle(fontSize: 10, color: lightText)),
-                          pw.SizedBox(height: 2),
-                          pw.Text('Computer generated smart verified invoice', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey400)),
-                        ]),
+                        child: pw.Column(
+                          children: [
+                            pw.Text(
+                              'Thank you for choosing $_shopName',
+                              style: pw.TextStyle(
+                                fontSize: 10,
+                                color: lightText,
+                              ),
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              'Computer generated smart verified invoice',
+                              style: pw.TextStyle(
+                                fontSize: 9,
+                                color: PdfColors.grey400,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -312,27 +491,27 @@ class _ReceiptPageState extends State<ReceiptPage> {
       );
 
       final dir = await getTemporaryDirectory();
-      final fileName = 'repair_invoice_${_invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
+      final fileName =
+          'repair_invoice_${_invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
       final file = File('${dir.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
 
       if (!mounted) return;
       try {
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          text: 'Repair Invoice - $_deviceModel',
-        );
+        await Share.shareXFiles([
+          XFile(file.path),
+        ], text: 'Repair Invoice - $_deviceModel');
       } catch (_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF saved: ${file.path}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF saved: ${file.path}')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
@@ -345,13 +524,29 @@ class _ReceiptPageState extends State<ReceiptPage> {
         border: pw.Border.all(color: PdfColors.grey300),
         borderRadius: pw.BorderRadius.circular(8),
       ),
-      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text(title, style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500, letterSpacing: 1)),
-        pw.SizedBox(height: 6),
-        pw.Text(name, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 3),
-        pw.Text(subtitle, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-      ]),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              fontSize: 9,
+              color: PdfColors.grey500,
+              letterSpacing: 1,
+            ),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            name,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 3),
+          pw.Text(
+            subtitle,
+            style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+          ),
+        ],
+      ),
     );
   }
 
@@ -360,12 +555,18 @@ class _ReceiptPageState extends State<ReceiptPage> {
     final notes = _techNotes;
 
     final rows = notes.isEmpty
-        ? [['−', 'No Repair Notes Added', '−', _formatCurrency(0)]]
+        ? [
+            ['−', 'No Repair Notes Added', '−', _formatCurrency(0)],
+          ]
         : notes.map((n) => ['-', n['part']!, n['time']!, n['cost']!]).toList();
 
     return pw.TableHelper.fromTextArray(
       headerDecoration: pw.BoxDecoration(color: green),
-      headerStyle: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+      headerStyle: pw.TextStyle(
+        fontSize: 10,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfColors.white,
+      ),
       cellStyle: pw.TextStyle(fontSize: 10),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       headers: ['DATE', 'DESCRIPTION', 'TIME', 'COST'],
@@ -377,14 +578,17 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Text(label, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+        pw.Text(
+          label,
+          style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+        ),
         pw.Text(value, style: pw.TextStyle(fontSize: 10)),
       ],
     );
   }
 
   String _formatCurrency(double value) {
-    return '£${value.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
+    return '${_profileCtrl.currencySymbol}${value.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
   }
 
   @override
@@ -525,10 +729,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
         version: QrVersions.auto,
         size: 220,
         backgroundColor: Colors.white,
-        eyeStyle: QrEyeStyle(
-          eyeShape: QrEyeShape.square,
-          color: Colors.black,
-        ),
+        eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
         dataModuleStyle: QrDataModuleStyle(
           dataModuleShape: QrDataModuleShape.square,
           color: Colors.black,

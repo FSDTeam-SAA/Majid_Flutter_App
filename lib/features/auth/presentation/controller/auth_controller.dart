@@ -7,6 +7,7 @@ import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../home/presentation/controller/home_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../../staff/presentation/controller/staff_controller.dart';
 import '../../../stock/presentation/controller/stock_controller.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -143,8 +144,7 @@ class AuthController extends GetxController {
       final restored = await _restoreVerificationSession();
       isLoading.value = false;
       if (!restored) {
-        errorMessage.value =
-            'Could not resend the code. Please sign up again.';
+        errorMessage.value = 'Could not resend the code. Please sign up again.';
       }
       return restored;
     }
@@ -278,6 +278,7 @@ class AuthController extends GetxController {
     Get.delete<HomeController>(force: true);
     Get.delete<ProfileController>(force: true);
     Get.delete<StockController>(force: true);
+    Get.delete<StaffController>(force: true);
   }
 
   Future<bool> _execute(Future<void> Function() action) async {

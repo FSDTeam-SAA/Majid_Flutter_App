@@ -20,8 +20,12 @@ class StaffModel extends StaffMember {
       email: json['email']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
       jobRole: json['jobRole']?.toString() ?? 'Staff',
-      status: json['isVerified'] == true ? StaffStatus.verified : StaffStatus.pending,
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      status: json['isVerified'] == true
+          ? StaffStatus.verified
+          : StaffStatus.pending,
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 

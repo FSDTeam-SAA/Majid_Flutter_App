@@ -20,6 +20,7 @@ UserProfile userProfileFromJson(Map<String, dynamic> json) {
     whatsappNumber: json['whatsappNumber']?.toString() ?? '',
     phone: json['phone']?.toString() ?? '',
     imageUrl: imageUrl,
+    currencyCode: json['currency']?.toString() ?? 'USD',
   );
 }
 

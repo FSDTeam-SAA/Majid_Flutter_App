@@ -50,7 +50,10 @@ class SalesTrendChart extends StatelessWidget {
                 onTap: onPeriodTap,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.fieldBorder),
                     borderRadius: BorderRadius.circular(20),
@@ -159,7 +162,9 @@ class _ChartPainter extends CustomPainter {
     final minVal = 0.0;
 
     final gridPaint = Paint()
-      ..color = AppColors.fieldBorder.withValues(alpha: AppColors.isDark ? 0.28 : 0.42)
+      ..color = AppColors.fieldBorder.withValues(
+        alpha: AppColors.isDark ? 0.28 : 0.42,
+      )
       ..strokeWidth = 1;
     for (int i = 0; i <= 4; i++) {
       final y = size.height * i / 4;

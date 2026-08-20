@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
@@ -7,6 +8,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../invoice/presentation/utils/invoice_pdf_builder.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 
 class CheckoutPage extends StatefulWidget {
   final Map<String, dynamic> repair;
@@ -21,6 +23,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   late final ApiClient _api;
   bool _ordersExpanded = false;
   bool _isSending = false;
+  final _currencySymbol = Get.find<ProfileController>().currencySymbol;
 
   Map<String, dynamic> get _repair => widget.repair;
 
@@ -28,10 +31,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _repair['deviceModel']?.toString() ?? 'Unknown Device';
   String get _requestId => _repair['_id']?.toString() ?? 'N/A';
   double get _price => (_repair['price'] as num?)?.toDouble() ?? 0;
-  double get _depositPaid =>
-      (_repair['depositPaid'] as num?)?.toDouble() ?? 0;
-  double get _discount =>
-      (_repair['discount'] as num?)?.toDouble() ?? 0;
+  double get _depositPaid => (_repair['depositPaid'] as num?)?.toDouble() ?? 0;
+  double get _discount => (_repair['discount'] as num?)?.toDouble() ?? 0;
   double get _totalCost {
     final subtotal = _price - _depositPaid;
     if (_discount > 0) {
@@ -79,6 +80,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             _repair['billingAddress']?.toString() ??
             '',
         paymentType: _repair['paymentType']?.toString() ?? 'cash',
+        currencySymbol: _currencySymbol,
         items: [
           InvoicePdfItem(
             name: _deviceModel,
@@ -90,10 +92,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
         totalAmount: _totalCost,
         footerNote: 'Generated from iMoScan checkout flow.',
       );
-      final shopkeeperId =
-          (_repair['shopkeeperId'] ?? _repair['userId'] ?? '').toString();
-      final customerId =
-          (_repair['customerId'] ?? '').toString();
+      final shopkeeperId = (_repair['shopkeeperId'] ?? _repair['userId'] ?? '')
+          .toString();
+      final customerId = (_repair['customerId'] ?? '').toString();
       final payload = FormData();
       payload.fields.addAll([
         MapEntry('shopkeeperId', shopkeeperId),
@@ -113,17 +114,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       );
 
-      await _api.post(
-        InvoiceEndpoints.create,
-        data: payload,
-      );
+      await _api.post(InvoiceEndpoints.create, data: payload);
       if (!mounted) return;
       _showMessage('Invoice sent successfully!');
       Navigator.pop(context, true);
     } on DioException catch (e) {
-      _showMessage(
-        e.response?.data?['message'] ?? 'Failed to send invoice',
-      );
+      _showMessage(e.response?.data?['message'] ?? 'Failed to send invoice');
     } catch (e) {
       _showMessage('Failed to send invoice');
     } finally {
@@ -133,9 +129,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -245,14 +241,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
             if (_ordersExpanded) ...[
               Divider(color: AppColors.fieldBorder, height: 20),
               _detailRow('Request ID', '#$_requestId'),
-              _detailRow('Customer',
-                  _repair['firstName']?.toString() ?? 'N/A'),
+              _detailRow('Customer', _repair['firstName']?.toString() ?? 'N/A'),
               _detailRow(
-                  'Status',
-                  _repair['status']?.toString().toUpperCase() ??
-                      'IN PROGRESS'),
-              _detailRow('Description',
-                  _repair['description']?.toString() ?? 'N/A'),
+                'Status',
+                _repair['status']?.toString().toUpperCase() ?? 'IN PROGRESS',
+              ),
+              _detailRow(
+                'Description',
+                _repair['description']?.toString() ?? 'N/A',
+              ),
             ],
           ],
         ),
@@ -268,18 +265,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           Flexible(
             child: Text(
               value,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -406,6 +397,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   String _formatCurrency(double value) {
-    return '£${value.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
+    return '$_currencySymbol${value.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
   }
 }

@@ -47,7 +47,10 @@ class SupplierController extends GetxController {
     isLoading.value = true;
     errorMessage.value = '';
     try {
-      suppliers.value = await _getSuppliers(search: searchQuery.value, isActive: _isActiveFilterValue);
+      suppliers.value = await _getSuppliers(
+        search: searchQuery.value,
+        isActive: _isActiveFilterValue,
+      );
     } catch (e) {
       errorMessage.value = 'Failed to load suppliers';
     } finally {
@@ -74,7 +77,13 @@ class SupplierController extends GetxController {
   }) async {
     isCreating.value = true;
     try {
-      final supplier = await _createSupplier(name: name, phone: phone, email: email, address: address, notes: notes);
+      final supplier = await _createSupplier(
+        name: name,
+        phone: phone,
+        email: email,
+        address: address,
+        notes: notes,
+      );
       suppliers.insert(0, supplier);
       return true;
     } finally {

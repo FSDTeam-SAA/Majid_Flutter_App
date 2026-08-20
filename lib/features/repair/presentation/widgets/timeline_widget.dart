@@ -65,9 +65,15 @@ class TimelineWidget extends StatelessWidget {
         ),
       );
     } else {
-      final pendingBg = isDark ? AppColors.fieldBackground : const Color(0xFFF2F4F7);
-      final pendingBorder = isDark ? const Color(0xFF2A3A4A) : const Color(0xFFD0D5DD);
-      final pendingIcon = isDark ? const Color(0xFF3A4A5A) : const Color(0xFF667085);
+      final pendingBg = isDark
+          ? AppColors.fieldBackground
+          : const Color(0xFFF2F4F7);
+      final pendingBorder = isDark
+          ? const Color(0xFF2A3A4A)
+          : const Color(0xFFD0D5DD);
+      final pendingIcon = isDark
+          ? const Color(0xFF3A4A5A)
+          : const Color(0xFF667085);
       icon = Container(
         width: 36,
         height: 36,
@@ -76,11 +82,7 @@ class TimelineWidget extends StatelessWidget {
           border: Border.all(color: pendingBorder),
           color: pendingBg,
         ),
-        child: Icon(
-          Icons.access_time_rounded,
-          color: pendingIcon,
-          size: 18,
-        ),
+        child: Icon(Icons.access_time_rounded, color: pendingIcon, size: 18),
       );
     }
 

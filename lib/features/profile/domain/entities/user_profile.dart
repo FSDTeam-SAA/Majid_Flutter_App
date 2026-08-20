@@ -12,6 +12,7 @@ class UserProfile {
   final String whatsappNumber;
   final String phone;
   final String imageUrl;
+  final String currencyCode;
 
   const UserProfile({
     required this.id,
@@ -24,6 +25,7 @@ class UserProfile {
     required this.whatsappNumber,
     required this.phone,
     required this.imageUrl,
+    this.currencyCode = 'USD',
   });
 
   String get fullName => '$firstName $lastName'.trim();

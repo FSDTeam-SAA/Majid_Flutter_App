@@ -24,7 +24,8 @@ String _resolveDeviceName(Map<String, dynamic> item) {
   final parsed = item['parsedProviderData'];
   if (parsed is Map) {
     final deviceDescription = parsed['device_description']?.toString();
-    if (deviceDescription != null && deviceDescription.isNotEmpty) return deviceDescription;
+    if (deviceDescription != null && deviceDescription.isNotEmpty)
+      return deviceDescription;
 
     final description = parsed['description']?.toString();
     if (description != null && description.isNotEmpty) return description;
@@ -58,7 +59,9 @@ ScanItem scanItemFromJson(Map<String, dynamic> item) {
   return ScanItem(
     name: name,
     imei: imei,
-    status: _resolveStatus(item['deviceStatus']?.toString() ?? item['status']?.toString()),
+    status: _resolveStatus(
+      item['deviceStatus']?.toString() ?? item['status']?.toString(),
+    ),
     serviceId: (item['serviceId'] as num?)?.toInt(),
     createdAt: DateTime.tryParse(
       item['createdAt']?.toString() ?? '',

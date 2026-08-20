@@ -159,7 +159,9 @@ class HomeController extends GetxController {
     final id = userId.value.trim();
     if (id.isEmpty) return;
     try {
-      final res = await _api.get('${DashboardEndpoints.stats}?filter=$filter&shopkeeperId=$id');
+      final res = await _api.get(
+        '${DashboardEndpoints.stats}?filter=$filter&shopkeeperId=$id',
+      );
       final data = res.data['data'];
       if (data is Map) {
         dashboardStats.value = Map<String, dynamic>.from(data);
@@ -195,10 +197,7 @@ class HomeController extends GetxController {
     try {
       final res = await _api.post(
         CashManagementEndpoints.createOrUpdate,
-        data: {
-          'shopkeeperId': id,
-          'startingDayCash': startingDayCash,
-        },
+        data: {'shopkeeperId': id, 'startingDayCash': startingDayCash},
       );
       final data = res.data['data'];
       if (data is Map) {
@@ -234,11 +233,13 @@ class HomeController extends GetxController {
   }
 
   double get totalInventoryValue => inventoryItems.fold(0.0, (sum, item) {
-        final price = (item['sellingPrice'] as num?)?.toDouble() ??
-            (item['price'] as num?)?.toDouble() ?? 0;
-        final qty = (item['quantity'] as num?)?.toInt() ?? 1;
-        return sum + price * qty;
-      });
+    final price =
+        (item['sellingPrice'] as num?)?.toDouble() ??
+        (item['price'] as num?)?.toDouble() ??
+        0;
+    final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+    return sum + price * qty;
+  });
 
   HomeStatsSnapshot statsForPeriod(HomePeriod period) {
     return HomeStatsSnapshot(
@@ -257,7 +258,10 @@ class HomeController extends GetxController {
     final currentBuckets = _bucketDates(period, previous: false);
     final previousBuckets = _bucketDates(period, previous: true);
     final currentValues = List<double>.filled(currentBuckets.labels.length, 0);
-    final previousValues = List<double>.filled(previousBuckets.labels.length, 0);
+    final previousValues = List<double>.filled(
+      previousBuckets.labels.length,
+      0,
+    );
 
     for (final invoice in invoices) {
       final date = _resolveDate(invoice, const ['createdAt', 'updatedAt']);
@@ -335,17 +339,22 @@ class HomeController extends GetxController {
 
   DateTime _startOfWeek(DateTime value) {
     final weekday = value.weekday;
-    return DateTime(value.year, value.month, value.day)
-        .subtract(Duration(days: weekday - 1));
+    return DateTime(
+      value.year,
+      value.month,
+      value.day,
+    ).subtract(Duration(days: weekday - 1));
   }
 
   _TrendBuckets _bucketDates(HomePeriod period, {required bool previous}) {
     final now = DateTime.now();
     switch (period) {
       case HomePeriod.daily:
-        final base = DateTime(now.year, now.month, now.day).subtract(
-          Duration(days: previous ? 1 : 0),
-        );
+        final base = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: previous ? 1 : 0));
         return _TrendBuckets(
           labels: const ['12A', '4A', '8A', '12P', '4P', '8P'],
           indexFor: (date) {
@@ -370,11 +379,7 @@ class HomeController extends GetxController {
           },
         );
       case HomePeriod.monthly:
-        final monthDate = DateTime(
-          now.year,
-          now.month - (previous ? 1 : 0),
-          1,
-        );
+        final monthDate = DateTime(now.year, now.month - (previous ? 1 : 0), 1);
         return _TrendBuckets(
           labels: const ['W1', 'W2', 'W3', 'W4', 'W5'],
           indexFor: (date) {
@@ -411,8 +416,5 @@ class _TrendBuckets {
   final List<String> labels;
   final int? Function(DateTime date) indexFor;
 
-  const _TrendBuckets({
-    required this.labels,
-    required this.indexFor,
-  });
+  const _TrendBuckets({required this.labels, required this.indexFor});
 }

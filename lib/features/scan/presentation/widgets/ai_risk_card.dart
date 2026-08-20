@@ -17,7 +17,8 @@ class AiRiskCard extends StatelessWidget {
   Color get _riskColor {
     final label = riskLabel.toLowerCase();
     if (label.contains('low')) return const Color(0xFF22C55E);
-    if (label.contains('medium') || label.contains('moderate')) return const Color(0xFFF59E0B);
+    if (label.contains('medium') || label.contains('moderate'))
+      return const Color(0xFFF59E0B);
     if (label.contains('high')) return const Color(0xFFEF4444);
 
     if (percentage >= 0.8) return const Color(0xFF22C55E);
@@ -50,7 +51,11 @@ class AiRiskCard extends StatelessWidget {
                   ),
                   child: Text(
                     riskLabel.toUpperCase(),
-                    style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
             ],
@@ -59,7 +64,11 @@ class AiRiskCard extends StatelessWidget {
           Center(
             child: Text(
               'Risk Score: ${(percentage * 100).toInt()}/100',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           SizedBox(height: 10),

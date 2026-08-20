@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 
 class StatsGrid extends StatelessWidget {
   final double totalSales;
@@ -9,9 +11,20 @@ class StatsGrid extends StatelessWidget {
   final int totalOrders;
   final double avgOrderValue;
 
-  const StatsGrid({super.key, required this.totalSales, required this.totalProfit, required this.totalOrders, required this.avgOrderValue});
+  const StatsGrid({
+    super.key,
+    required this.totalSales,
+    required this.totalProfit,
+    required this.totalOrders,
+    required this.avgOrderValue,
+  });
 
-  static const _iconColors = [Color(0xFF2D8A57), Color(0xFF6D55C8), Color(0xFF2E76C4), Color(0xFFC77638)];
+  static const _iconColors = [
+    Color(0xFF2D8A57),
+    Color(0xFF6D55C8),
+    Color(0xFF2E76C4),
+    Color(0xFFC77638),
+  ];
   static const _lightModeIcons = [
     'assets/lightmodeicon/TSL.png',
     'assets/lightmodeicon/tPL.png',
@@ -27,15 +40,23 @@ class StatsGrid extends StatelessWidget {
   static const _iconAssetScale = 1.9;
 
   String _fmtCurrency(double v) {
-    if (v >= 1000000) return '£${(v / 1000000).toStringAsFixed(1)}M';
-    if (v >= 1000) return '£${(v / 1000).toStringAsFixed(1)}k';
-    return '£${v.toStringAsFixed(2)}';
+    final symbol = Get.find<ProfileController>().currencySymbol;
+    if (v >= 1000000) return '$symbol${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '$symbol${(v / 1000).toStringAsFixed(1)}k';
+    return '$symbol${v.toStringAsFixed(2)}';
   }
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      (Icons.bar_chart_rounded, 'Total Sales', _fmtCurrency(totalSales), _iconColors[0], _lightModeIcons[0], _darkModeIcons[0]),
+      (
+        Icons.bar_chart_rounded,
+        'Total Sales',
+        _fmtCurrency(totalSales),
+        _iconColors[0],
+        _lightModeIcons[0],
+        _darkModeIcons[0],
+      ),
       (
         Icons.account_balance_wallet_outlined,
         'Total Profit',
@@ -44,8 +65,22 @@ class StatsGrid extends StatelessWidget {
         _lightModeIcons[1],
         _darkModeIcons[1],
       ),
-      (Icons.shopping_bag_outlined, 'Total Orders', '$totalOrders', _iconColors[2], _lightModeIcons[2], _darkModeIcons[2]),
-      (Icons.adjust_rounded, 'Avg Order Value', _fmtCurrency(avgOrderValue), _iconColors[3], _lightModeIcons[3], _darkModeIcons[3]),
+      (
+        Icons.shopping_bag_outlined,
+        'Total Orders',
+        '$totalOrders',
+        _iconColors[2],
+        _lightModeIcons[2],
+        _darkModeIcons[2],
+      ),
+      (
+        Icons.adjust_rounded,
+        'Avg Order Value',
+        _fmtCurrency(avgOrderValue),
+        _iconColors[3],
+        _lightModeIcons[3],
+        _darkModeIcons[3],
+      ),
     ];
 
     return GridView.builder(
@@ -95,9 +130,15 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark;
 
-    final cardColor = isDark ? const Color(0xFF12161D).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.5);
-    final borderColor = isDark ? const Color(0xFF232A36) : const Color(0xFFE4E7EC);
-    final titleColor = isDark ? const Color(0xFF8A96A8) : const Color(0xFF667085);
+    final cardColor = isDark
+        ? const Color(0xFF12161D).withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.5);
+    final borderColor = isDark
+        ? const Color(0xFF232A36)
+        : const Color(0xFFE4E7EC);
+    final titleColor = isDark
+        ? const Color(0xFF8A96A8)
+        : const Color(0xFF667085);
     final valueColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
 
     return Container(
@@ -108,9 +149,17 @@ class _StatCard extends StatelessWidget {
         border: Border.all(color: borderColor),
         boxShadow: [
           if (isDark)
-            BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 58, offset: const Offset(0, 8))
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 58,
+              offset: const Offset(0, 8),
+            )
           else
-            BoxShadow(color: const Color(0xFFB8C7DE).withValues(alpha: 0.12), blurRadius: 50, offset: const Offset(0, 8)),
+            BoxShadow(
+              color: const Color(0xFFB8C7DE).withValues(alpha: 0.12),
+              blurRadius: 50,
+              offset: const Offset(0, 8),
+            ),
         ],
       ),
       child: Column(
@@ -122,14 +171,24 @@ class _StatCard extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: titleColor, fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.1),
+            style: TextStyle(
+              color: titleColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.1,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: valueColor, fontSize: 20, fontWeight: FontWeight.w700, height: 1.2),
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+            ),
           ),
         ],
       ),
@@ -145,7 +204,13 @@ class _StatCard extends StatelessWidget {
       height: 48,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          boxShadow: [BoxShadow(color: glowColor, blurRadius: 18, offset: const Offset(0, 0))],
+          boxShadow: [
+            BoxShadow(
+              color: glowColor,
+              blurRadius: 18,
+              offset: const Offset(0, 0),
+            ),
+          ],
         ),
         child: ClipRect(
           child: Transform.scale(
@@ -153,7 +218,11 @@ class _StatCard extends StatelessWidget {
             child: Image.asset(
               asset,
               fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => Icon(icon, color: isDark ? Colors.white : iconColor, size: 22),
+              errorBuilder: (_, _, _) => Icon(
+                icon,
+                color: isDark ? Colors.white : iconColor,
+                size: 22,
+              ),
             ),
           ),
         ),

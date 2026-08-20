@@ -19,11 +19,17 @@ class AppBottomNavBar extends StatelessWidget {
     'assets/navbar/dashboard.png',
     'assets/navbar/stock.png',
     'assets/navbar/scan-qr.png',
-    'assets/navbar/repair.png',
     'assets/navbar/invoice.png',
+    'assets/navbar/repair.png',
   ];
 
-  static const _labels = ['Orders', 'Checkout', 'Scan', 'Repair', 'Invoice'];
+  static const _labels = [
+    'Orders',
+    'Checkout',
+    'Scan',
+    'Transaction',
+    'Repairing',
+  ];
 
   @override
   Widget build(BuildContext context) {

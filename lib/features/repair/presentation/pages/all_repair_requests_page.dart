@@ -213,7 +213,10 @@ class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
                     ).entrance(index: entry.$1, begin: const Offset(0, 0.05)),
                   ),
                 const SizedBox(height: 8),
-                if (_totalPages > 1) _buildPagination().entrance(index: filteredRepairs.length + 1),
+                if (_totalPages > 1)
+                  _buildPagination().entrance(
+                    index: filteredRepairs.length + 1,
+                  ),
               ],
             ),
           ),

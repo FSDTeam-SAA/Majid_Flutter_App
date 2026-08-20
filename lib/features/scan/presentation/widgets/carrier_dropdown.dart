@@ -74,8 +74,7 @@ class _CarrierDropdownState extends State<CarrierDropdown> {
                 Row(
                   children: [
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(6),
@@ -140,7 +139,8 @@ class _CarrierDropdownState extends State<CarrierDropdown> {
               ),
               child: TextField(
                 controller: _searchController,
-                onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                onChanged: (v) =>
+                    setState(() => _query = v.trim().toLowerCase()),
                 style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'Search services...',

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
@@ -24,6 +25,7 @@ class ProfileController extends GetxController {
   final isLoading = true.obs;
   final isSaving = false.obs;
   final errorMessage = ''.obs;
+  final isSessionExpired = false.obs;
 
   // Profile data
   final profile = Rx<UserProfile?>(null);
@@ -67,13 +69,35 @@ class ProfileController extends GetxController {
   String get phone => profile.value?.phone ?? '';
   String get userId => profile.value?.id ?? '';
   String get imageUrl => profile.value?.imageUrl ?? '';
+  String get currencyCode => profile.value?.currencyCode ?? 'USD';
+
+  /// Symbol for the shop's configured currency — falls back to USD's `$`
+  /// for any code we don't have a mapping for yet.
+  String get currencySymbol {
+    const symbols = {
+      'USD': '\$',
+      'GBP': '£',
+      'EUR': '€',
+      'BDT': '৳',
+      'INR': '₹',
+      'PKR': '₨',
+      'AUD': 'A\$',
+      'CAD': 'C\$',
+      'AED': 'د.إ',
+      'SAR': '﷼',
+    };
+    return symbols[currencyCode.toUpperCase()] ?? '\$';
+  }
 
   Future<void> fetchProfile() async {
     isLoading.value = true;
     try {
       profile.value = await _profileRepo.getProfile();
+      isSessionExpired.value = false;
     } catch (e) {
       debugPrint('Profile fetch error: $e');
+      isSessionExpired.value =
+          e is DioException && e.response?.statusCode == 401;
     } finally {
       isLoading.value = false;
     }
@@ -163,7 +187,10 @@ class ProfileController extends GetxController {
     required double amount,
     String? subscriptionId,
   }) {
-    return _paymentRepo.createPayment(amount: amount, subscriptionId: subscriptionId);
+    return _paymentRepo.createPayment(
+      amount: amount,
+      subscriptionId: subscriptionId,
+    );
   }
 
   Future<void> fetchBusinessHealthData() async {

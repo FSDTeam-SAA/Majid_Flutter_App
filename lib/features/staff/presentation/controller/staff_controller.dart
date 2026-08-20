@@ -21,8 +21,10 @@ class StaffController extends GetxController {
   final staffList = <StaffMember>[].obs;
 
   int get totalStaff => staffList.length;
-  int get verifiedCount => staffList.where((s) => s.status == StaffStatus.verified).length;
-  int get pendingCount => staffList.where((s) => s.status == StaffStatus.pending).length;
+  int get verifiedCount =>
+      staffList.where((s) => s.status == StaffStatus.verified).length;
+  int get pendingCount =>
+      staffList.where((s) => s.status == StaffStatus.pending).length;
 
   @override
   void onInit() {
@@ -40,6 +42,11 @@ class StaffController extends GetxController {
     if (shopkeeperId.isEmpty) {
       await _profileCtrl.fetchProfile();
       shopkeeperId = _profileCtrl.userId;
+    }
+    if (shopkeeperId.isEmpty) {
+      throw Exception(
+        'Could not verify your shop account. Please reopen Staff Management and try again.',
+      );
     }
     return shopkeeperId;
   }

@@ -104,7 +104,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
   List<InventoryItem> _listFromResponse(Response res) {
     final data = res.data['data'];
     if (data is! List) return [];
-    return data.whereType<Map>().map((item) => inventoryItemFromJson(Map<String, dynamic>.from(item))).toList();
+    return data
+        .whereType<Map>()
+        .map((item) => inventoryItemFromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   @override
@@ -114,7 +117,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }) async {
     final payload = imagePath == null || imagePath.isEmpty
         ? data
-        : FormData.fromMap({...data, 'image': await MultipartFile.fromFile(imagePath)});
+        : FormData.fromMap({
+            ...data,
+            'image': await MultipartFile.fromFile(imagePath),
+          });
     final res = await _api.post(InventoryEndpoints.create, data: payload);
     return inventoryItemFromJson(Map<String, dynamic>.from(res.data['data']));
   }
@@ -127,7 +133,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }) async {
     final payload = imagePath == null || imagePath.isEmpty
         ? data
-        : FormData.fromMap({...data, 'image': await MultipartFile.fromFile(imagePath)});
+        : FormData.fromMap({
+            ...data,
+            'image': await MultipartFile.fromFile(imagePath),
+          });
     final res = await _api.put(InventoryEndpoints.byId(id), data: payload);
     return inventoryItemFromJson(Map<String, dynamic>.from(res.data['data']));
   }
@@ -164,14 +173,24 @@ class InventoryRepositoryImpl implements InventoryRepository {
     }
 
     final payload = FormData.fromMap({'file': uploadFile});
-    final response = await _api.post(InventoryEndpoints.importCsv, data: payload);
+    final response = await _api.post(
+      InventoryEndpoints.importCsv,
+      data: payload,
+    );
 
     final responseData = response.data;
     final responseBody = responseData is Map ? responseData['data'] : null;
     final summary = responseBody is Map ? responseBody['summary'] : null;
-    final successCount = summary is Map ? (summary['successCount'] as num?)?.toInt() : null;
-    final failureCount = summary is Map ? (summary['failureCount'] as num?)?.toInt() : null;
+    final successCount = summary is Map
+        ? (summary['successCount'] as num?)?.toInt()
+        : null;
+    final failureCount = summary is Map
+        ? (summary['failureCount'] as num?)?.toInt()
+        : null;
 
-    return CsvImportSummary(successCount: successCount, failureCount: failureCount);
+    return CsvImportSummary(
+      successCount: successCount,
+      failureCount: failureCount,
+    );
   }
 }

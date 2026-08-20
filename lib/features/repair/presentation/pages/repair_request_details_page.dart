@@ -75,9 +75,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       }
       _showMessage('Status updated to ${_formatStatus(status)}');
     } on DioException catch (e) {
-      _showMessage(
-        e.response?.data?['message'] ?? 'Failed to update status',
-      );
+      _showMessage(e.response?.data?['message'] ?? 'Failed to update status');
     } catch (e) {
       _showMessage('Failed to update status');
     } finally {
@@ -94,7 +92,14 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Waiting for Parts', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
+        title: Text(
+          'Waiting for Parts',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -107,8 +112,14 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 hintStyle: TextStyle(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.fieldBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.fieldBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.fieldBorder),
+                ),
               ),
             ),
             SizedBox(height: 12),
@@ -121,17 +132,35 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 hintStyle: TextStyle(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.fieldBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.fieldBorder)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.fieldBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.fieldBorder),
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             child: Text('Confirm'),
           ),
         ],
@@ -186,7 +215,9 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       final userId = _repair['userId']?.toString() ?? '';
       if (userId.isEmpty) return [];
 
-      final res = await _api.get(RepairRequestEndpoints.userDescriptions(userId));
+      final res = await _api.get(
+        RepairRequestEndpoints.userDescriptions(userId),
+      );
       final data = res.data['data'];
       if (data is! List) return [];
 
@@ -261,7 +292,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     const SizedBox(height: 4),
                     Text(
                       'Please provide the new repair issue and staff assignment.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     _reassignSelectField(
@@ -269,7 +303,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       value: selectedProblem,
                       placeholder: 'Search or select a previous problem',
                       onTap: () async {
-                        final choice = await _showProblemPickerSheet(ctx, previousProblems);
+                        final choice = await _showProblemPickerSheet(
+                          ctx,
+                          previousProblems,
+                        );
                         if (choice != null) {
                           setSheetState(() {
                             selectedProblem = choice;
@@ -284,7 +321,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       value: selectedTechnician?.fullName,
                       placeholder: 'Select staff',
                       onTap: () async {
-                        final pick = await _showTechnicianPickerSheet(ctx, technicians);
+                        final pick = await _showTechnicianPickerSheet(
+                          ctx,
+                          technicians,
+                        );
                         if (pick != null) {
                           setSheetState(() => selectedTechnician = pick);
                         }
@@ -294,17 +334,38 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     TextField(
                       controller: descCtrl,
                       maxLines: 3,
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Problem Description',
-                        labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        labelStyle: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
                         hintText: 'Describe the issue in detail...',
-                        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 13),
+                        hintStyle: TextStyle(
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                          fontSize: 13,
+                        ),
                         filled: true,
                         fillColor: AppColors.fieldBackground,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.fieldBorder)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.fieldBorder)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.primary, width: 1.3)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: AppColors.fieldBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: AppColors.fieldBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: AppColors.primary,
+                            width: 1.3,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -313,14 +374,19 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () {
                             if (descCtrl.text.trim().isEmpty) {
                               ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(content: Text('Please describe the issue')),
+                                const SnackBar(
+                                  content: Text('Please describe the issue'),
+                                ),
                               );
                               return;
                             }
@@ -329,8 +395,13 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
                           ),
                           child: const Text('Reassigned'),
                         ),
@@ -367,8 +438,14 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
           labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           filled: true,
           fillColor: AppColors.fieldBackground,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.fieldBorder)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.fieldBorder)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: AppColors.fieldBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: AppColors.fieldBorder),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -379,52 +456,95 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: value != null ? AppColors.textPrimary : AppColors.textSecondary.withValues(alpha: 0.7),
+                  color: value != null
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary.withValues(alpha: 0.7),
                   fontSize: 13,
                 ),
               ),
             ),
-            Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary, size: 20),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Future<String?> _showProblemPickerSheet(BuildContext context, List<String> problems) {
+  Future<String?> _showProblemPickerSheet(
+    BuildContext context,
+    List<String> problems,
+  ) {
     final searchCtrl = TextEditingController();
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetCtx) {
         return StatefulBuilder(
           builder: (sheetCtx, setState) {
             final query = searchCtrl.text.trim().toLowerCase();
-            final filtered = query.isEmpty ? problems : problems.where((p) => p.toLowerCase().contains(query)).toList();
+            final filtered = query.isEmpty
+                ? problems
+                : problems
+                      .where((p) => p.toLowerCase().contains(query))
+                      .toList();
 
             return Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(sheetCtx).viewInsets.bottom + 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Select Problem', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    'Select Problem',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: searchCtrl,
                     autofocus: true,
                     onChanged: (_) => setState(() {}),
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search or select a previous problem',
-                      hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                      prefixIcon: Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                      hintStyle: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
                       filled: true,
                       fillColor: AppColors.fieldBackground,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.fieldBorder)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.fieldBorder)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: AppColors.fieldBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: AppColors.fieldBorder),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -434,30 +554,45 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                         ? Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Text(
-                              problems.isEmpty ? 'No previous problems logged yet.' : 'No matching problems found.',
+                              problems.isEmpty
+                                  ? 'No previous problems logged yet.'
+                                  : 'No matching problems found.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12.5,
+                              ),
                             ),
                           )
                         : ListView.separated(
                             shrinkWrap: true,
                             itemCount: filtered.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 8),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (_, index) => InkWell(
                               borderRadius: BorderRadius.circular(14),
-                              onTap: () => Navigator.pop(sheetCtx, filtered[index]),
+                              onTap: () =>
+                                  Navigator.pop(sheetCtx, filtered[index]),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.fieldBackground,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: AppColors.fieldBorder),
+                                  border: Border.all(
+                                    color: AppColors.fieldBorder,
+                                  ),
                                 ),
                                 child: Text(
                                   filtered[index],
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13.5),
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 13.5,
+                                  ),
                                 ),
                               ),
                             ),
@@ -472,12 +607,17 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  Future<StaffMember?> _showTechnicianPickerSheet(BuildContext context, List<StaffMember> technicians) {
+  Future<StaffMember?> _showTechnicianPickerSheet(
+    BuildContext context,
+    List<StaffMember> technicians,
+  ) {
     return showModalBottomSheet<StaffMember>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetCtx) {
         return SafeArea(
           top: false,
@@ -487,9 +627,22 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Technician', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(
+                  'Technician',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('Assign a staff member to this repair.', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+                Text(
+                  'Assign a staff member to this repair.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 if (technicians.isEmpty)
                   Padding(
@@ -497,7 +650,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     child: Text(
                       'No staff members found.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                      ),
                     ),
                   )
                 else
@@ -519,21 +675,51 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                               Container(
                                 width: 38,
                                 height: 38,
-                                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(11)),
-                                child: Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 19),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                child: Icon(
+                                  Icons.person_outline_rounded,
+                                  color: AppColors.primary,
+                                  size: 19,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(staff.fullName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      staff.fullName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     const SizedBox(height: 2),
-                                    Text(staff.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                    Text(
+                                      staff.email,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 20),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.textSecondary,
+                                size: 20,
+                              ),
                             ],
                           ),
                         ),
@@ -573,7 +759,9 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       }
       _showMessage('Repair request reassigned');
     } on DioException catch (e) {
-      _showMessage(e.response?.data?['message'] ?? 'Failed to reassign repair request');
+      _showMessage(
+        e.response?.data?['message'] ?? 'Failed to reassign repair request',
+      );
     } catch (e) {
       _showMessage('Failed to reassign repair request');
     } finally {
@@ -583,9 +771,9 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -604,26 +792,26 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     backgroundColor: AppColors.cardBackground,
                     onRefresh: _refreshRepair,
                     child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: 14),
-                        _buildDeviceAndInfoCard(),
-                        SizedBox(height: 20),
-                        TimelineWidget(steps: _buildTimelineSteps()),
-                        SizedBox(height: 20),
-                        _buildActions(context),
-                        SizedBox(height: 20),
-                        _buildIssueDescriptionCard(),
-                        SizedBox(height: 20),
-                        _buildCustomerDetails(),
-                        SizedBox(height: 30),
-                      ],
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 14),
+                          _buildDeviceAndInfoCard(),
+                          SizedBox(height: 20),
+                          TimelineWidget(steps: _buildTimelineSteps()),
+                          SizedBox(height: 20),
+                          _buildActions(context),
+                          SizedBox(height: 20),
+                          _buildIssueDescriptionCard(),
+                          SizedBox(height: 20),
+                          _buildCustomerDetails(),
+                          SizedBox(height: 30),
+                        ],
+                      ),
                     ),
                   ),
-                ),
           ),
         ],
       ),
@@ -657,14 +845,46 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
 
     return [
-      TimelineStep('Order Booked', 'Your order has been successfully created', stepStatus(0)),
-      TimelineStep('Order Assigned', 'A technician has been assigned', stepStatus(1)),
-      TimelineStep('Reassigned', 'The repair has been reassigned for another issue', stepStatus(2)),
-      TimelineStep('Diagnosing Started', 'Technician is diagnosing the issue', stepStatus(3)),
-      TimelineStep('Quote Sent', 'A quote has been sent for the repair', stepStatus(4)),
-      TimelineStep('Repairing Started', 'Device is being repaired', stepStatus(5)),
-      TimelineStep('Waiting for Parts', 'Repair is paused until parts arrive', stepStatus(6)),
-      TimelineStep('Repair Complete', 'Repair has been successfully completed', stepStatus(7)),
+      TimelineStep(
+        'Order Booked',
+        'Your order has been successfully created',
+        stepStatus(0),
+      ),
+      TimelineStep(
+        'Order Assigned',
+        'A technician has been assigned',
+        stepStatus(1),
+      ),
+      TimelineStep(
+        'Reassigned',
+        'The repair has been reassigned for another issue',
+        stepStatus(2),
+      ),
+      TimelineStep(
+        'Diagnosing Started',
+        'Technician is diagnosing the issue',
+        stepStatus(3),
+      ),
+      TimelineStep(
+        'Quote Sent',
+        'A quote has been sent for the repair',
+        stepStatus(4),
+      ),
+      TimelineStep(
+        'Repairing Started',
+        'Device is being repaired',
+        stepStatus(5),
+      ),
+      TimelineStep(
+        'Waiting for Parts',
+        'Repair is paused until parts arrive',
+        stepStatus(6),
+      ),
+      TimelineStep(
+        'Repair Complete',
+        'Repair has been successfully completed',
+        stepStatus(7),
+      ),
     ];
   }
 
@@ -709,9 +929,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
   Widget _buildDeviceAndInfoCard() {
     final isDark = AppColors.isDark;
     final status = _formatStatus(_repair['status']?.toString());
-    final innerCardColor = isDark
-        ? AppColors.fieldBackground
-        : Colors.white;
+    final innerCardColor = isDark ? AppColors.fieldBackground : Colors.white;
     final innerBorderColor = isDark
         ? AppColors.fieldBorder
         : const Color(0xFFE4E7EC);
@@ -751,7 +969,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.primary),
                   borderRadius: BorderRadius.circular(20),
@@ -810,7 +1031,8 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                   label: 'SHOP',
                   value: _repair['shopName']?.toString() ?? 'Your Shop',
                 ),
-                if ((_repair['IMEINumber']?.toString().trim() ?? '').isNotEmpty) ...[
+                if ((_repair['IMEINumber']?.toString().trim() ?? '')
+                    .isNotEmpty) ...[
                   const SizedBox(height: 12),
                   InfoField(
                     label: 'IMEI / SERIAL',
@@ -820,7 +1042,12 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 const SizedBox(height: 12),
                 InfoField(
                   label: 'TECHNICIAN',
-                  value: (_repair['technicianName']?.toString().trim().isNotEmpty ?? false)
+                  value:
+                      (_repair['technicianName']
+                              ?.toString()
+                              .trim()
+                              .isNotEmpty ??
+                          false)
                       ? _repair['technicianName'].toString()
                       : 'Unassigned',
                 ),
@@ -838,7 +1065,9 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textPrimary,
                 side: BorderSide(color: AppColors.primary, width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text(
@@ -915,10 +1144,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 runSpacing: 12,
                 children: [
                   for (final action in actions)
-                    SizedBox(
-                      width: itemWidth,
-                      child: _actionBtn(action),
-                    ),
+                    SizedBox(width: itemWidth, child: _actionBtn(action)),
                 ],
               );
             },
@@ -1028,11 +1254,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          start,
-          end,
-          end.withValues(alpha: 0.98),
-        ],
+        colors: [start, end, end.withValues(alpha: 0.98)],
       ),
       borderColor: border.withValues(alpha: isCurrentStatus ? 0.95 : 0.7),
       textColor: text,
@@ -1092,10 +1314,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          fill,
-          Color.lerp(fill, Colors.white, 0.06)!,
-        ],
+        colors: [fill, Color.lerp(fill, Colors.white, 0.06)!],
       ),
       borderColor: border.withValues(alpha: isCurrentStatus ? 1 : 0.88),
       textColor: Colors.white,
@@ -1117,7 +1336,9 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
   Widget _buildCustomerDetails() {
     final isDark = AppColors.isDark;
     final innerCardColor = isDark ? AppColors.fieldBackground : Colors.white;
-    final innerBorderColor = isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC);
+    final innerBorderColor = isDark
+        ? AppColors.fieldBorder
+        : const Color(0xFFE4E7EC);
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -1192,8 +1413,18 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     if (parsed == null) return '';
     final local = parsed.toLocal();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');

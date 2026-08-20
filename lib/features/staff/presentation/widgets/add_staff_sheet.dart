@@ -7,7 +7,10 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../invoice/presentation/widgets/invoice_input_field.dart';
 import '../controller/staff_controller.dart';
 
-Future<bool?> showAddStaffSheet(BuildContext context, StaffController controller) {
+Future<bool?> showAddStaffSheet(
+  BuildContext context,
+  StaffController controller,
+) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -44,7 +47,8 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
     super.dispose();
   }
 
-  bool get _isValidEmail => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailCtrl.text.trim());
+  bool get _isValidEmail =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailCtrl.text.trim());
 
   Future<void> _submit() async {
     setState(() => _errorMessage = '');
@@ -72,12 +76,17 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
       );
       if (mounted) Navigator.pop(context, true);
     } on DioException catch (e) {
-      debugPrint('createStaff DioException: ${e.type} status=${e.response?.statusCode} data=${e.response?.data}');
-      final serverMessage = e.response?.data is Map ? e.response?.data['message']?.toString() : null;
+      debugPrint(
+        'createStaff DioException: ${e.type} status=${e.response?.statusCode} data=${e.response?.data}',
+      );
+      final serverMessage = e.response?.data is Map
+          ? e.response?.data['message']?.toString()
+          : null;
       setState(
         () => _errorMessage =
             serverMessage ??
-            (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout
+            (e.type == DioExceptionType.connectionTimeout ||
+                    e.type == DioExceptionType.receiveTimeout
                 ? 'Server is taking too long to respond. Please try again.'
                 : e.type == DioExceptionType.connectionError
                 ? 'Could not connect to the server. Check your internet connection.'
@@ -85,7 +94,11 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
       );
     } catch (e) {
       debugPrint('createStaff error: $e');
-      setState(() => _errorMessage = 'Failed to create staff member. Please try again.');
+      setState(
+        () => _errorMessage = e is Exception
+            ? e.toString().replaceFirst('Exception: ', '')
+            : 'Failed to create staff member. Please try again.',
+      );
     }
   }
 
@@ -110,36 +123,70 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
                   child: Container(
                     width: 40,
                     height: 4,
-                    decoration: BoxDecoration(color: AppColors.fieldBorder, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: AppColors.fieldBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
                 Text(
                   'Add Staff Member',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Create a staff login. The role will be saved as staff.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Expanded(child: InvoiceInputField(hint: 'First Name', controller: _firstNameCtrl)),
+                    Expanded(
+                      child: InvoiceInputField(
+                        hint: 'First Name',
+                        controller: _firstNameCtrl,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: InvoiceInputField(hint: 'Last Name', controller: _lastNameCtrl)),
+                    Expanded(
+                      child: InvoiceInputField(
+                        hint: 'Last Name',
+                        controller: _lastNameCtrl,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                InvoiceInputField(hint: 'Email', controller: _emailCtrl, keyboardType: TextInputType.emailAddress),
+                InvoiceInputField(
+                  hint: 'Email',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 10),
-                InvoiceInputField(hint: 'Phone', controller: _phoneCtrl, keyboardType: TextInputType.phone),
+                InvoiceInputField(
+                  hint: 'Phone',
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 10),
                 _buildPasswordField(),
                 if (_errorMessage.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(_errorMessage, style: TextStyle(color: AppColors.dangerColor, fontSize: 12.5)),
+                  Text(
+                    _errorMessage,
+                    style: TextStyle(
+                      color: AppColors.dangerColor,
+                      fontSize: 12.5,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Obx(() {
@@ -148,11 +195,15 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: isCreating ? null : () => Navigator.pop(context),
+                          onPressed: isCreating
+                              ? null
+                              : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
                             side: BorderSide(color: AppColors.fieldBorder),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Cancel'),
@@ -183,7 +234,12 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
       decoration: BoxDecoration(
         color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: AppColors.primary.withValues(alpha: AppColors.isDark ? 0.6 : 0.72), width: 1.2),
+        border: Border.all(
+          color: AppColors.primary.withValues(
+            alpha: AppColors.isDark ? 0.6 : 0.72,
+          ),
+          width: 1.2,
+        ),
       ),
       child: TextField(
         controller: _passwordCtrl,
@@ -193,15 +249,21 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
           hintText: 'Password',
           hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           isDense: true,
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               color: AppColors.textSecondary,
               size: 20,
             ),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
       ),

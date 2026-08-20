@@ -45,7 +45,11 @@ class PendingRepairCard extends StatelessWidget {
                 color: const Color(0xFFE8920A).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.hourglass_bottom_rounded, color: Color(0xFFE8920A), size: 20),
+              child: const Icon(
+                Icons.hourglass_bottom_rounded,
+                color: Color(0xFFE8920A),
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -56,13 +60,19 @@ class PendingRepairCard extends StatelessWidget {
                     '${item.name} • ${item.brand}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
                       Icon(
-                        hasTechnician ? Icons.person_outline : Icons.person_off_outlined,
+                        hasTechnician
+                            ? Icons.person_outline
+                            : Icons.person_off_outlined,
                         size: 13,
                         color: AppColors.textSecondary,
                       ),
@@ -72,7 +82,10 @@ class PendingRepairCard extends StatelessWidget {
                           _technicianName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -86,8 +99,13 @@ class PendingRepairCard extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: BorderSide(color: AppColors.primary, width: 1.2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -95,9 +113,18 @@ class PendingRepairCard extends StatelessWidget {
                   ? SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
                     )
-                  : const Text('Nudge', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  : const Text(
+                      'Nudge',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ],
         ),

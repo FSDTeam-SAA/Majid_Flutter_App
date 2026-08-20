@@ -5,11 +5,7 @@ class ScanSearchBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback? onScanTap;
 
-  const ScanSearchBar({
-    super.key,
-    required this.controller,
-    this.onScanTap,
-  });
+  const ScanSearchBar({super.key, required this.controller, this.onScanTap});
 
   @override
   Widget build(BuildContext context) {
