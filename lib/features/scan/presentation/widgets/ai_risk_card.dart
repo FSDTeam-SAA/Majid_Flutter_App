@@ -17,8 +17,9 @@ class AiRiskCard extends StatelessWidget {
   Color get _riskColor {
     final label = riskLabel.toLowerCase();
     if (label.contains('low')) return const Color(0xFF22C55E);
-    if (label.contains('medium') || label.contains('moderate'))
+    if (label.contains('medium') || label.contains('moderate')) {
       return const Color(0xFFF59E0B);
+    }
     if (label.contains('high')) return const Color(0xFFEF4444);
 
     if (percentage >= 0.8) return const Color(0xFF22C55E);

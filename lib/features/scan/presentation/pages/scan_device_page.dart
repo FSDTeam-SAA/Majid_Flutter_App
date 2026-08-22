@@ -655,8 +655,9 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       final parsed = data[key];
       if (parsed is Map && parsed.isNotEmpty) {
         final allValues = parsed.values.join(' ').toLowerCase();
-        if (allValues.contains('not found') || allValues.contains('error'))
+        if (allValues.contains('not found') || allValues.contains('error')) {
           return false;
+        }
 
         for (final nameKey in [
           'model',
@@ -683,10 +684,12 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     if (data is Map) {
       final providerResults = data['providerResults'];
       final parsedProviderData = data['parsedProviderData'];
-      if (providerResults is Map)
+      if (providerResults is Map) {
         parsed.addAll(Map<String, dynamic>.from(providerResults));
-      if (parsedProviderData is Map)
+      }
+      if (parsedProviderData is Map) {
         parsed.addAll(Map<String, dynamic>.from(parsedProviderData));
+      }
     }
 
     String? name;

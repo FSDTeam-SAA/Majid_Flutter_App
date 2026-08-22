@@ -1799,8 +1799,9 @@ class _InvoicePageState extends State<InvoicePage> {
                       image: frontImage,
                       onTap: () async {
                         final picked = await _pickNidImage();
-                        if (picked != null)
+                        if (picked != null) {
                           setSheetState(() => frontImage = picked);
+                        }
                       },
                       onClear: frontImage == null
                           ? null
@@ -1813,8 +1814,9 @@ class _InvoicePageState extends State<InvoicePage> {
                       image: backImage,
                       onTap: () async {
                         final picked = await _pickNidImage();
-                        if (picked != null)
+                        if (picked != null) {
                           setSheetState(() => backImage = picked);
+                        }
                       },
                       onClear: backImage == null
                           ? null

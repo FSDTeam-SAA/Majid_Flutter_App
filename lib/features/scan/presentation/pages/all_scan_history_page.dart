@@ -94,7 +94,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
     final serviceId = item.serviceId;
     if (serviceId == null) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -102,6 +102,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
             ),
           ),
         );
+      }
       return;
     }
 

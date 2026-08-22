@@ -24,8 +24,9 @@ String _resolveDeviceName(Map<String, dynamic> item) {
   final parsed = item['parsedProviderData'];
   if (parsed is Map) {
     final deviceDescription = parsed['device_description']?.toString();
-    if (deviceDescription != null && deviceDescription.isNotEmpty)
+    if (deviceDescription != null && deviceDescription.isNotEmpty) {
       return deviceDescription;
+    }
 
     final description = parsed['description']?.toString();
     if (description != null && description.isNotEmpty) return description;

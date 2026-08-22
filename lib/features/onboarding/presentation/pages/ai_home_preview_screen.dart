@@ -88,8 +88,9 @@ class _AiHomePreviewScreenState extends State<AiHomePreviewScreen> {
   }
 
   Future<int?> _resolveFreeServiceId() async {
-    if (_selectedFreeService?.serviceId != null)
+    if (_selectedFreeService?.serviceId != null) {
       return _selectedFreeService!.serviceId;
+    }
     await _loadFreeServices();
     return _selectedFreeService?.serviceId;
   }
