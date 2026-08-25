@@ -14,6 +14,11 @@ import '../widgets/transaction_tile.dart';
 import 'cash_management_page.dart';
 import 'reports_page.dart';
 
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
+import '../../data/repositories/cash_management_repository_impl.dart';
+import '../../domain/repositories/cash_management_repository.dart';
+
 class TransactionsHomePage extends StatefulWidget {
   const TransactionsHomePage({super.key});
 
@@ -23,13 +28,39 @@ class TransactionsHomePage extends StatefulWidget {
 
 class _TransactionsHomePageState extends State<TransactionsHomePage> {
   final _currencySymbol = Get.find<ProfileController>().currencySymbol;
+  late final CashManagementRepository _cashRepo;
+  late final ProfileController _profileCtrl;
+
   bool _balanceHidden = false;
   final List<TransactionEntry> _transactions = List.of(sampleTransactions);
 
-  static const _totalBalance = 15804.25;
-  static const _cashBalance = 9245.35;
-  static const _cardPayments = 4125.40;
-  static const _expenseToday = 2832.18;
+  double _totalBalance = 15804.25;
+  double _cashBalance = 9245.35;
+  final double _cardPayments = 4125.40;
+  final double _expenseToday = 2832.18;
+
+  @override
+  void initState() {
+    super.initState();
+    _cashRepo = CashManagementRepositoryImpl(ApiClient(baseUrl));
+    _profileCtrl = Get.find<ProfileController>();
+    _loadLiveData();
+  }
+
+  Future<void> _loadLiveData() async {
+    try {
+      final id = _profileCtrl.userId;
+      if (id.isNotEmpty) {
+        final cashData = await _cashRepo.getCashManagement(id);
+        if (cashData != null && mounted) {
+          setState(() {
+            _cashBalance = cashData.cashInDrawer;
+            _totalBalance = _cashBalance + _cardPayments;
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   Future<void> _scanForRefund() async {
     final code = await Navigator.of(context).push<String>(
@@ -301,7 +332,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                         MaterialPageRoute(
                           builder: (_) => const CashManagementPage(),
                         ),
-                      ),
+                      ).then((_) => _loadLiveData()),
                     ),
                   ),
                   const SizedBox(width: 10),
