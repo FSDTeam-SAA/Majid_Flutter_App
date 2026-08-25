@@ -22,7 +22,6 @@ import '../controller/invoice_data.dart';
 import '../utils/invoice_pdf_builder.dart';
 import '../widgets/invoice_customer_picker.dart';
 import '../widgets/invoice_input_field.dart';
-import '../widgets/invoice_product_item.dart';
 import '../widgets/shop_info_card.dart';
 import 'record_payment_page.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
@@ -48,14 +47,12 @@ class _InvoicePageState extends State<InvoicePage> {
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _addressCtrl = TextEditingController();
-  final TextEditingController _searchCtrl = TextEditingController();
   int _tabIndex = 0;
   String? _selectedCustomer;
   String? _selectedCustomerId;
-  String? _selectedCategory;
   String? _recordedPaymentMethod;
   double? _recordedAmountPaid;
-  final Set<String> _selectedProductIds = {};
+  final List<_CreateInvoiceItem> _createInvoiceItems = [_CreateInvoiceItem()];
   bool _isLoading = true;
   bool _isCustomersLoading = false;
   bool _isCustomerDropdownOpen = false;
@@ -104,19 +101,17 @@ class _InvoicePageState extends State<InvoicePage> {
   String _viewInvoicesError = '';
   List<invoice_entity.Invoice> _viewInvoices = [];
 
-  double get _totalAmount => _products
-      .where((product) => _selectedProductIds.contains(product.id))
-      .fold(0, (sum, product) => sum + product.price);
-
-  List<String> get _categoryOptions {
-    final categories =
-        _products
-            .map((product) => product.category.trim())
-            .where((category) => category.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-    return ['All', ...categories];
+  double get _totalAmount {
+    double total = 0;
+    for (final item in _createInvoiceItems) {
+      final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
+      final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+      final discount = double.tryParse(item.discountCtrl.text.trim()) ?? 0;
+      final tax = double.tryParse(item.taxCtrl.text.trim()) ?? 0;
+      final line = (qty * price) - discount + tax;
+      total += line < 0 ? 0 : line;
+    }
+    return total;
   }
 
   List<String> get _purchaseCategoryOptions {
@@ -161,22 +156,6 @@ class _InvoicePageState extends State<InvoicePage> {
     return names;
   }
 
-  List<InvoiceProduct> get _filteredProducts {
-    final query = _searchCtrl.text.trim().toLowerCase();
-    return _products.where((product) {
-      final matchesCategory =
-          _selectedCategory == null ||
-          _selectedCategory == 'All' ||
-          product.category == _selectedCategory;
-      final matchesQuery =
-          query.isEmpty ||
-          product.name.toLowerCase().contains(query) ||
-          product.code.toLowerCase().contains(query) ||
-          product.category.toLowerCase().contains(query);
-      return matchesCategory && matchesQuery;
-    }).toList();
-  }
-
   @override
   void initState() {
     super.initState();
@@ -194,7 +173,6 @@ class _InvoicePageState extends State<InvoicePage> {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
-    _searchCtrl.dispose();
     _pFirstNameCtrl.dispose();
     _pLastNameCtrl.dispose();
     _pEmailCtrl.dispose();
@@ -213,6 +191,9 @@ class _InvoicePageState extends State<InvoicePage> {
     for (final item in _deliveryItems) {
       item.dispose();
     }
+    for (final item in _createInvoiceItems) {
+      item.dispose();
+    }
     super.dispose();
   }
 
@@ -224,9 +205,6 @@ class _InvoicePageState extends State<InvoicePage> {
     });
     try {
       await Future.wait([_fetchCustomers(), _fetchProducts()]);
-      if (_selectedProductIds.isEmpty && _products.isNotEmpty) {
-        _selectedProductIds.add(_products.first.id);
-      }
     } on DioException catch (e) {
       _sessionExpired = e.response?.statusCode == 401;
       _errorMessage = _sessionExpired
@@ -393,16 +371,16 @@ class _InvoicePageState extends State<InvoicePage> {
       showErrorSnackbar('Please choose a customer or fill in customer info.');
       return;
     }
-    if (_selectedProductIds.isEmpty) {
-      showErrorSnackbar('Please select a product.');
+    final validItems = _createInvoiceItems
+        .where((item) => item.nameCtrl.text.trim().isNotEmpty)
+        .toList();
+    if (validItems.isEmpty) {
+      showErrorSnackbar('Please add at least one item with a name.');
       return;
     }
 
     setState(() => _isSendingInvoice = true);
     try {
-      final selectedProducts = _products
-          .where((product) => _selectedProductIds.contains(product.id))
-          .toList();
       var shopkeeperId = _profileCtrl.userId;
       if (shopkeeperId.isEmpty) {
         await _profileCtrl.fetchProfile();
@@ -417,6 +395,53 @@ class _InvoicePageState extends State<InvoicePage> {
         customerLastName,
       ].where((value) => value.isNotEmpty).join(' ');
       final paymentType = _recordedPaymentMethod ?? 'Cash';
+      final totalAmount = _totalAmount;
+
+      final pdfItems = <InvoicePdfItem>[];
+      for (final item in validItems) {
+        final name = item.nameCtrl.text.trim();
+        final code = [
+          item.descriptionCtrl.text.trim(),
+          item.colorCtrl.text.trim(),
+          item.conditionCtrl.text.trim(),
+        ].where((v) => v.isNotEmpty).join(' • ');
+        final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 1;
+        final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+        final discount = double.tryParse(item.discountCtrl.text.trim()) ?? 0;
+        final tax = double.tryParse(item.taxCtrl.text.trim()) ?? 0;
+        final imeis = item.imeiControllers
+            .map((c) => c.text.trim())
+            .where((v) => v.isNotEmpty)
+            .toList();
+
+        if (imeis.isEmpty) {
+          pdfItems.add(
+            InvoicePdfItem(
+              name: name,
+              code: code,
+              quantity: qty,
+              unitPrice: unitPrice,
+              discount: discount,
+              tax: tax,
+            ),
+          );
+        } else {
+          for (final imei in imeis) {
+            pdfItems.add(
+              InvoicePdfItem(
+                name: name,
+                code: code,
+                imeiSerial: imei,
+                quantity: 1,
+                unitPrice: unitPrice,
+                discount: discount / imeis.length,
+                tax: tax / imeis.length,
+              ),
+            );
+          }
+        }
+      }
+
       final pdfFile = await InvoicePdfBuilder.build(
         fileNamePrefix: 'invoice',
         invoiceTitle: 'SALES INVOICE',
@@ -435,18 +460,8 @@ class _InvoicePageState extends State<InvoicePage> {
         paymentType: paymentType,
         currencySymbol: _profileCtrl.currencySymbol,
         amountPaid: _recordedAmountPaid,
-        items: selectedProducts
-            .map(
-              (product) => InvoicePdfItem(
-                name: product.name,
-                code: product.code,
-                imeiSerial: product.imeiSerial,
-                quantity: 1,
-                unitPrice: product.price,
-              ),
-            )
-            .toList(),
-        totalAmount: _totalAmount,
+        items: pdfItems,
+        totalAmount: totalAmount,
         footerNote: 'Generated from iMoScan invoice flow.',
       );
 
@@ -471,14 +486,26 @@ class _InvoicePageState extends State<InvoicePage> {
       final payload = FormData();
       payload.fields.addAll([
         MapEntry('shopkeeperId', shopkeeperId),
-        MapEntry('type', 'sales'),
-        MapEntry('totalAmount', _totalAmount.toString()),
+        MapEntry('type', 'Custom invoice'),
+        MapEntry('totalAmount', totalAmount.toString()),
         MapEntry('paymentMethod', paymentType),
         if (customerId.isNotEmpty) MapEntry('customerInfo', customerId),
+        if (_recordedAmountPaid != null)
+          MapEntry('amountPaid', _recordedAmountPaid!.toString()),
+        if (_recordedAmountPaid != null)
+          MapEntry(
+            'dueAmount',
+            (totalAmount - _recordedAmountPaid! < 0
+                    ? 0
+                    : totalAmount - _recordedAmountPaid!)
+                .toString(),
+          ),
       ]);
 
-      for (final product in selectedProducts) {
-        payload.fields.add(MapEntry('itemsIds', product.id));
+      for (final item in validItems) {
+        if (item.inventoryId != null && item.inventoryId!.isNotEmpty) {
+          payload.fields.add(MapEntry('itemsIds', item.inventoryId!));
+        }
       }
 
       payload.files.add(
@@ -490,16 +517,15 @@ class _InvoicePageState extends State<InvoicePage> {
           ),
         ),
       );
+
       await _invoiceRepo.createInvoice(payload);
       if (!mounted) return;
       showSuccessSnackbar('Invoice created successfully!');
       _isViewInvoicesLoaded = false;
       _fetchViewInvoices();
       setState(() {
-        _selectedProductIds.clear();
         _selectedCustomer = null;
         _selectedCustomerId = null;
-        _selectedCategory = null;
         _recordedPaymentMethod = null;
         _recordedAmountPaid = null;
         _firstNameCtrl.clear();
@@ -507,7 +533,11 @@ class _InvoicePageState extends State<InvoicePage> {
         _emailCtrl.clear();
         _phoneCtrl.clear();
         _addressCtrl.clear();
-        _searchCtrl.clear();
+        for (final item in _createInvoiceItems) {
+          item.dispose();
+        }
+        _createInvoiceItems.clear();
+        _createInvoiceItems.add(_CreateInvoiceItem());
       });
     } on DioException catch (e) {
       if (!mounted) return;
@@ -727,9 +757,9 @@ class _InvoicePageState extends State<InvoicePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: 14),
+        const SizedBox(height: 14),
         _buildCustomerDropdown(),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -738,7 +768,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 controller: _firstNameCtrl,
               ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: InvoiceInputField(
                 hint: 'Last Name',
@@ -747,67 +777,422 @@ class _InvoicePageState extends State<InvoicePage> {
             ),
           ],
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         InvoiceInputField(hint: 'Customer Email', controller: _emailCtrl),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         InvoiceInputField(
           hint: 'Customer Phone Number',
           controller: _phoneCtrl,
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         InvoiceInputField(
           hint: 'Customer Billing Address',
           controller: _addressCtrl,
         ),
-        SizedBox(height: 14),
+        const SizedBox(height: 14),
         ShopInfoCard(),
-        SizedBox(height: 24),
-        Text(
-          'Products',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-          ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Invoice Items',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Add products and configure manual specifications',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+            OutlinedButton(
+              onPressed: () =>
+                  setState(() => _createInvoiceItems.add(_CreateInvoiceItem())),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 16),
+                  SizedBox(width: 4),
+                  Text('Add Item', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: 14),
-        _buildProductSearch(),
-        SizedBox(height: 12),
-        if (_products.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: Text(
-                'No inventory products available',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-          )
-        else if (_filteredProducts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: Text(
-                'No products match this filter',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-          )
-        else
-          ..._filteredProducts.map(
-            (product) => InvoiceProductItem(
-              product: product,
-              isSelected: _selectedProductIds.contains(product.id),
-              onTap: () => setState(
-                () => _selectedProductIds.contains(product.id)
-                    ? _selectedProductIds.remove(product.id)
-                    : _selectedProductIds.add(product.id),
-              ),
-            ),
-          ),
-
+        const SizedBox(height: 14),
+        ...List.generate(
+          _createInvoiceItems.length,
+          (i) => _buildCreateInvoiceItemCard(i),
+        ),
+        const SizedBox(height: 16),
         _buildBottomBar(),
       ],
+    );
+  }
+
+  void _applyCreateInvoiceProductDefaults(
+    _CreateInvoiceItem item,
+    String name,
+  ) {
+    item.nameCtrl.text = name;
+    InvoiceProduct? match;
+    for (final product in _products) {
+      if (product.name.trim().toLowerCase() == name.trim().toLowerCase()) {
+        match = product;
+        break;
+      }
+    }
+    if (match == null) {
+      item.inventoryId = null;
+      return;
+    }
+    item.inventoryId = match.id;
+    if (match.storage.isNotEmpty) item.descriptionCtrl.text = match.storage;
+    if (match.colorName.isNotEmpty) item.colorCtrl.text = match.colorName;
+    if (match.condition.isNotEmpty) item.conditionCtrl.text = match.condition;
+    if (match.price > 0) {
+      item.priceCtrl.text = match.price == match.price.roundToDouble()
+          ? match.price.toInt().toString()
+          : match.price.toString();
+    }
+    if (match.imeiSerial.isNotEmpty && item.imeiControllers.isNotEmpty) {
+      item.imeiControllers.first.text = match.imeiSerial;
+    }
+  }
+
+  Widget _buildCreateInvoiceItemCard(int index) {
+    final item = _createInvoiceItems[index];
+    final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
+    final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+    final discount = double.tryParse(item.discountCtrl.text.trim()) ?? 0;
+    final tax = double.tryParse(item.taxCtrl.text.trim()) ?? 0;
+    final rawSubtotal = (qty * price) - discount + tax;
+    final subTotal = rawSubtotal < 0 ? 0.0 : rawSubtotal;
+
+    final isDark = AppColors.isDark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.cardBackground
+            : Colors.white.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.fieldBorder : const Color(0xFFE4E7EC),
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF6BA0C8).withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'ITEM #${index + 1}',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (_createInvoiceItems.length > 1) {
+                    setState(() {
+                      _createInvoiceItems[index].dispose();
+                      _createInvoiceItems.removeAt(index);
+                    });
+                  } else {
+                    setState(() {
+                      _createInvoiceItems[index].inventoryId = null;
+                      _createInvoiceItems[index].nameCtrl.clear();
+                      _createInvoiceItems[index].descriptionCtrl.clear();
+                      _createInvoiceItems[index].colorCtrl.clear();
+                      _createInvoiceItems[index].conditionCtrl.clear();
+                      _createInvoiceItems[index].quantityCtrl.text = '1';
+                      _createInvoiceItems[index].priceCtrl.text = '0';
+                      _createInvoiceItems[index].discountCtrl.clear();
+                      _createInvoiceItems[index].taxCtrl.clear();
+                      for (final c in _createInvoiceItems[index]
+                          .imeiControllers
+                          .sublist(1)) {
+                        c.dispose();
+                      }
+                      _createInvoiceItems[index].imeiControllers
+                        ..removeRange(
+                          1,
+                          _createInvoiceItems[index].imeiControllers.length,
+                        )
+                        ..first.clear();
+                    });
+                  }
+                },
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.redAccent,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InvoiceInputField(
+                  hint: 'Item / Product Name *',
+                  controller: item.nameCtrl,
+                  onChanged: (val) {
+                    InvoiceProduct? match;
+                    for (final p in _products) {
+                      if (p.name.trim().toLowerCase() ==
+                          val.trim().toLowerCase()) {
+                        match = p;
+                        break;
+                      }
+                    }
+                    item.inventoryId = match?.id;
+                    setState(() {});
+                  },
+                ),
+              ),
+              if (_itemNameOptions.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () {
+                    _showSelectionSheet(
+                      context,
+                      title: 'Select from Inventory',
+                      selected: item.nameCtrl.text.isEmpty
+                          ? null
+                          : item.nameCtrl.text,
+                      items: _itemNameOptions,
+                      onSelect: (value) => setState(
+                        () => _applyCreateInvoiceProductDefaults(item, value),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(
+                      color: AppColors.primary.withValues(
+                        alpha: AppColors.isDark ? 0.6 : 0.72,
+                      ),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.inventory_2_outlined, size: 16),
+                      SizedBox(width: 4),
+                      Text('Inventory', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          InvoiceInputField(
+            hint: 'Description / Storage / Details',
+            controller: item.descriptionCtrl,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: InvoiceInputField(
+                  hint: 'Color',
+                  controller: item.colorCtrl,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InvoiceInputField(
+                  hint: 'Condition',
+                  controller: item.conditionCtrl,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStepperField(
+                  hint: 'Quantity',
+                  controller: item.quantityCtrl,
+                  min: 1,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildStepperField(
+                  hint: 'Price per Unit',
+                  controller: item.priceCtrl,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStepperField(
+                  hint: 'Discount (${_profileCtrl.currencySymbol})',
+                  controller: item.discountCtrl,
+                  min: 0,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildStepperField(
+                  hint: 'Tax (${_profileCtrl.currencySymbol})',
+                  controller: item.taxCtrl,
+                  min: 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'IMEI / Serial Numbers',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(
+                  () => item.imeiControllers.add(TextEditingController()),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, color: AppColors.primary, size: 16),
+                    const SizedBox(width: 2),
+                    Text(
+                      'Add',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(item.imeiControllers.length, (imeiIndex) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InvoiceInputField(
+                      hint: 'IMEI / Serial #${imeiIndex + 1}',
+                      controller: item.imeiControllers[imeiIndex],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (item.imeiControllers.length > 1) {
+                        item.imeiControllers[imeiIndex].dispose();
+                        item.imeiControllers.removeAt(imeiIndex);
+                      } else {
+                        item.imeiControllers[imeiIndex].clear();
+                      }
+                    }),
+                    child: const Icon(
+                      Icons.remove_circle_outline,
+                      color: Colors.redAccent,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.fieldBackground,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: AppColors.fieldBorder),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Item Calculation Sub Total',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  '${_profileCtrl.currencySymbol}${subTotal.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -889,6 +1274,7 @@ class _InvoicePageState extends State<InvoicePage> {
           Expanded(
             child: TextField(
               controller: controller,
+              onChanged: (_) => setState(() {}),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -1114,57 +1500,6 @@ class _InvoicePageState extends State<InvoicePage> {
     if (choice != null) {
       onSelect(choice);
     }
-  }
-
-  Widget _buildProductSearch() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.fieldBackground,
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(
-                color: AppColors.primary.withValues(
-                  alpha: AppColors.isDark ? 0.6 : 0.72,
-                ),
-                width: 1.2,
-              ),
-            ),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (_) => setState(() {}),
-              style: TextStyle(color: AppColors.primary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Search items...',
-                hintStyle: TextStyle(color: AppColors.primary, fontSize: 14),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
-                isDense: true,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: 10),
-        SizedBox(
-          width: 118,
-          child: _buildDropdown(
-            context,
-            _selectedCategory,
-            'Category',
-            (value) => setState(() {
-              _selectedCategory = value == 'All' ? null : value;
-            }),
-            _categoryOptions,
-          ),
-        ),
-      ],
-    );
   }
 
   double get _purchaseGrandTotal {
@@ -2852,6 +3187,33 @@ class _InvoiceTabSpec {
   final IconData icon;
 
   const _InvoiceTabSpec(this.label, this.icon);
+}
+
+class _CreateInvoiceItem {
+  String? inventoryId;
+  final nameCtrl = TextEditingController();
+  final descriptionCtrl = TextEditingController();
+  final colorCtrl = TextEditingController();
+  final conditionCtrl = TextEditingController();
+  final quantityCtrl = TextEditingController(text: '1');
+  final priceCtrl = TextEditingController(text: '0');
+  final discountCtrl = TextEditingController(text: '');
+  final taxCtrl = TextEditingController(text: '');
+  final List<TextEditingController> imeiControllers = [TextEditingController()];
+
+  void dispose() {
+    nameCtrl.dispose();
+    descriptionCtrl.dispose();
+    colorCtrl.dispose();
+    conditionCtrl.dispose();
+    quantityCtrl.dispose();
+    priceCtrl.dispose();
+    discountCtrl.dispose();
+    taxCtrl.dispose();
+    for (final c in imeiControllers) {
+      c.dispose();
+    }
+  }
 }
 
 class _PurchaseItem {

@@ -6,6 +6,7 @@ class InvoiceInputField extends StatelessWidget {
   final TextEditingController? controller;
   final bool readOnly;
   final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
 
   const InvoiceInputField({
     super.key,
@@ -13,6 +14,7 @@ class InvoiceInputField extends StatelessWidget {
     this.controller,
     this.readOnly = false,
     this.keyboardType,
+    this.onChanged,
   });
 
   @override
@@ -32,6 +34,7 @@ class InvoiceInputField extends StatelessWidget {
         controller: controller,
         readOnly: readOnly,
         keyboardType: keyboardType,
+        onChanged: onChanged,
         style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,

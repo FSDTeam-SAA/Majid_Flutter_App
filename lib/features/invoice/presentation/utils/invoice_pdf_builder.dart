@@ -10,6 +10,8 @@ class InvoicePdfItem {
   final String imeiSerial;
   final int quantity;
   final double unitPrice;
+  final double discount;
+  final double tax;
 
   const InvoicePdfItem({
     required this.name,
@@ -17,9 +19,14 @@ class InvoicePdfItem {
     this.imeiSerial = '',
     required this.quantity,
     required this.unitPrice,
+    this.discount = 0,
+    this.tax = 0,
   });
 
-  double get lineTotal => quantity * unitPrice;
+  double get lineTotal {
+    final subtotal = (quantity * unitPrice) - discount + tax;
+    return subtotal < 0 ? 0 : subtotal;
+  }
 }
 
 class InvoicePdfBuilder {
