@@ -27,22 +27,22 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amountColor = entry.isCredit
-        ? TransactionColors.green
+        ? TransactionColors.greenBright
         : TransactionColors.coral;
     final sign = entry.isCredit ? '+' : '-';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 9),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: _iconColor.withValues(alpha: 0.14),
+              color: _iconColor.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
-            child: Icon(entry.icon, color: _iconColor, size: 19),
+            child: Icon(entry.icon, color: _iconColor, size: 21),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -53,16 +53,16 @@ class TransactionTile extends StatelessWidget {
                   entry.title,
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   entry.subtitle,
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: 12.5,
                   ),
                 ),
               ],
@@ -75,14 +75,19 @@ class TransactionTile extends StatelessWidget {
                 '$sign${Get.find<ProfileController>().currencySymbol}${entry.amount.abs().toStringAsFixed(2)}',
                 style: TextStyle(
                   color: amountColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 entry.time,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),

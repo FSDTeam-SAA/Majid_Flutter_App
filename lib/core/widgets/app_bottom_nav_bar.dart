@@ -88,14 +88,22 @@ class AppBottomNavBar extends StatelessWidget {
                                     : Colors.transparent,
                                 shape: BoxShape.circle,
                               ),
-                              child: Image.asset(
-                                _icons[index],
-                                width: 22,
-                                height: 22,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.navInactive,
-                              ),
+                              child: index == 3
+                                  ? Icon(
+                                      Icons.swap_horiz_rounded,
+                                      size: 24,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.navInactive,
+                                    )
+                                  : Image.asset(
+                                      _icons[index],
+                                      width: 22,
+                                      height: 22,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.navInactive,
+                                    ),
                             ),
                             AnimatedSize(
                               duration: const Duration(milliseconds: 200),

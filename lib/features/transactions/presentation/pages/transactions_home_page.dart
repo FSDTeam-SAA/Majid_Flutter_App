@@ -250,18 +250,19 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                     : '$_currencySymbol${_totalBalance.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 30,
+                  fontSize: 34,
                   fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+                  horizontal: 11,
+                  vertical: 5.5,
                 ),
                 decoration: BoxDecoration(
-                  color: TransactionColors.green.withValues(alpha: 0.14),
+                  color: TransactionColors.green.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
@@ -269,15 +270,15 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                   children: [
                     Icon(
                       Icons.arrow_outward,
-                      color: TransactionColors.greenDark,
-                      size: 13,
+                      color: TransactionColors.greenText,
+                      size: 14,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     Text(
                       '12.4% vs last 7 days',
                       style: TextStyle(
-                        color: TransactionColors.greenDark,
-                        fontSize: 11.5,
+                        color: TransactionColors.greenText,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -343,8 +344,8 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                     'Transactions',
                     style: TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   GestureDetector(
@@ -355,8 +356,8 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                     child: Text(
                       'View all',
                       style: TextStyle(
-                        color: TransactionColors.greenDark,
-                        fontSize: 13,
+                        color: TransactionColors.greenText,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -370,14 +371,14 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: TransactionColors.green.withValues(alpha: 0.12),
+                  color: TransactionColors.green.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.insights_outlined,
-                      color: TransactionColors.greenDark,
+                      color: TransactionColors.greenText,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -385,7 +386,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                         'Your earnings are up 12.4% vs last 7 days',
                         style: TextStyle(
                           color: AppColors.textPrimary,
-                          fontSize: 12.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -393,8 +394,8 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                     Text(
                       'View all',
                       style: TextStyle(
-                        color: TransactionColors.greenDark,
-                        fontSize: 12.5,
+                        color: TransactionColors.greenText,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -433,7 +434,7 @@ class _SummaryTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(16),
@@ -444,30 +445,31 @@ class _SummaryTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: foreground, size: 18),
+            Icon(icon, color: foreground, size: 20),
             const SizedBox(height: 10),
             Text(
               '${Get.find<ProfileController>().currencySymbol}${value.toStringAsFixed(2)}',
               style: TextStyle(
                 color: foreground,
-                fontSize: 14,
+                fontSize: 16.5,
                 fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                color: foreground.withValues(alpha: 0.85),
-                fontSize: 10.5,
+                color: foreground.withValues(alpha: 0.9),
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
             Text(
               sub,
               style: TextStyle(
-                color: foreground.withValues(alpha: 0.65),
-                fontSize: 9.5,
+                color: foreground.withValues(alpha: 0.72),
+                fontSize: 10.5,
               ),
             ),
           ],

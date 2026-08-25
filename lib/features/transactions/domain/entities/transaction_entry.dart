@@ -24,13 +24,13 @@ class TransactionEntry {
   IconData get icon {
     switch (kind) {
       case TransactionKind.cashReceived:
-        return Icons.payments_outlined;
+        return Icons.swap_horiz_rounded;
       case TransactionKind.cardReceived:
-        return Icons.credit_card;
+        return Icons.credit_card_rounded;
       case TransactionKind.expense:
-        return Icons.shopping_bag_outlined;
+        return Icons.arrow_outward_rounded;
       case TransactionKind.refund:
-        return Icons.replay;
+        return Icons.sync_alt_rounded;
     }
   }
 }

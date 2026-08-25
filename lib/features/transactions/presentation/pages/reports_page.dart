@@ -118,14 +118,14 @@ class _ReportsPageState extends State<ReportsPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: TransactionColors.green.withValues(alpha: 0.12),
+                      color: TransactionColors.green.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.insights_outlined,
-                          color: TransactionColors.greenDark,
+                          color: TransactionColors.greenText,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -133,15 +133,15 @@ class _ReportsPageState extends State<ReportsPage> {
                             'Card payments are up 11.8% vs last week',
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 12.5,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
+                            horizontal: 14,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             color: TransactionColors.green,
@@ -151,7 +151,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             'View Report',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -228,7 +228,7 @@ class _ReportsPageState extends State<ReportsPage> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Column(
@@ -238,46 +238,57 @@ class _ReportsPageState extends State<ReportsPage> {
             row.label,
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 13,
+              fontSize: 14.5,
               fontWeight: FontWeight.w700,
             ),
           ),
           Text(
             row.dateRange,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11.5,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Card Payments',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 '$_currencySymbol${row.cardPayments.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Expenses',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 '$_currencySymbol${row.expenses.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: TransactionColors.coral,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -306,7 +317,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(16),
@@ -318,18 +329,19 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: foreground.withValues(alpha: 0.85),
-              fontSize: 12,
+              color: foreground.withValues(alpha: 0.9),
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             '${Get.find<ProfileController>().currencySymbol}${value.toStringAsFixed(2)}',
             style: TextStyle(
               color: foreground,
-              fontSize: 18,
+              fontSize: 21,
               fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
           ),
         ],

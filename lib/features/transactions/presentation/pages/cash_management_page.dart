@@ -217,7 +217,7 @@ class _CashManagementPageState extends State<CashManagementPage> {
     bool border = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(16),
@@ -226,23 +226,23 @@ class _CashManagementPageState extends State<CashManagementPage> {
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: (iconColor ?? Colors.white).withValues(
-                alpha: iconColor != null ? 0.14 : 0.22,
+                alpha: iconColor != null ? 0.16 : 0.24,
               ),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor ?? Colors.white, size: 17),
+            child: Icon(icon, color: iconColor ?? Colors.white, size: 19),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               label,
               style: TextStyle(
                 color: foreground,
-                fontSize: 13.5,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -251,8 +251,9 @@ class _CashManagementPageState extends State<CashManagementPage> {
             '${value < 0 ? '-' : ''}$_currencySymbol${value.abs().toStringAsFixed(2)}',
             style: TextStyle(
               color: foreground,
-              fontSize: 15,
+              fontSize: 17,
               fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -262,29 +263,29 @@ class _CashManagementPageState extends State<CashManagementPage> {
 
   Widget _buildBreakdownTile(CashBreakdownEntry entry) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 9),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: TransactionColors.coral.withValues(alpha: 0.14),
+              color: TransactionColors.coral.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.shopping_bag_outlined,
+              Icons.swap_horiz_rounded,
               color: TransactionColors.coral,
-              size: 17,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               entry.label,
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -296,13 +297,19 @@ class _CashManagementPageState extends State<CashManagementPage> {
                 '-$_currencySymbol${entry.amount.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: TransactionColors.coral,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 entry.time,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
