@@ -340,7 +340,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       fields.addAll([
         _DisplayField(
           'FIND MY IPHONE',
-          resolve(['find_my_iphone', 'fmi', 'fmi_status', 'findmyiphone']),
+          resolve(['find_my_iphone', 'fmi', 'fmi_status', 'findmyiphone', 'find_my']),
         ),
         _DisplayField(
           'ICLOUD STATUS',
@@ -352,9 +352,22 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           resolve([
             'activation_status',
             'activationstatus',
+            'device_activation',
             'activation_policy',
             'activationpolicy',
           ]),
+        ),
+        _DisplayField(
+          'BLACKLIST STATUS',
+          resolve(['blacklist_status', 'blackliststatus', 'blacklist']),
+        ),
+        _DisplayField(
+          'MDM STATUS',
+          resolve(['mdm_lock', 'mdmlock', 'mdm_status', 'mdm']),
+        ),
+        _DisplayField(
+          'BTU STATUS',
+          resolve(['btu_status', 'btustatus', 'btu', 'carrier_btu']),
         ),
         _DisplayField(
           'SIM LOCK',
@@ -413,10 +426,6 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           'VALID PURCHASE DATE',
           resolve(['valid_purchase_date', 'validpurchasedate']),
         ),
-        _DisplayField(
-          'BLACKLIST STATUS',
-          resolve(['blacklist_status', 'blackliststatus']),
-        ),
         _DisplayField('TECH SUPPORT', resolve(['telephone_technical_support'])),
         _DisplayField(
           'TECH SUPPORT EXPIRES',
@@ -437,7 +446,23 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       fields.addAll([
         _DisplayField(
           'KNOX GUARD',
-          resolve(['knox_guard', 'knoxguard', 'knox_status']),
+          resolve(['knox_guard', 'knoxguard', 'knox_status', 'knox', 'knox_lock']),
+        ),
+        _DisplayField(
+          'ACTIVATION STATUS',
+          resolve(['activation_status', 'activationstatus', 'device_activation']),
+        ),
+        _DisplayField(
+          'BLACKLIST STATUS',
+          resolve(['blacklist_status', 'blackliststatus', 'blacklist']),
+        ),
+        _DisplayField(
+          'MDM STATUS',
+          resolve(['mdm_lock', 'mdmlock', 'mdm_status', 'mdm']),
+        ),
+        _DisplayField(
+          'BTU STATUS',
+          resolve(['btu_status', 'btustatus', 'btu', 'carrier_btu']),
         ),
         _DisplayField(
           'SIM LOCK',
@@ -460,14 +485,6 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         _DisplayField(
           'PURCHASE DATE',
           resolve(['purchase_date', 'purchasedate']),
-        ),
-        _DisplayField(
-          'BLACKLIST STATUS',
-          resolve(['blacklist_status', 'blackliststatus']),
-        ),
-        _DisplayField(
-          'MDM STATUS',
-          resolve(['mdm_lock', 'mdmlock', 'mdm_status']),
         ),
         _DisplayField(
           'OPERATING SYSTEM',
@@ -482,6 +499,26 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     } else {
       fields.addAll([
         _DisplayField(
+          'ACTIVATION STATUS',
+          resolve(['activation_status', 'activationstatus', 'device_activation']),
+        ),
+        _DisplayField(
+          'BLACKLIST STATUS',
+          resolve(['blacklist_status', 'blackliststatus', 'blacklist']),
+        ),
+        _DisplayField(
+          'MDM STATUS',
+          resolve(['mdm_lock', 'mdmlock', 'mdm_status', 'mdm']),
+        ),
+        _DisplayField(
+          'KNOX GUARD',
+          resolve(['knox_guard', 'knoxguard', 'knox_status', 'knox']),
+        ),
+        _DisplayField(
+          'BTU STATUS',
+          resolve(['btu_status', 'btustatus', 'btu', 'carrier_btu']),
+        ),
+        _DisplayField(
           'SIM LOCK',
           resolve([
             'simlock',
@@ -504,20 +541,8 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           resolve(['purchase_date', 'purchasedate']),
         ),
         _DisplayField(
-          'BLACKLIST STATUS',
-          resolve(['blacklist_status', 'blackliststatus']),
-        ),
-        _DisplayField(
-          'MDM STATUS',
-          resolve(['mdm_lock', 'mdmlock', 'mdm_status']),
-        ),
-        _DisplayField(
           'OPERATING SYSTEM',
           resolve(['operating_system', 'operatingsystem', 'os']),
-        ),
-        _DisplayField(
-          'ACTIVATION STATUS',
-          resolve(['activation_status', 'activationstatus']),
         ),
         _DisplayField('COUNTRY', resolve(['country', 'purchase_country'])),
         _DisplayField(

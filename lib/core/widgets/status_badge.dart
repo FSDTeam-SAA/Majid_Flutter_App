@@ -1,39 +1,47 @@
 import 'package:flutter/material.dart';
-import '../utils/colors.dart';
+import '../utils/status_helper.dart';
 
 class StatusBadge extends StatelessWidget {
   final String label;
+  final String? fieldLabel;
   final Color? color;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final bool isUppercase;
 
-  const StatusBadge({super.key, required this.label, this.color});
+  const StatusBadge({
+    super.key,
+    required this.label,
+    this.fieldLabel,
+    this.color,
+    this.backgroundColor,
+    this.borderColor,
+    this.isUppercase = true,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final badgeColor = color ?? _colorForStatus(label);
+    final style = StatusHelper.getStyle(label, fieldLabel: fieldLabel);
+    final txtColor = color ?? style.textColor;
+    final bgColor = backgroundColor ?? style.backgroundColor;
+    final brdColor = borderColor ?? style.borderColor;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.4), width: 1),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: brdColor, width: 1),
       ),
       child: Text(
-        label,
+        isUppercase ? label.toUpperCase() : label,
         style: TextStyle(
-          color: badgeColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+          color: txtColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
         ),
       ),
     );
-  }
-
-  static Color _colorForStatus(String status) {
-    return switch (status) {
-      'Clean' || 'Completed' => AppColors.primary,
-      'Blacklisted' => Color(0xFFFF4444),
-      'Active' || 'In Progress' => Color(0xFF4DB8FF),
-      _ => Color(0xFF7A8A85),
-    };
   }
 }

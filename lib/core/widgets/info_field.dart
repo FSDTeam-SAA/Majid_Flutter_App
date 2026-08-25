@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
+import '../utils/status_helper.dart';
+import 'status_badge.dart';
 
 class InfoField extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
+  final bool? isStatus;
 
   const InfoField({
     super.key,
     required this.label,
     required this.value,
     this.valueColor,
+    this.isStatus,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showAsStatus = isStatus ?? StatusHelper.isStatusField(label);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -27,15 +33,18 @@ class InfoField extends StatelessWidget {
             letterSpacing: 1.1,
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor ?? AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+        const SizedBox(height: 6),
+        if (showAsStatus && value.trim().isNotEmpty && value.trim() != 'N/A')
+          StatusBadge(label: value, fieldLabel: label, color: valueColor)
+        else
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
       ],
     );
   }
