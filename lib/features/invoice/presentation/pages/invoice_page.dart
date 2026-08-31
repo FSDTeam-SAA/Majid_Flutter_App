@@ -15,21 +15,49 @@ import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
 import '../../../customer/domain/repositories/customer_repository.dart';
+import '../../../customer/presentation/controller/customer_controller.dart';
+import '../../../customer/presentation/widgets/add_customer_sheet.dart';
 import '../../data/repositories/invoice_repository_impl.dart';
 import '../../domain/entities/invoice.dart' as invoice_entity;
 import '../../domain/repositories/invoice_repository.dart';
 import '../controller/invoice_data.dart';
 import '../utils/invoice_pdf_builder.dart';
 import '../widgets/invoice_customer_picker.dart';
+import '../widgets/new_item_name_dialog.dart';
 import '../widgets/invoice_input_field.dart';
 import '../widgets/shop_info_card.dart';
 import 'record_payment_page.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
+import '../../../transactions/data/repositories/cash_management_repository_impl.dart';
+import '../../../transactions/domain/repositories/cash_management_repository.dart';
+
+class InvoiceDraftPrefill {
+  final String itemName;
+  final String description;
+  final String color;
+  final String condition;
+  final String imeiSerial;
+  final String statusLabel;
+  final double? price;
+
+  const InvoiceDraftPrefill({
+    required this.itemName,
+    this.description = '',
+    this.color = '',
+    this.condition = '',
+    this.imeiSerial = '',
+    this.statusLabel = '',
+    this.price,
+  });
+}
 
 class InvoicePage extends StatefulWidget {
-  const InvoicePage({super.key});
+  final int initialTabIndex;
+  final InvoiceDraftPrefill? initialDraft;
+
+  const InvoicePage({super.key, this.initialTabIndex = 0, this.initialDraft});
 
   @override
   State<InvoicePage> createState() => _InvoicePageState();
@@ -40,13 +68,16 @@ class _InvoicePageState extends State<InvoicePage> {
   static const double _dropdownLoaderSize = 22;
 
   late final CustomerRepository _customerRepo;
+  late final CustomerController _customerCtrl;
   late final InvoiceRepository _invoiceRepo;
+  late final CashManagementRepository _cashRepo;
   late final ProfileController _profileCtrl;
   final TextEditingController _firstNameCtrl = TextEditingController();
   final TextEditingController _lastNameCtrl = TextEditingController();
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _addressCtrl = TextEditingController();
+  final TextEditingController _customerSearchCtrl = TextEditingController();
   int _tabIndex = 0;
   String? _selectedCustomer;
   String? _selectedCustomerId;
@@ -59,11 +90,15 @@ class _InvoicePageState extends State<InvoicePage> {
 
   String? _selectedPurchaseCustomer;
   bool _isPurchaseCustomerDropdownOpen = false;
+  final TextEditingController _purchaseCustomerSearchCtrl =
+      TextEditingController();
   bool _purchaseAddToInventory = false;
   String? _purchaseCategory;
 
   String? _selectedDeliveryCustomer;
   bool _isDeliveryCustomerDropdownOpen = false;
+  final TextEditingController _deliveryCustomerSearchCtrl =
+      TextEditingController();
   String _errorMessage = '';
   bool _sessionExpired = false;
   List<InvoiceProduct> _products = [];
@@ -80,8 +115,8 @@ class _InvoicePageState extends State<InvoicePage> {
   final _pCustomerNameCtrl = TextEditingController();
   final List<_PurchaseItem> _purchaseItems = [_PurchaseItem()];
   bool _isSendingPurchase = false;
-  // Placeholder until the backend exposes a real cash-balance endpoint.
-  static const _kSampleAvailableCash = 2450.00;
+  double _availableCash = 0;
+  bool _didApplyInitialDraft = false;
   File? _nidFrontImage;
   File? _nidBackImage;
   bool _isExtractingNid = false;
@@ -136,34 +171,92 @@ class _InvoicePageState extends State<InvoicePage> {
 
   static const _itemColorOptions = [
     'Black',
+    'Midnight',
     'White',
-    'Blue',
-    'Silver',
-    'Gold',
-    'Green',
-    'Purple',
+    'Starlight',
     'Gray',
+    'Silver',
+    'Natural Titanium',
+    'Rose Gold',
+    'Gold',
+    'Blue',
+    'Sky Blue',
+    'Green',
+    'Teal',
+    'Purple',
+    'Pink',
+    'Red',
+    'Orange',
+    'Yellow',
+    'Brown',
+    'Beige',
   ];
 
-  List<String> get _itemNameOptions {
-    final names =
-        _products
-            .map((product) => product.name.trim())
-            .where((name) => name.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-    return names;
+  static const _defaultConditionOptions = [
+    'New',
+    'Used',
+    'Excellent',
+    'Good',
+    'Fair',
+    'Low Risk • Activation',
+  ];
+
+  List<String> get _itemConditionOptions {
+    final options = <String>{
+      ..._defaultConditionOptions,
+      ..._products
+          .map((product) => product.condition.trim())
+          .where((condition) => condition.isNotEmpty),
+    }.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return options;
+  }
+
+  List<InvoiceProduct> _searchableProducts(String query) {
+    final normalized = query.trim().toLowerCase();
+    final seen = <String>{};
+    final matches = _products.where((product) {
+      if (normalized.isEmpty) return true;
+      final haystack = [
+        product.name,
+        product.code,
+        product.category,
+        product.storage,
+        product.colorName,
+      ].join(' ').toLowerCase();
+      return haystack.contains(normalized);
+    });
+
+    return matches.where((product) {
+        final key = product.name.trim().toLowerCase();
+        return key.isNotEmpty && seen.add(key);
+      }).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  }
+
+  String _productPickerSubtitle(InvoiceProduct product) {
+    return [
+      if (product.category.trim().isNotEmpty) product.category.trim(),
+      if (product.storage.trim().isNotEmpty) product.storage.trim(),
+      if (product.colorName.trim().isNotEmpty) product.colorName.trim(),
+    ].join(' • ');
   }
 
   @override
   void initState() {
     super.initState();
+    _tabIndex = widget.initialTabIndex.clamp(0, _tabSpecs.length - 1);
     final api = ApiClient(baseUrl);
     _customerRepo = CustomerRepositoryImpl(api);
+    _customerCtrl = Get.isRegistered<CustomerController>()
+        ? Get.find<CustomerController>()
+        : Get.put(CustomerController());
     _invoiceRepo = InvoiceRepositoryImpl(api);
+    _cashRepo = CashManagementRepositoryImpl(api);
     _profileCtrl = Get.find<ProfileController>();
     _loadInvoiceData();
+    if (_tabIndex == 3) {
+      _fetchViewInvoices();
+    }
   }
 
   @override
@@ -173,6 +266,7 @@ class _InvoicePageState extends State<InvoicePage> {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
+    _customerSearchCtrl.dispose();
     _pFirstNameCtrl.dispose();
     _pLastNameCtrl.dispose();
     _pEmailCtrl.dispose();
@@ -180,6 +274,7 @@ class _InvoicePageState extends State<InvoicePage> {
     _pAddressCtrl.dispose();
     _pIdNumberCtrl.dispose();
     _pCustomerNameCtrl.dispose();
+    _purchaseCustomerSearchCtrl.dispose();
     for (final item in _purchaseItems) {
       item.dispose();
     }
@@ -188,6 +283,7 @@ class _InvoicePageState extends State<InvoicePage> {
     _dEmailCtrl.dispose();
     _dPhoneCtrl.dispose();
     _dAddressCtrl.dispose();
+    _deliveryCustomerSearchCtrl.dispose();
     for (final item in _deliveryItems) {
       item.dispose();
     }
@@ -204,7 +300,12 @@ class _InvoicePageState extends State<InvoicePage> {
       _sessionExpired = false;
     });
     try {
-      await Future.wait([_fetchCustomers(), _fetchProducts()]);
+      await Future.wait([
+        _fetchCustomers(),
+        _fetchProducts(),
+        _fetchAvailableCash(),
+      ]);
+      _applyInitialDraftIfNeeded();
     } on DioException catch (e) {
       _sessionExpired = e.response?.statusCode == 401;
       _errorMessage = _sessionExpired
@@ -215,6 +316,20 @@ class _InvoicePageState extends State<InvoicePage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _fetchAvailableCash() async {
+    var shopkeeperId = _profileCtrl.userId;
+    if (shopkeeperId.isEmpty) {
+      await _profileCtrl.fetchProfile();
+      shopkeeperId = _profileCtrl.userId;
+    }
+    if (shopkeeperId.isEmpty) {
+      _availableCash = 0;
+      return;
+    }
+    final cashData = await _cashRepo.getCashManagement(shopkeeperId);
+    _availableCash = cashData?.cashInDrawer ?? 0;
   }
 
   Future<void> _fetchCustomers() async {
@@ -235,6 +350,7 @@ class _InvoicePageState extends State<InvoicePage> {
     setState(() {
       _isCustomersLoading = true;
       _isCustomerDropdownOpen = true;
+      _customerSearchCtrl.clear();
     });
     try {
       await _fetchCustomers();
@@ -252,6 +368,7 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   void _selectCustomer(Customer customer) {
+    _customerSearchCtrl.clear();
     setState(() {
       _selectedCustomer = customerLabel(customer);
       _selectedCustomerId = customer.id;
@@ -291,6 +408,7 @@ class _InvoicePageState extends State<InvoicePage> {
     setState(() {
       _isCustomersLoading = true;
       _isPurchaseCustomerDropdownOpen = true;
+      _purchaseCustomerSearchCtrl.clear();
     });
     try {
       await _fetchCustomers();
@@ -308,6 +426,7 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   void _selectPurchaseCustomer(Customer customer) {
+    _purchaseCustomerSearchCtrl.clear();
     setState(() {
       _selectedPurchaseCustomer = customerLabel(customer);
       _applyCustomerDataTo(
@@ -327,6 +446,7 @@ class _InvoicePageState extends State<InvoicePage> {
     setState(() {
       _isCustomersLoading = true;
       _isDeliveryCustomerDropdownOpen = true;
+      _deliveryCustomerSearchCtrl.clear();
     });
     try {
       await _fetchCustomers();
@@ -344,6 +464,7 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   void _selectDeliveryCustomer(Customer customer) {
+    _deliveryCustomerSearchCtrl.clear();
     setState(() {
       _selectedDeliveryCustomer = customerLabel(customer);
       _applyCustomerDataTo(
@@ -358,8 +479,116 @@ class _InvoicePageState extends State<InvoicePage> {
     });
   }
 
+  Future<void> _addCustomerFromPicker(
+    TextEditingController searchController,
+    ValueChanged<Customer> onSelect,
+  ) async {
+    final saved = await showAddCustomerSheet(context, _customerCtrl);
+    if (saved != true || !mounted) return;
+
+    final savedCustomerId = _customerCtrl.customers.isNotEmpty
+        ? _customerCtrl.customers.first.id
+        : null;
+    await _fetchCustomers();
+    if (!mounted) return;
+
+    searchController.clear();
+
+    if (savedCustomerId != null) {
+      for (final customer in _customers) {
+        if (customer.id == savedCustomerId) {
+          onSelect(customer);
+          return;
+        }
+      }
+    }
+
+    setState(() {});
+  }
+
   Future<void> _fetchProducts() async {
     _products = await _invoiceRepo.getInventoryItems();
+  }
+
+  InvoiceProduct? _findProductByName(String name) {
+    final normalized = name.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    for (final product in _products) {
+      if (product.name.trim().toLowerCase() == normalized) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  void _applyInvoiceProductDefaults(
+    _CreateInvoiceItem item,
+    String name, {
+    bool preserveManualPrice = false,
+  }) {
+    item.nameCtrl.text = name;
+    final match = _findProductByName(name);
+    item.inventoryId = match?.id;
+    if (match == null) return;
+
+    final details = [
+      match.category,
+      match.storage,
+      match.code,
+    ].where((value) => value.trim().isNotEmpty).join(' • ');
+    if (details.isNotEmpty) item.descriptionCtrl.text = details;
+    if (match.colorName.isNotEmpty) item.colorCtrl.text = match.colorName;
+    if (match.condition.isNotEmpty) item.conditionCtrl.text = match.condition;
+    if (!preserveManualPrice && match.price > 0) {
+      item.priceCtrl.text = match.price == match.price.roundToDouble()
+          ? match.price.toInt().toString()
+          : match.price.toString();
+    }
+  }
+
+  void _applyCustomInvoiceProductName(_CreateInvoiceItem item, String name) {
+    item.inventoryId = null;
+    item.nameCtrl.text = name;
+    item.descriptionCtrl.clear();
+    item.colorCtrl.clear();
+    item.conditionCtrl.clear();
+  }
+
+  void _applyInitialDraftIfNeeded() {
+    final draft = widget.initialDraft;
+    if (_didApplyInitialDraft || draft == null) return;
+    _didApplyInitialDraft = true;
+
+    final item = _createInvoiceItems.first;
+    _applyInvoiceProductDefaults(
+      item,
+      draft.itemName,
+      preserveManualPrice: draft.price != null,
+    );
+    if (draft.itemName.trim().isNotEmpty) {
+      item.nameCtrl.text = draft.itemName.trim();
+    }
+    if (draft.description.trim().isNotEmpty) {
+      item.descriptionCtrl.text = draft.description.trim();
+    }
+    if (draft.color.trim().isNotEmpty) {
+      item.colorCtrl.text = draft.color.trim();
+    }
+    final condition = [
+      draft.condition.trim(),
+      draft.statusLabel.trim(),
+    ].where((value) => value.isNotEmpty).toSet().join(' • ');
+    if (condition.isNotEmpty) {
+      item.conditionCtrl.text = condition;
+    }
+    if (draft.imeiSerial.trim().isNotEmpty) {
+      item.imeiControllers.first.text = draft.imeiSerial.trim();
+    }
+    if (draft.price != null && draft.price! > 0) {
+      item.priceCtrl.text = draft.price!.toStringAsFixed(
+        draft.price! % 1 == 0 ? 0 : 2,
+      );
+    }
   }
 
   Future<void> _createInvoice() async {
@@ -852,36 +1081,6 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
-  void _applyCreateInvoiceProductDefaults(
-    _CreateInvoiceItem item,
-    String name,
-  ) {
-    item.nameCtrl.text = name;
-    InvoiceProduct? match;
-    for (final product in _products) {
-      if (product.name.trim().toLowerCase() == name.trim().toLowerCase()) {
-        match = product;
-        break;
-      }
-    }
-    if (match == null) {
-      item.inventoryId = null;
-      return;
-    }
-    item.inventoryId = match.id;
-    if (match.storage.isNotEmpty) item.descriptionCtrl.text = match.storage;
-    if (match.colorName.isNotEmpty) item.colorCtrl.text = match.colorName;
-    if (match.condition.isNotEmpty) item.conditionCtrl.text = match.condition;
-    if (match.price > 0) {
-      item.priceCtrl.text = match.price == match.price.roundToDouble()
-          ? match.price.toInt().toString()
-          : match.price.toString();
-    }
-    if (match.imeiSerial.isNotEmpty && item.imeiControllers.isNotEmpty) {
-      item.imeiControllers.first.text = match.imeiSerial;
-    }
-  }
-
   Widget _buildCreateInvoiceItemCard(int index) {
     final item = _createInvoiceItems[index];
     final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
@@ -946,9 +1145,10 @@ class _InvoicePageState extends State<InvoicePage> {
                       _createInvoiceItems[index].priceCtrl.text = '0';
                       _createInvoiceItems[index].discountCtrl.clear();
                       _createInvoiceItems[index].taxCtrl.clear();
-                      for (final c in _createInvoiceItems[index]
-                          .imeiControllers
-                          .sublist(1)) {
+                      for (final c
+                          in _createInvoiceItems[index].imeiControllers.sublist(
+                            1,
+                          )) {
                         c.dispose();
                       }
                       _createInvoiceItems[index].imeiControllers
@@ -972,65 +1172,26 @@ class _InvoicePageState extends State<InvoicePage> {
           Row(
             children: [
               Expanded(
-                child: InvoiceInputField(
+                child: _buildProductPickerField(
+                  context,
+                  selected: item.nameCtrl.text.trim().isEmpty
+                      ? null
+                      : item.nameCtrl.text.trim(),
                   hint: 'Item / Product Name *',
-                  controller: item.nameCtrl,
-                  onChanged: (val) {
-                    InvoiceProduct? match;
-                    for (final p in _products) {
-                      if (p.name.trim().toLowerCase() ==
-                          val.trim().toLowerCase()) {
-                        match = p;
-                        break;
-                      }
+                  onSelect: (value) => setState(() {
+                    final match = _findProductByName(value);
+                    if (match != null) {
+                      _applyInvoiceProductDefaults(
+                        item,
+                        match.name,
+                        preserveManualPrice: false,
+                      );
+                    } else {
+                      _applyCustomInvoiceProductName(item, value);
                     }
-                    item.inventoryId = match?.id;
-                    setState(() {});
-                  },
+                  }),
                 ),
               ),
-              if (_itemNameOptions.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: () {
-                    _showSelectionSheet(
-                      context,
-                      title: 'Select from Inventory',
-                      selected: item.nameCtrl.text.isEmpty
-                          ? null
-                          : item.nameCtrl.text,
-                      items: _itemNameOptions,
-                      onSelect: (value) => setState(
-                        () => _applyCreateInvoiceProductDefaults(item, value),
-                      ),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(
-                      color: AppColors.primary.withValues(
-                        alpha: AppColors.isDark ? 0.6 : 0.72,
-                      ),
-                      width: 1.2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.inventory_2_outlined, size: 16),
-                      SizedBox(width: 4),
-                      Text('Inventory', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 10),
@@ -1042,16 +1203,26 @@ class _InvoicePageState extends State<InvoicePage> {
           Row(
             children: [
               Expanded(
-                child: InvoiceInputField(
-                  hint: 'Color',
-                  controller: item.colorCtrl,
+                child: _buildDropdown(
+                  context,
+                  item.colorCtrl.text.trim().isEmpty
+                      ? null
+                      : item.colorCtrl.text.trim(),
+                  'Color',
+                  (value) => setState(() => item.colorCtrl.text = value),
+                  _itemColorOptions,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: InvoiceInputField(
-                  hint: 'Condition',
-                  controller: item.conditionCtrl,
+                child: _buildDropdown(
+                  context,
+                  item.conditionCtrl.text.trim().isEmpty
+                      ? null
+                      : item.conditionCtrl.text.trim(),
+                  'Condition',
+                  (value) => setState(() => item.conditionCtrl.text = value),
+                  _itemConditionOptions,
                 ),
               ),
             ],
@@ -1229,14 +1400,19 @@ class _InvoicePageState extends State<InvoicePage> {
       selected: _selectedCustomer,
       isOpen: _isCustomerDropdownOpen,
       isLoading: _isCustomersLoading,
+      searchController: _customerSearchCtrl,
       dropdownLoaderSize: _dropdownLoaderSize,
       onToggle: () {
         if (_isCustomerDropdownOpen) {
+          _customerSearchCtrl.clear();
           setState(() => _isCustomerDropdownOpen = false);
         } else {
           _openCustomerPicker();
         }
       },
+      onSearchChanged: (_) => setState(() {}),
+      onAddCustomer: () =>
+          _addCustomerFromPicker(_customerSearchCtrl, _selectCustomer),
       onSelect: _selectCustomer,
     );
   }
@@ -1386,6 +1562,536 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
+  Widget _buildProductPickerField(
+    BuildContext context, {
+    required String? selected,
+    required String hint,
+    required void Function(String) onSelect,
+  }) {
+    return _buildDropdown(
+      context,
+      selected,
+      hint,
+      onSelect,
+      const [],
+      onTap: () => _showProductSelectionSheet(
+        context,
+        title: hint,
+        selected: selected,
+        onSelect: onSelect,
+      ),
+    );
+  }
+
+  Color? _selectionAccentColor(String title, String item) {
+    if (title.trim().toLowerCase() != 'color') return null;
+
+    switch (item.trim().toLowerCase()) {
+      case 'black':
+        return const Color(0xFF111827);
+      case 'midnight':
+        return const Color(0xFF1E293B);
+      case 'white':
+        return Colors.white;
+      case 'starlight':
+        return const Color(0xFFF5E7C4);
+      case 'natural titanium':
+        return const Color(0xFF9A8F7A);
+      case 'rose gold':
+        return const Color(0xFFB76E79);
+      case 'blue':
+        return const Color(0xFF3B82F6);
+      case 'sky blue':
+        return const Color(0xFF60A5FA);
+      case 'silver':
+        return const Color(0xFFD1D5DB);
+      case 'gold':
+        return const Color(0xFFF59E0B);
+      case 'green':
+        return const Color(0xFF10B981);
+      case 'teal':
+        return const Color(0xFF14B8A6);
+      case 'purple':
+        return const Color(0xFF8B5CF6);
+      case 'pink':
+        return const Color(0xFFEC4899);
+      case 'red':
+        return const Color(0xFFEF4444);
+      case 'orange':
+        return const Color(0xFFF97316);
+      case 'yellow':
+        return const Color(0xFFEAB308);
+      case 'brown':
+        return const Color(0xFF8B5E3C);
+      case 'beige':
+        return const Color(0xFFD6C2A1);
+      case 'gray':
+      case 'grey':
+        return const Color(0xFF9CA3AF);
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildSelectionTile(
+    BuildContext context, {
+    required String title,
+    required String item,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final accentColor = _selectionAccentColor(title, item);
+    // Pale swatches (white, silver, starlight) need a neutral ring or they
+    // vanish into the row.
+    final needsLightRing =
+        accentColor != null && accentColor.computeLuminance() > 0.75;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            // Flat neutral row. The swatch carries the colour; washing the
+            // whole row in it left every option looking faded.
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : AppColors.fieldBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.45)
+                  : AppColors.fieldBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              if (accentColor != null) ...[
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    // The real colour, flat, so it reads truthfully.
+                    color: accentColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: needsLightRing
+                          ? AppColors.fieldBorder
+                          : Colors.black.withValues(alpha: 0.14),
+                      width: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  item,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.fieldBorder,
+                    width: 1.5,
+                  ),
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check_rounded,
+                        color: AppColors.surfaceForeground,
+                        size: 14,
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductSelectionTile(
+    BuildContext context, {
+    required InvoiceProduct product,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final subtitle = _productPickerSubtitle(product);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : AppColors.fieldBackground,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.42)
+                  : AppColors.fieldBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.inventory_2_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.fieldBorder,
+                  ),
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check_rounded,
+                        color: AppColors.surfaceForeground,
+                        size: 15,
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Always-visible "add a new item" row. With nothing typed it invites a
+  /// name and focuses the field; once a name is typed it commits it.
+  Widget _buildCustomProductTile(
+    BuildContext context, {
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    final hasValue = value.trim().isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  Icons.add_rounded,
+                  color: AppColors.primary,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasValue ? 'Use "$value"' : 'Add a new item',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      hasValue
+                          ? 'Not in your inventory - add it as a new item'
+                          : 'Tap to name an item you do not stock',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showProductSelectionSheet(
+    BuildContext context, {
+    required String title,
+    required String? selected,
+    required void Function(String) onSelect,
+  }) async {
+    final searchCtrl = TextEditingController(text: selected ?? '');
+    final searchFocus = FocusNode();
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.76;
+        final bottomInset = MediaQuery.paddingOf(sheetContext).bottom;
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final query = searchCtrl.text.trim();
+            final results = _searchableProducts(query);
+            final normalizedQuery = query.toLowerCase();
+            final hasExactMatch = results.any(
+              (product) => product.name.trim().toLowerCase() == normalizedQuery,
+            );
+
+            return SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottomInset),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.fieldBorder,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Search existing items or use a new name.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.fieldBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.fieldBorder),
+                        ),
+                        child: TextField(
+                          controller: searchCtrl,
+                          focusNode: searchFocus,
+                          onChanged: (_) => setSheetState(() {}),
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search item name, category, storage...',
+                            hintStyle: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search_rounded,
+                              color: AppColors.textSecondary,
+                              size: 20,
+                            ),
+                            suffixIcon: query.isEmpty
+                                ? null
+                                : IconButton(
+                                    onPressed: () {
+                                      searchCtrl.clear();
+                                      setSheetState(() {});
+                                    },
+                                    icon: Icon(
+                                      Icons.close_rounded,
+                                      color: AppColors.textSecondary,
+                                      size: 18,
+                                    ),
+                                  ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (!hasExactMatch) ...[
+                        _buildCustomProductTile(
+                          sheetContext,
+                          value: query,
+                          onTap: () async {
+                            if (query.isNotEmpty) {
+                              Navigator.pop(sheetContext, query);
+                              return;
+                            }
+                            // Nothing typed yet: ask for the name outright
+                            // rather than silently moving the cursor.
+                            final name = await showNewItemNameDialog(
+                              sheetContext,
+                            );
+                            if (name == null || !sheetContext.mounted) return;
+                            Navigator.pop(sheetContext, name);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      if (results.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              query.isEmpty
+                                  ? 'No items found yet'
+                                  : 'No matching items found',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Flexible(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            itemCount: results.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (_, index) {
+                              final product = results[index];
+                              return _buildProductSelectionTile(
+                                sheetContext,
+                                product: product,
+                                isSelected:
+                                    selected?.trim().toLowerCase() ==
+                                    product.name.trim().toLowerCase(),
+                                onTap: () =>
+                                    Navigator.pop(sheetContext, product.name),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    // The sheet is still animating out, so the field would read a disposed
+    // controller. Tear both down once the route is gone.
+    Future.delayed(const Duration(milliseconds: 400), () {
+      searchCtrl.dispose();
+      searchFocus.dispose();
+    });
+
+    if (choice != null) {
+      onSelect(choice);
+    }
+  }
+
   Future<void> _showSelectionSheet(
     BuildContext context, {
     required String title,
@@ -1395,102 +2101,110 @@ class _InvoicePageState extends State<InvoicePage> {
   }) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.cardBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
+        final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.72;
+        final bottomInset = MediaQuery.paddingOf(sheetContext).bottom;
+
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.fieldBorder,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                if (items.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 28),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            color: AppColors.textSecondary,
-                            size: 36,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Nothing to choose from yet',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Options will show up here once available.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ],
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottomInset),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldBorder,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                ...items.map(
-                  (item) => ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  const SizedBox(height: 18),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                     ),
-                    tileColor: selected == item
-                        ? AppColors.primary.withValues(alpha: 0.1)
-                        : Colors.transparent,
-                    title: Text(
-                      item,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: selected == item
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    items.isEmpty
+                        ? 'Nothing available to choose right now.'
+                        : 'Select one option from the list below.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  if (items.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                color: AppColors.textSecondary,
+                                size: 36,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Nothing to choose from yet',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Options will show up here once available.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: items.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (_, index) {
+                          final item = items[index];
+                          return _buildSelectionTile(
+                            sheetContext,
+                            title: title,
+                            item: item,
+                            isSelected: selected == item,
+                            onTap: () => Navigator.pop(sheetContext, item),
+                          );
+                        },
                       ),
                     ),
-                    trailing: selected == item
-                        ? Icon(
-                            Icons.check_circle,
-                            color: AppColors.primary,
-                            size: 20,
-                          )
-                        : null,
-                    onTap: () => Navigator.pop(sheetContext, item),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -1535,14 +2249,21 @@ class _InvoicePageState extends State<InvoicePage> {
           selected: _selectedPurchaseCustomer,
           isOpen: _isPurchaseCustomerDropdownOpen,
           isLoading: _isCustomersLoading,
+          searchController: _purchaseCustomerSearchCtrl,
           dropdownLoaderSize: _dropdownLoaderSize,
           onToggle: () {
             if (_isPurchaseCustomerDropdownOpen) {
+              _purchaseCustomerSearchCtrl.clear();
               setState(() => _isPurchaseCustomerDropdownOpen = false);
             } else {
               _openPurchaseCustomerPicker();
             }
           },
+          onSearchChanged: (_) => setState(() {}),
+          onAddCustomer: () => _addCustomerFromPicker(
+            _purchaseCustomerSearchCtrl,
+            _selectPurchaseCustomer,
+          ),
           onSelect: _selectPurchaseCustomer,
         ),
         SizedBox(height: 10),
@@ -1775,7 +2496,7 @@ class _InvoicePageState extends State<InvoicePage> {
                       MaterialPageRoute(
                         builder: (_) => RecordPaymentPage(
                           invoiceTotal: _purchaseGrandTotal,
-                          availableCash: _kSampleAvailableCash,
+                          availableCash: _availableCash,
                           onSubmitPayment: _createPurchaseInvoice,
                         ),
                       ),
@@ -1858,6 +2579,13 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
+  void _applyCustomProductName(_PurchaseItem item, String name) {
+    item.nameCtrl.text = name;
+    item.storageCtrl.clear();
+    item.colorCtrl.clear();
+    item.conditionCtrl.clear();
+  }
+
   Widget _buildItemCard(List<_PurchaseItem> items, int index) {
     final item = items[index];
     final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
@@ -1934,12 +2662,20 @@ class _InvoicePageState extends State<InvoicePage> {
             ],
           ),
           SizedBox(height: 12),
-          _buildDropdown(
+          _buildProductPickerField(
             context,
-            item.nameCtrl.text.isEmpty ? null : item.nameCtrl.text,
-            'Item Name*',
-            (value) => setState(() => _applyProductDefaults(item, value)),
-            _itemNameOptions,
+            selected: item.nameCtrl.text.trim().isEmpty
+                ? null
+                : item.nameCtrl.text.trim(),
+            hint: 'Item Name*',
+            onSelect: (value) => setState(() {
+              final match = _findProductByName(value);
+              if (match != null) {
+                _applyProductDefaults(item, match.name);
+              } else {
+                _applyCustomProductName(item, value);
+              }
+            }),
           ),
           SizedBox(height: 10),
           Row(
@@ -1969,9 +2705,14 @@ class _InvoicePageState extends State<InvoicePage> {
           Row(
             children: [
               Expanded(
-                child: InvoiceInputField(
-                  hint: 'Condition',
-                  controller: item.conditionCtrl,
+                child: _buildDropdown(
+                  context,
+                  item.conditionCtrl.text.trim().isEmpty
+                      ? null
+                      : item.conditionCtrl.text.trim(),
+                  'Condition',
+                  (value) => setState(() => item.conditionCtrl.text = value),
+                  _itemConditionOptions,
                 ),
               ),
               SizedBox(width: 10),
@@ -2460,14 +3201,21 @@ class _InvoicePageState extends State<InvoicePage> {
           selected: _selectedDeliveryCustomer,
           isOpen: _isDeliveryCustomerDropdownOpen,
           isLoading: _isCustomersLoading,
+          searchController: _deliveryCustomerSearchCtrl,
           dropdownLoaderSize: _dropdownLoaderSize,
           onToggle: () {
             if (_isDeliveryCustomerDropdownOpen) {
+              _deliveryCustomerSearchCtrl.clear();
               setState(() => _isDeliveryCustomerDropdownOpen = false);
             } else {
               _openDeliveryCustomerPicker();
             }
           },
+          onSearchChanged: (_) => setState(() {}),
+          onAddCustomer: () => _addCustomerFromPicker(
+            _deliveryCustomerSearchCtrl,
+            _selectDeliveryCustomer,
+          ),
           onSelect: _selectDeliveryCustomer,
         ),
         SizedBox(height: 10),

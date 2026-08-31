@@ -20,4 +20,13 @@ class ScanItem {
     this.createdAt,
     this.report = const {},
   });
+
+  String get reportId => report['_id']?.toString() ?? '';
+
+  bool get hasSavedReport =>
+      report.containsKey('ok') ||
+      report.containsKey('data') ||
+      report.containsKey('parsedProviderData') ||
+      report.containsKey('providerData') ||
+      report.containsKey('providerResults');
 }

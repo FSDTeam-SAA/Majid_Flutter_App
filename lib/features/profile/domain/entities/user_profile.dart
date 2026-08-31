@@ -25,7 +25,7 @@ class UserProfile {
     required this.whatsappNumber,
     required this.phone,
     required this.imageUrl,
-    this.currencyCode = 'USD',
+    this.currencyCode = 'GBP',
   });
 
   String get fullName => '$firstName $lastName'.trim();
@@ -41,5 +41,6 @@ class UserProfile {
     whatsappNumber: '',
     phone: '',
     imageUrl: '',
+    currencyCode: 'GBP',
   );
 }

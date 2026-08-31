@@ -4,6 +4,9 @@ import '../../../../core/utils/colors.dart';
 
 class ProfileMenuItem extends StatelessWidget {
   final String label;
+
+  /// Optional current selection, shown muted before the chevron.
+  final String? value;
   final VoidCallback? onTap;
   final Color? backgroundColor;
   final Color? borderColor;
@@ -13,6 +16,7 @@ class ProfileMenuItem extends StatelessWidget {
   const ProfileMenuItem({
     super.key,
     required this.label,
+    this.value,
     this.onTap,
     this.backgroundColor,
     this.borderColor,
@@ -46,6 +50,16 @@ class ProfileMenuItem extends StatelessWidget {
                   ),
                 ),
               ),
+              if (value != null && value!.isNotEmpty) ...[
+                Text(
+                  value!,
+                  style: TextStyle(
+                    color: iconColor ?? AppColors.textSecondary,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Icon(
                 Icons.chevron_right,
                 color: iconColor ?? AppColors.textSecondary,

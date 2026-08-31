@@ -39,6 +39,8 @@ class ImeiEndpoints {
   static String deviceAnalysis = "$baseApiUrl/imei/device-analysis";
   static String checkBatch = "$baseApiUrl/imei/check-batch";
   static String history = "$baseApiUrl/imei/history";
+  static String historyReport(String reportId) =>
+      "$baseApiUrl/imei/history/$reportId";
 }
 
 class InventoryEndpoints {

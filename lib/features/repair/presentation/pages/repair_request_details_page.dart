@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
@@ -10,9 +12,11 @@ import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/info_field.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../staff/data/repositories/staff_repository_impl.dart';
+import '../../../stock/data/repositories/inventory_repository_impl.dart';
 import '../../../staff/domain/entities/staff_member.dart';
 import '../controller/repair_data.dart';
 import '../widgets/timeline_widget.dart';
+import '../widgets/waiting_for_parts_sheet.dart';
 import 'receipt_page.dart';
 
 class RepairRequestDetailsPage extends StatefulWidget {
@@ -74,6 +78,9 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         setState(() => _repair['status'] = status);
       }
       _showMessage('Status updated to ${_formatStatus(status)}');
+      if (status == 'completed' && mounted) {
+        await _showCompletionContactSheet(autoOpened: true);
+      }
     } on DioException catch (e) {
       _showMessage(e.response?.data?['message'] ?? 'Failed to update status');
     } catch (e) {
@@ -83,103 +90,30 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
   }
 
+  /// Part names offered in the picker, taken from the shop's own inventory.
+  Future<List<String>> _fetchPartSuggestions() async {
+    try {
+      final items = await InventoryRepositoryImpl(_api).getMyInventory();
+      return items
+          .map((item) => item.itemName.trim())
+          .where((name) => name.isNotEmpty)
+          .toSet()
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<void> _showWaitingForPartsDialog() async {
-    final daysCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
+    final suggestions = await _fetchPartSuggestions();
+    if (!mounted) return;
 
-    final confirmed = await showDialog<bool>(
+    final result = await showWaitingForPartsSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Waiting for Parts',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: daysCtrl,
-              keyboardType: TextInputType.number,
-              style: TextStyle(color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'Estimated days',
-                hintStyle: TextStyle(color: AppColors.textSecondary),
-                filled: true,
-                fillColor: AppColors.fieldBackground,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.fieldBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.fieldBorder),
-                ),
-              ),
-            ),
-            SizedBox(height: 12),
-            TextField(
-              controller: descCtrl,
-              maxLines: 3,
-              style: TextStyle(color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'Which parts are needed?',
-                hintStyle: TextStyle(color: AppColors.textSecondary),
-                filled: true,
-                fillColor: AppColors.fieldBackground,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.fieldBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.fieldBorder),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text('Confirm'),
-          ),
-        ],
-      ),
+      customerName: _customerName,
+      partSuggestions: suggestions,
     );
-
-    if (confirmed != true) return;
-
-    final days = int.tryParse(daysCtrl.text.trim());
-    final desc = descCtrl.text.trim();
-
-    if (days == null || days <= 0) {
-      _showMessage('Please enter valid estimated days');
-      return;
-    }
-    if (desc.isEmpty) {
-      _showMessage('Please describe which parts are needed');
-      return;
-    }
+    if (result == null || !mounted) return;
 
     final id = _repair['_id']?.toString();
     if (id == null || id.isEmpty) return;
@@ -190,8 +124,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         RepairRequestEndpoints.updateStatus(id),
         data: {
           'status': 'waiting-for-parts',
-          'waitingForPartsDays': days,
-          'waitingForPartsDescription': desc,
+          'waitingForPartsDays': result.days,
+          // The backend keeps a single free-text field, so the part and its
+          // source are folded into the description.
+          'waitingForPartsDescription': result.description,
         },
       );
       final data = res.data['data'];
@@ -201,6 +137,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         setState(() => _repair['status'] = 'waiting-for-parts');
       }
       _showMessage('Status updated to Waiting for Parts');
+      if (mounted) await _showNotifySheet(result.message);
     } on DioException catch (e) {
       _showMessage(e.response?.data?['message'] ?? 'Failed to update status');
     } catch (e) {
@@ -208,6 +145,128 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }
+  }
+
+  /// Sends [message] to the customer. The backend only emails on completion,
+  /// so waiting-for-parts updates go out from the shopkeeper's own apps.
+  Future<void> _showNotifySheet(String message) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Notify Customer',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Send the parts update through WhatsApp, SMS, or email.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _contactActionChip(
+                    label: 'WhatsApp',
+                    icon: Icons.chat_bubble_outline_rounded,
+                    onTap: () => _sendOnWhatsApp(message),
+                  ),
+                  _contactActionChip(
+                    label: 'Message',
+                    icon: Icons.sms_outlined,
+                    onTap: () => _sendBySms(message),
+                  ),
+                  _contactActionChip(
+                    label: 'Email',
+                    icon: Icons.mail_outline_rounded,
+                    onTap: () => _sendByEmail(
+                      message,
+                      subject: 'Update on your repair - $_shopName',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.fieldBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.fieldBorder),
+                ),
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendOnWhatsApp(String message) async {
+    final phone = _sanitizePhoneNumber(_customerPhone);
+    if (phone.isEmpty) {
+      _showMessage('Customer phone number is missing');
+      return;
+    }
+    await _launchUri(
+      Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}'),
+      successLabel: 'WhatsApp',
+      fallbackShareText: message,
+    );
+  }
+
+  Future<void> _sendBySms(String message) async {
+    final phone = _sanitizePhoneNumber(_customerPhone);
+    if (phone.isEmpty) {
+      _showMessage('Customer phone number is missing');
+      return;
+    }
+    await _launchUri(
+      Uri(scheme: 'sms', path: phone, queryParameters: {'body': message}),
+      successLabel: 'messages',
+      fallbackShareText: message,
+    );
+  }
+
+  Future<void> _sendByEmail(String message, {required String subject}) async {
+    if (_customerEmail.isEmpty) {
+      _showMessage('Customer email is missing');
+      return;
+    }
+    await _launchUri(
+      Uri(
+        scheme: 'mailto',
+        path: _customerEmail,
+        queryParameters: {'subject': subject, 'body': message},
+      ),
+      successLabel: 'email',
+      fallbackShareText: message,
+    );
   }
 
   Future<List<String>> _fetchPreviousProblems() async {
@@ -495,6 +554,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 : problems
                       .where((p) => p.toLowerCase().contains(query))
                       .toList();
+            final customProblem = searchCtrl.text.trim();
+            final hasExactCustomMatch = problems.any(
+              (problem) => problem.trim().toLowerCase() == query,
+            );
 
             return Padding(
               padding: EdgeInsets.fromLTRB(
@@ -550,7 +613,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                   const SizedBox(height: 14),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 260),
-                    child: filtered.isEmpty
+                    child: filtered.isEmpty && customProblem.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Text(
@@ -566,36 +629,93 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                           )
                         : ListView.separated(
                             shrinkWrap: true,
-                            itemCount: filtered.length,
+                            itemCount:
+                                filtered.length +
+                                ((!hasExactCustomMatch &&
+                                        customProblem.isNotEmpty)
+                                    ? 1
+                                    : 0),
                             separatorBuilder: (_, _) =>
                                 const SizedBox(height: 8),
-                            itemBuilder: (_, index) => InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () =>
-                                  Navigator.pop(sheetCtx, filtered[index]),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.fieldBackground,
+                            itemBuilder: (_, index) {
+                              if (!hasExactCustomMatch &&
+                                  customProblem.isNotEmpty &&
+                                  index == 0) {
+                                return InkWell(
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: AppColors.fieldBorder,
+                                  onTap: () =>
+                                      Navigator.pop(sheetCtx, customProblem),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.fieldBackground,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: AppColors.fieldBorder,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.edit_note_rounded,
+                                          color: AppColors.primary,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            'Use "$customProblem"',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 13.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                              final filteredIndex =
+                                  (!hasExactCustomMatch &&
+                                      customProblem.isNotEmpty)
+                                  ? index - 1
+                                  : index;
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () => Navigator.pop(
+                                  sheetCtx,
+                                  filtered[filteredIndex],
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.fieldBackground,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: AppColors.fieldBorder,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    filtered[filteredIndex],
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 13.5,
+                                    ),
                                   ),
                                 ),
-                                child: Text(
-                                  filtered[index],
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                   ),
                 ],
@@ -776,6 +896,536 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  bool get _hasWaitingForPartsDetails {
+    final days = _repair['waitingForPartsDays'];
+    final description =
+        _repair['waitingForPartsDescription']?.toString().trim() ?? '';
+    return days != null || description.isNotEmpty;
+  }
+
+  bool get _isCompleted => _repair['status']?.toString() == 'completed';
+
+  String get _technicianDisplayName {
+    final direct = _repair['technicianName']?.toString().trim() ?? '';
+    if (direct.isNotEmpty) return direct;
+
+    final fallback = _repair['technician']?.toString().trim() ?? '';
+    if (fallback.isNotEmpty) return fallback;
+
+    final notes = _repair['shopkeeperNotes'];
+    if (notes is List && notes.isNotEmpty) {
+      final latest = notes.last;
+      if (latest is Map) {
+        final assigned = latest['assignedPerson']?.toString().trim() ?? '';
+        if (assigned.isNotEmpty) return assigned;
+      }
+    }
+
+    return 'Unassigned';
+  }
+
+  String get _customerName {
+    final first = _repair['firstName']?.toString().trim() ?? '';
+    final last = _repair['lastName']?.toString().trim() ?? '';
+    final fullName = '$first $last'.trim();
+    return fullName.isEmpty ? 'Customer' : fullName;
+  }
+
+  String get _customerEmail => _repair['email']?.toString().trim() ?? '';
+
+  String get _customerPhone => _repair['phoneNumber']?.toString().trim() ?? '';
+
+  String get _shopName {
+    final repairShop = _repair['shopName']?.toString().trim() ?? '';
+    if (repairShop.isNotEmpty) return repairShop;
+
+    try {
+      final profileCtrl = Get.find<ProfileController>();
+      final profileShop = profileCtrl.shopName.trim();
+      if (profileShop.isNotEmpty) return profileShop;
+    } catch (_) {}
+
+    return 'our repair shop';
+  }
+
+  String get _requestShortCode {
+    final id = _repair['_id']?.toString() ?? '';
+    if (id.isEmpty) return 'N/A';
+    return id.length > 6 ? id.substring(id.length - 6).toUpperCase() : id;
+  }
+
+  String _sanitizePhoneNumber(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+
+    final hasLeadingPlus = trimmed.startsWith('+');
+    final digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) return '';
+
+    return hasLeadingPlus ? '+$digitsOnly' : digitsOnly;
+  }
+
+  String _buildCompletionMessage() {
+    final feedback = _repair['technicianFeedback']?.toString().trim() ?? '';
+    final price = (_repair['price'] as num?)?.toDouble() ?? 0;
+    final priceText = price > 0
+        ? '\nTotal bill: \$${price.toStringAsFixed(2)}.'
+        : '';
+    final feedbackText = feedback.isNotEmpty
+        ? '\nTechnician note: $feedback'
+        : '';
+
+    return 'Hello $_customerName, your ${_repair['deviceModel'] ?? 'device'} repair is completed at $_shopName.'
+        '\nRequest ID: $_requestShortCode.$priceText$feedbackText'
+        '\nYou can collect the device any time. Please contact us if you need any help.';
+  }
+
+  Future<void> _launchUri(
+    Uri uri, {
+    required String successLabel,
+    String? fallbackShareText,
+  }) async {
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && fallbackShareText != null) {
+        await Share.share(fallbackShareText);
+        _showMessage('Shared completion message');
+        return;
+      }
+      if (!launched) {
+        _showMessage('Unable to open $successLabel');
+      }
+    } catch (_) {
+      if (fallbackShareText != null) {
+        await Share.share(fallbackShareText);
+        _showMessage('Shared completion message');
+        return;
+      }
+      _showMessage('Unable to open $successLabel');
+    }
+  }
+
+  Future<void> _sendCompletionOnWhatsApp() async {
+    final phone = _sanitizePhoneNumber(_customerPhone);
+    if (phone.isEmpty) {
+      _showMessage('Customer phone number is missing');
+      return;
+    }
+
+    await _launchUri(
+      Uri.parse(
+        'https://wa.me/$phone?text=${Uri.encodeComponent(_buildCompletionMessage())}',
+      ),
+      successLabel: 'WhatsApp',
+      fallbackShareText: _buildCompletionMessage(),
+    );
+  }
+
+  Future<void> _sendCompletionBySms() async {
+    final phone = _sanitizePhoneNumber(_customerPhone);
+    if (phone.isEmpty) {
+      _showMessage('Customer phone number is missing');
+      return;
+    }
+
+    await _launchUri(
+      Uri(
+        scheme: 'sms',
+        path: phone,
+        queryParameters: {'body': _buildCompletionMessage()},
+      ),
+      successLabel: 'messages',
+      fallbackShareText: _buildCompletionMessage(),
+    );
+  }
+
+  Future<void> _sendCompletionByEmail() async {
+    if (_customerEmail.isEmpty) {
+      _showMessage('Customer email is missing');
+      return;
+    }
+
+    await _launchUri(
+      Uri(
+        scheme: 'mailto',
+        path: _customerEmail,
+        queryParameters: {
+          'subject': 'Your repair is complete - $_shopName',
+          'body': _buildCompletionMessage(),
+        },
+      ),
+      successLabel: 'email',
+      fallbackShareText: _buildCompletionMessage(),
+    );
+  }
+
+  Future<void> _showCompletionContactSheet({bool autoOpened = false}) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  autoOpened ? 'Repair Completed' : 'Notify Customer',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  autoOpened
+                      ? 'Choose how you want to notify the customer that the repair is done.'
+                      : 'Send the completed-job update through WhatsApp, SMS, or email.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _contactActionChip(
+                      label: 'WhatsApp',
+                      icon: Icons.chat_bubble_outline_rounded,
+                      onTap: _sendCompletionOnWhatsApp,
+                    ),
+                    _contactActionChip(
+                      label: 'Message',
+                      icon: Icons.sms_outlined,
+                      onTap: _sendCompletionBySms,
+                    ),
+                    _contactActionChip(
+                      label: 'Email',
+                      icon: Icons.mail_outline_rounded,
+                      onTap: _sendCompletionByEmail,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.fieldBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.fieldBorder),
+                  ),
+                  child: Text(
+                    _buildCompletionMessage(),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _buildRejectionMessage(String reason) {
+    final cleanReason = reason.trim();
+    return 'Hello $_customerName, after checking your ${_repair['deviceModel'] ?? 'device'}, we are sorry that we could not complete the repair at $_shopName.'
+        '${cleanReason.isNotEmpty ? '\nReason: $cleanReason' : ''}'
+        '\nPlease contact us for the next best option or to collect the device. We are happy to help further.';
+  }
+
+  Future<void> _sendRejectionOnWhatsApp(String reason) async {
+    final phone = _sanitizePhoneNumber(_customerPhone);
+    if (phone.isEmpty) {
+      _showMessage('Customer phone number is missing');
+      return;
+    }
+
+    await _launchUri(
+      Uri.parse(
+        'https://wa.me/$phone?text=${Uri.encodeComponent(_buildRejectionMessage(reason))}',
+      ),
+      successLabel: 'WhatsApp',
+      fallbackShareText: _buildRejectionMessage(reason),
+    );
+  }
+
+  Future<void> _sendRejectionBySms(String reason) async {
+    final phone = _sanitizePhoneNumber(_customerPhone);
+    if (phone.isEmpty) {
+      _showMessage('Customer phone number is missing');
+      return;
+    }
+
+    await _launchUri(
+      Uri(
+        scheme: 'sms',
+        path: phone,
+        queryParameters: {'body': _buildRejectionMessage(reason)},
+      ),
+      successLabel: 'messages',
+      fallbackShareText: _buildRejectionMessage(reason),
+    );
+  }
+
+  Future<void> _sendRejectionByEmail(String reason) async {
+    if (_customerEmail.isEmpty) {
+      _showMessage('Customer email is missing');
+      return;
+    }
+
+    await _launchUri(
+      Uri(
+        scheme: 'mailto',
+        path: _customerEmail,
+        queryParameters: {
+          'subject': 'Repair update for your device - $_shopName',
+          'body': _buildRejectionMessage(reason),
+        },
+      ),
+      successLabel: 'email',
+      fallbackShareText: _buildRejectionMessage(reason),
+    );
+  }
+
+  Future<void> _showRejectedContactSheet(String reason) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Repair Rejected',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose how you want to send the apology and repair update.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _contactActionChip(
+                      label: 'WhatsApp',
+                      icon: Icons.chat_bubble_outline_rounded,
+                      onTap: () => _sendRejectionOnWhatsApp(reason),
+                    ),
+                    _contactActionChip(
+                      label: 'Message',
+                      icon: Icons.sms_outlined,
+                      onTap: () => _sendRejectionBySms(reason),
+                    ),
+                    _contactActionChip(
+                      label: 'Email',
+                      icon: Icons.mail_outline_rounded,
+                      onTap: () => _sendRejectionByEmail(reason),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.fieldBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.fieldBorder),
+                  ),
+                  child: Text(
+                    _buildRejectionMessage(reason),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showRejectDialog() async {
+    final reasonCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Reject Repair',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: TextField(
+          controller: reasonCtrl,
+          maxLines: 4,
+          style: TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Why could this repair not be completed?',
+            hintStyle: TextStyle(color: AppColors.textSecondary),
+            filled: true,
+            fillColor: AppColors.fieldBackground,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.fieldBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.fieldBorder),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    final reason = reasonCtrl.text.trim();
+    if (reason.isEmpty) {
+      _showMessage('Please add a reason before rejecting the repair');
+      return;
+    }
+
+    final id = _repair['_id']?.toString();
+    if (id == null || id.isEmpty) return;
+
+    setState(() => _isUpdating = true);
+    try {
+      final res = await _api.put(
+        RepairRequestEndpoints.updateStatus(id),
+        data: {'status': 'rejected'},
+      );
+      final data = res.data['data'];
+      if (data is Map) {
+        setState(() {
+          _repair = Map<String, dynamic>.from(data);
+          _repair['rejectionReason'] = reason;
+        });
+      } else {
+        setState(() {
+          _repair['status'] = 'rejected';
+          _repair['rejectionReason'] = reason;
+        });
+      }
+      _showMessage('Repair marked as Rejected');
+      await _showRejectedContactSheet(reason);
+    } on DioException catch (e) {
+      _showMessage(e.response?.data?['message'] ?? 'Failed to reject repair');
+    } catch (_) {
+      _showMessage('Failed to reject repair');
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
+  Widget _contactActionChip({
+    required String label,
+    required IconData icon,
+    required Future<void> Function() onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          Navigator.of(context).maybePop();
+          await onTap();
+        },
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.fieldBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.fieldBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppColors.primary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
@@ -803,6 +1453,18 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                           TimelineWidget(steps: _buildTimelineSteps()),
                           SizedBox(height: 20),
                           _buildActions(context),
+                          if (_hasWaitingForPartsDetails) ...[
+                            SizedBox(height: 20),
+                            _buildWaitingForPartsCard(),
+                          ],
+                          if (_isCompleted) ...[
+                            SizedBox(height: 20),
+                            _buildCompletionContactCard(),
+                          ],
+                          if (_repair['status']?.toString() == 'rejected') ...[
+                            SizedBox(height: 20),
+                            _buildRejectedStatusCard(),
+                          ],
                           SizedBox(height: 20),
                           _buildIssueDescriptionCard(),
                           SizedBox(height: 20),
@@ -837,10 +1499,18 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     if (currentIndex < 0 && status == 'start-work') currentIndex = 5;
     if (currentIndex < 0 && status == 'inReview') currentIndex = 3;
 
+    // Terminal states are finished, not in flight - showing the spinner on
+    // them made a completed repair look like it was still loading.
+    const finishedStatuses = {'completed', 'collected'};
+
     TimelineStatus stepStatus(int index) {
       if (currentIndex < 0) return TimelineStatus.pending;
       if (index < currentIndex) return TimelineStatus.done;
-      if (index == currentIndex) return TimelineStatus.inProgress;
+      if (index == currentIndex) {
+        return finishedStatuses.contains(status)
+            ? TimelineStatus.done
+            : TimelineStatus.inProgress;
+      }
       return TimelineStatus.pending;
     }
 
@@ -918,6 +1588,147 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 color: AppColors.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaitingForPartsCard() {
+    final days = _repair['waitingForPartsDays']?.toString() ?? 'N/A';
+    final description =
+        _repair['waitingForPartsDescription']?.toString().trim() ??
+        'No details provided.';
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Waiting for Parts',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          InfoField(label: 'ESTIMATED DAYS', value: days),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.fieldBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.fieldBorder),
+            ),
+            child: Text(
+              description,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletionContactCard() {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Notify Customer',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Send the completed repair update by WhatsApp, message, or email.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showCompletionContactSheet(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: BorderSide(color: AppColors.primary, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Open Contact Options',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectedStatusCard() {
+    final reason =
+        _repair['rejectionReason']?.toString().trim() ??
+        'Repair could not be completed.';
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Rejected Repair',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            reason,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showRejectedContactSheet(reason),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Send Sorry Message',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -1040,17 +1851,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                InfoField(
-                  label: 'TECHNICIAN',
-                  value:
-                      (_repair['technicianName']
-                              ?.toString()
-                              .trim()
-                              .isNotEmpty ??
-                          false)
-                      ? _repair['technicianName'].toString()
-                      : 'Unassigned',
-                ),
+                InfoField(label: 'TECHNICIAN', value: _technicianDisplayName),
               ],
             ),
           ),
@@ -1114,6 +1915,12 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         onTap: () => _updateStatus('completed'),
       ),
       _RepairActionSpec(
+        label: 'Rejected',
+        tone: _RepairActionTone.rejected,
+        activeStatuses: const {'rejected'},
+        onTap: _showRejectDialog,
+      ),
+      _RepairActionSpec(
         label: 'Reassigned',
         tone: _RepairActionTone.reassigned,
         activeStatuses: const {'reassigned'},
@@ -1143,8 +1950,15 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  for (final action in actions)
-                    SizedBox(width: itemWidth, child: _actionBtn(action)),
+                  for (var index = 0; index < actions.length; index++)
+                    SizedBox(
+                      // An odd count leaves the last action alone on its row,
+                      // so let it stretch instead of sitting half empty.
+                      width: index == actions.length - 1 && actions.length.isOdd
+                          ? constraints.maxWidth
+                          : itemWidth,
+                      child: _actionBtn(actions[index]),
+                    ),
                 ],
               );
             },
@@ -1241,6 +2055,13 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         const Color(0xFF85FF79),
         const Color(0xFF85FF79),
       ),
+      _RepairActionTone.rejected => (
+        const Color(0xFF421717),
+        const Color(0xFF2E1010),
+        const Color(0xFF8E2E2E),
+        const Color(0xFFFF7A7A),
+        const Color(0xFFFF7A7A),
+      ),
       _RepairActionTone.reassigned => (
         const Color(0xFF1B2350),
         const Color(0xFF141A3D),
@@ -1302,6 +2123,11 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         const Color(0xFF1B56EA),
         const Color(0xFF1B56EA),
         const Color(0xFF6E9BFF),
+      ),
+      _RepairActionTone.rejected => (
+        const Color(0xFFEF4444),
+        const Color(0xFFEF4444),
+        const Color(0xFFF87171),
       ),
       _RepairActionTone.reassigned => (
         const Color(0xFF2B3A9E),
@@ -1397,7 +2223,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       'completed' => 'Completed',
       'inReview' => 'In Review',
       'start-work' => 'Start Work',
-      'quote-sent' => 'Quote Sent',
+      'quote_sent' || 'quote-sent' => 'Quote Sent',
       'waiting-for-parts' => 'Waiting for Parts',
       'diagnosing' => 'Diagnosing',
       'repairing' => 'Repairing',
@@ -1439,6 +2265,7 @@ enum _RepairActionTone {
   repairing,
   waiting,
   completed,
+  rejected,
   reassigned,
 }
 

@@ -22,6 +22,10 @@ class GradientScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: resolvedBackgroundColor,
       body: Stack(
+        // Without this the Stack shrink-wraps its SafeArea child, so a page
+        // shorter than the screen left the gradient stopping mid-way and the
+        // bare background showing through underneath.
+        fit: StackFit.expand,
         children: [
           Positioned.fill(child: ColoredBox(color: resolvedBackgroundColor)),
           Positioned.fill(

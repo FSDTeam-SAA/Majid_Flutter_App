@@ -33,7 +33,9 @@ class RecordPaymentPage extends StatefulWidget {
 }
 
 class _RecordPaymentPageState extends State<RecordPaymentPage> {
-  final _currencySymbol = Get.find<ProfileController>().currencySymbol;
+  // A getter, not a field: captured at construction this read the
+  // GBP fallback before the profile had loaded and never updated.
+  String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
   bool _isCashSelected = true;
   bool _isSubmitting = false;
 

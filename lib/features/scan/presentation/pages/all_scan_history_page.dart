@@ -80,7 +80,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
   }
 
   Future<void> _openScan(ScanItem item) async {
-    if (item.report.containsKey('ok')) {
+    if (item.hasSavedReport) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -90,19 +90,13 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
       return;
     }
 
-    if (item.imei.isEmpty) return;
-
-    final serviceId = item.serviceId;
-    if (serviceId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No service info available for this scan. Please scan again.',
-            ),
-          ),
-        );
-      }
+    if (item.reportId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saved device report is not available for this scan.'),
+        ),
+      );
       return;
     }
 
@@ -122,10 +116,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
     );
 
     try {
-      final report = await _imeiRepository.checkImei(
-        imei: item.imei,
-        serviceId: serviceId,
-      );
+      final report = await _imeiRepository.getHistoryReport(item.reportId);
       if (!mounted) return;
       Navigator.pop(context);
       Navigator.push(
@@ -138,7 +129,9 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e.message.isNotEmpty ? e.message : 'Device data not found.',
+              e.message.isNotEmpty
+                  ? e.message
+                  : 'Saved device report could not be loaded.',
             ),
           ),
         );
@@ -147,7 +140,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load device report.')),
+          const SnackBar(content: Text('Failed to load saved device report.')),
         );
       }
     }

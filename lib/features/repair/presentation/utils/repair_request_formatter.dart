@@ -12,6 +12,7 @@ RepairItem repairItemFromJson(Map<String, dynamic> item) {
     issueDesc: item['description']?.toString() ?? 'No description provided',
     date: formatRepairDate(item['createdAt']?.toString()),
     status: formatRepairStatus(item['status']?.toString()),
+    rawStatus: item['status']?.toString() ?? '',
     price: (item['price'] as num?)?.toDouble() ?? 0,
     createdAt: createdAt,
     raw: item,
@@ -21,15 +22,16 @@ RepairItem repairItemFromJson(Map<String, dynamic> item) {
 String formatRepairStatus(String? status) {
   return switch (status) {
     'completed' => 'Completed',
-    'inProgress' ||
-    'quote_sent' ||
-    'approved' ||
-    'inReview' ||
-    'start-work' ||
-    'waiting-for-parts' ||
-    'order-assigned' ||
-    'diagnosing' ||
-    'repairing' => 'In Progress',
+    'waiting-for-parts' => 'Waiting for Parts',
+    'quote_sent' || 'quote-sent' => 'Quote Sent',
+    'approved' => 'Approved',
+    'inReview' => 'In Review',
+    'start-work' => 'Start Work',
+    'order-assigned' => 'Order Assigned',
+    'diagnosing' => 'Diagnosing',
+    'repairing' => 'Repairing',
+    'reassigned' => 'Reassigned',
+    'inProgress' => 'In Progress',
     'rejected' => 'Rejected',
     _ => status ?? 'In Progress',
   };

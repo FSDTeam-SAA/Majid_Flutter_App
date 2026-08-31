@@ -4,9 +4,9 @@ import 'package:get/get.dart';
 import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/more_menu_button.dart';
 import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../profile/presentation/pages/profile_page_view.dart';
 import '../../../stock/presentation/pages/add_new_device_page.dart';
 import 'notifications_page.dart';
 import '../controller/home_controller.dart';
@@ -233,28 +233,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(width: 10),
-        GestureDetector(
-          onTap: () => Get.to(() => ProfilePageView()),
-          child: Obx(() {
-            final imageUrl = homeCtrl.userImage.value;
-            return CircleAvatar(
-              radius: 19,
-              backgroundColor: AppColors.cardBackground,
-              child: ClipOval(
-                child: imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
-                        width: 38,
-                        height: 38,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            Icon(Icons.person, color: AppColors.textPrimary),
-                      )
-                    : Icon(Icons.person, color: AppColors.textPrimary),
-              ),
-            );
-          }),
-        ),
+        const MoreMenuButton(size: 38),
       ],
     );
   }

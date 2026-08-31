@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/status_badge.dart';
 import '../controller/repair_data.dart';
 
 class PendingRepairCard extends StatelessWidget {
@@ -18,8 +19,8 @@ class PendingRepairCard extends StatelessWidget {
   });
 
   String get _technicianName {
-    final name = item.raw['technicianName']?.toString().trim();
-    return (name == null || name.isEmpty) ? 'Unassigned' : name;
+    final name = item.technicianName.trim();
+    return name.isEmpty ? 'Unassigned' : name;
   }
 
   @override
@@ -90,6 +91,8 @@ class PendingRepairCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  StatusBadge(label: item.status, isUppercase: false),
                 ],
               ),
             ),

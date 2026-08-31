@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/order_ready_item.dart';
 
 class OrderReadyCard extends StatelessWidget {
@@ -17,6 +19,7 @@ class OrderReadyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = Get.find<ProfileController>().currencySymbol;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -103,7 +106,7 @@ class OrderReadyCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${order.price.toStringAsFixed(2)}',
+                  '$currencySymbol${order.price.toStringAsFixed(2)}',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,

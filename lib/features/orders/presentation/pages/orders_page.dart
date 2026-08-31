@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/more_menu_button.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../profile/presentation/controller/profile_controller.dart';
-import '../../../profile/presentation/pages/profile_page_view.dart';
 import '../../domain/entities/order_ready_item.dart';
 import '../widgets/order_ready_card.dart';
 import 'order_detail_page.dart';
@@ -14,7 +13,6 @@ class OrdersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileCtrl = Get.find<ProfileController>();
     final orders = sampleReadyOrders;
 
     return GradientScaffold(
@@ -25,30 +23,7 @@ class OrdersPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => Get.to(() => ProfilePageView()),
-                  child: Obx(() {
-                    final imageUrl = profileCtrl.imageUrl;
-                    return CircleAvatar(
-                      radius: 19,
-                      backgroundColor: AppColors.cardBackground,
-                      child: ClipOval(
-                        child: imageUrl.isNotEmpty
-                            ? Image.network(
-                                imageUrl,
-                                width: 38,
-                                height: 38,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Icon(
-                                  Icons.person,
-                                  color: AppColors.textPrimary,
-                                ),
-                              )
-                            : Icon(Icons.person, color: AppColors.textPrimary),
-                      ),
-                    );
-                  }),
-                ),
+                const MoreMenuButton(size: 38),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

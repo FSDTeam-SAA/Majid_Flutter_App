@@ -6,7 +6,7 @@ import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/user_avatar.dart';
+import '../../../../core/widgets/more_menu_button.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -76,7 +76,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Notifications', trailing: UserAvatar()),
+          AppHeader(title: 'Notifications', trailing: MoreMenuButton()),
           Expanded(child: _buildBody()),
         ],
       ),

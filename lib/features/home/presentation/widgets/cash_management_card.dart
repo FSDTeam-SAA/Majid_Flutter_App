@@ -14,7 +14,9 @@ class CashManagementCard extends StatefulWidget {
 
 class _CashManagementCardState extends State<CashManagementCard> {
   final _controller = TextEditingController();
-  final _currencySymbol = Get.find<ProfileController>().currencySymbol;
+  // A getter, not a field: captured at construction this read the
+  // GBP fallback before the profile had loaded and never updated.
+  String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
 
   @override
   void dispose() {

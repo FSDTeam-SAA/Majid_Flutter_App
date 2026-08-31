@@ -38,6 +38,10 @@ abstract class ImeiRepository {
   /// records returned by the API, when supported.
   Future<List<ScanItem>> getHistory({int? limit});
 
+  /// Fetches one saved scan report from history without triggering a new
+  /// paid IMEI check.
+  Future<Map<String, dynamic>> getHistoryReport(String reportId);
+
   /// Uploads [imagePath] to the OCR service and returns every IMEI number
   /// it could find in the image (deduplicated, order preserved).
   ///

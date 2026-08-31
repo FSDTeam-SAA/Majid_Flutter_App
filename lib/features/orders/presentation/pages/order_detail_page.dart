@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../repair/presentation/controller/repair_data.dart';
 import '../../../repair/presentation/widgets/timeline_widget.dart';
 import '../../domain/entities/order_ready_item.dart';
@@ -15,6 +17,8 @@ class OrderDetailPage extends StatelessWidget {
   final OrderReadyItem order;
 
   const OrderDetailPage({super.key, required this.order});
+
+  String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
 
   List<TimelineStep> get _steps => [
     TimelineStep(
@@ -68,7 +72,7 @@ class OrderDetailPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: AppButton(
-              label: 'Charge \$${order.price.toStringAsFixed(2)}',
+              label: 'Charge $_currencySymbol${order.price.toStringAsFixed(2)}',
               onPressed: () {},
             ),
           ),
@@ -126,7 +130,7 @@ class OrderDetailPage extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${order.price.toStringAsFixed(2)}',
+                '$_currencySymbol${order.price.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,

@@ -5,16 +5,22 @@ class Invoice {
   final String id;
   final String type;
   final double? totalAmount;
+  final double? amountPaid;
   final String? createdAt;
   final String customerName;
   final String? pdfUrl;
+  final String? paymentMethod;
+  final String? paymentStatus;
 
   const Invoice({
     required this.id,
     required this.type,
     this.totalAmount,
+    this.amountPaid,
     this.createdAt,
     required this.customerName,
     this.pdfUrl,
+    this.paymentMethod,
+    this.paymentStatus,
   });
 }

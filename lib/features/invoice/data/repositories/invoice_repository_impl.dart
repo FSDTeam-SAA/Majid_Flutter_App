@@ -79,9 +79,16 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       id: item['_id']?.toString() ?? '',
       type: item['type']?.toString() ?? 'invoice',
       totalAmount: (item['totalAmount'] as num?)?.toDouble(),
+      amountPaid:
+          (item['amountPaid'] as num?)?.toDouble() ??
+          (item['paymentDetails'] is Map
+              ? (item['paymentDetails']['amountPaid'] as num?)?.toDouble()
+              : null),
       createdAt: item['createdAt']?.toString(),
       customerName: _invoiceCustomerName(item),
       pdfUrl: pdfUrl,
+      paymentMethod: item['paymentMethod']?.toString(),
+      paymentStatus: item['paymentStatus']?.toString(),
     );
   }
 

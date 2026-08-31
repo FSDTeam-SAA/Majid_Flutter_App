@@ -92,6 +92,25 @@ class ImeiRepositoryImpl implements ImeiRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> getHistoryReport(String reportId) async {
+    final Response res;
+    try {
+      res = await _api.get(ImeiEndpoints.historyReport(reportId));
+    } on DioException catch (e) {
+      throw ImeiScanException(
+        e.response?.data?['message']?.toString() ??
+            'Failed to load saved device report',
+      );
+    }
+
+    final data = res.data['data'];
+    if (data is! Map) {
+      throw const ImeiScanException('Invalid saved device report');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
+  @override
   Future<List<String>> extractImeiFromImage(
     String imagePath, {
     required String fileName,

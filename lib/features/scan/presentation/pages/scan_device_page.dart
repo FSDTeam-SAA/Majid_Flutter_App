@@ -8,7 +8,7 @@ import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/user_avatar.dart';
+import '../../../../core/widgets/more_menu_button.dart';
 import '../../data/repositories/imei_repository_impl.dart';
 import '../../domain/repositories/imei_repository.dart';
 import '../controller/scan_data.dart';
@@ -257,7 +257,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
         children: [
           AppHeader(
             title: 'Scan Device',
-            trailing: UserAvatar(),
+            trailing: MoreMenuButton(),
             showBackButton: false,
           ),
           Expanded(
@@ -579,7 +579,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   }
 
   Future<void> _openRecentScan(ScanItem item) async {
-    if (item.report.containsKey('ok')) {
+    if (item.hasSavedReport) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -589,12 +589,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       return;
     }
 
-    if (item.imei.isEmpty) return;
-    final serviceId = item.serviceId;
-    if (serviceId == null) {
-      _showMessage(
-        'No service info available for this scan. Please scan again.',
-      );
+    if (item.reportId.isEmpty) {
+      _showMessage('Saved device report is not available for this scan.');
       return;
     }
 
@@ -624,10 +620,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     );
 
     try {
-      final report = await _imeiRepository.checkImei(
-        imei: item.imei,
-        serviceId: serviceId,
-      );
+      final report = await _imeiRepository.getHistoryReport(item.reportId);
       if (!mounted) return;
       Navigator.pop(context);
       Navigator.push(
@@ -638,13 +631,15 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       if (mounted) {
         Navigator.pop(context);
         _showMessage(
-          e.message.isNotEmpty ? e.message : 'Device data not found.',
+          e.message.isNotEmpty
+              ? e.message
+              : 'Saved device report could not be loaded.',
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        _showMessage('Failed to load device report.');
+        _showMessage('Failed to load saved device report.');
       }
     }
   }

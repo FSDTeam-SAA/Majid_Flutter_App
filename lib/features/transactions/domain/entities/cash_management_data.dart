@@ -21,7 +21,9 @@ class CashManagementData {
 
   double get totalCash => banked + cashInDrawer;
   double get variance => (banked + cashInDrawer - startingDayCash).abs();
-  double get remainingToBank => (cashInDrawer - startingDayCash) > 0 ? (cashInDrawer - startingDayCash) : cashInDrawer;
+  double get remainingToBank => (cashInDrawer - startingDayCash) > 0
+      ? (cashInDrawer - startingDayCash)
+      : cashInDrawer;
 
   factory CashManagementData.fromJson(Map<String, dynamic> json) {
     return CashManagementData(
@@ -34,7 +36,9 @@ class CashManagementData {
       cashInDrawer: (json['cashInDrawer'] as num?)?.toDouble() ?? 0.0,
       cashManagementScore: (json['cashManagementScore'] as num?)?.toInt() ?? 0,
       aiInsight: json['aiInsight']?.toString() ?? '',
-      date: json['date'] != null ? DateTime.tryParse(json['date'].toString()) : null,
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'].toString())
+          : null,
     );
   }
 

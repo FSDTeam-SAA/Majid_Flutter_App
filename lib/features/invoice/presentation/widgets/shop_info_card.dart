@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/shop_logo.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 
@@ -30,28 +31,12 @@ class ShopInfoCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
+            ShopLogo(
+              imageUrl: logoUrl,
+              width: 96,
+              height: 96,
               borderRadius: BorderRadius.circular(14),
-              child: Container(
-                width: 84,
-                height: 84,
-                color: AppColors.primary.withValues(alpha: 0.12),
-                child: logoUrl.isNotEmpty
-                    ? Image.network(
-                        logoUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Icon(
-                          Icons.storefront,
-                          color: AppColors.primary,
-                          size: 36,
-                        ),
-                      )
-                    : Icon(
-                        Icons.storefront,
-                        color: AppColors.primary,
-                        size: 36,
-                      ),
-              ),
+              fallbackIconSize: 40,
             ),
             SizedBox(width: 14),
             Expanded(

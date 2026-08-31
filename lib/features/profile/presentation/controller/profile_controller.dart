@@ -69,10 +69,39 @@ class ProfileController extends GetxController {
   String get phone => profile.value?.phone ?? '';
   String get userId => profile.value?.id ?? '';
   String get imageUrl => profile.value?.imageUrl ?? '';
-  String get currencyCode => profile.value?.currencyCode ?? 'USD';
+  String get currencyCode => profile.value?.currencyCode ?? 'GBP';
 
-  /// Symbol for the shop's configured currency — falls back to USD's `$`
+  /// Symbol for the shop's configured currency — falls back to GBP's `£`
   /// for any code we don't have a mapping for yet.
+  /// Currencies offered in Settings. `NONE` shows amounts with no symbol.
+  static const currencyOptions = <String, String>{
+    'NONE': '',
+    'GBP': '£',
+    'USD': '\$',
+    'EUR': '€',
+    'BDT': '৳',
+    'INR': '₹',
+    'PKR': '₨',
+    'AED': 'د.إ',
+    'SAR': '﷼',
+    'AUD': 'A\$',
+    'CAD': 'C\$',
+  };
+
+  static const currencyNames = <String, String>{
+    'NONE': 'No symbol',
+    'GBP': 'British Pound',
+    'USD': 'US Dollar',
+    'EUR': 'Euro',
+    'BDT': 'Bangladeshi Taka',
+    'INR': 'Indian Rupee',
+    'PKR': 'Pakistani Rupee',
+    'AED': 'UAE Dirham',
+    'SAR': 'Saudi Riyal',
+    'AUD': 'Australian Dollar',
+    'CAD': 'Canadian Dollar',
+  };
+
   String get currencySymbol {
     const symbols = {
       'USD': '\$',
@@ -86,7 +115,9 @@ class ProfileController extends GetxController {
       'AED': 'د.إ',
       'SAR': '﷼',
     };
-    return symbols[currencyCode.toUpperCase()] ?? '\$';
+    final code = currencyCode.toUpperCase();
+    if (code == 'NONE') return '';
+    return symbols[code] ?? currencyOptions[code] ?? '£';
   }
 
   Future<void> fetchProfile() async {
@@ -111,6 +142,7 @@ class ProfileController extends GetxController {
     String? shopName,
     String? shopAddress,
     String? imagePath,
+    String? currencyCode,
   }) async {
     isSaving.value = true;
     errorMessage.value = '';
@@ -123,6 +155,7 @@ class ProfileController extends GetxController {
         shopName: shopName,
         shopAddress: shopAddress,
         imagePath: imagePath,
+        currencyCode: currencyCode,
       );
       return true;
     } on ProfileException catch (e) {

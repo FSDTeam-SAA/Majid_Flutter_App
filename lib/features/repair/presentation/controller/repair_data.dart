@@ -5,6 +5,7 @@ class RepairItem {
   final String issueDesc;
   final String date;
   final String status;
+  final String rawStatus;
   final double price;
   final DateTime? createdAt;
   final Map<String, dynamic> raw;
@@ -16,6 +17,7 @@ class RepairItem {
     required this.issueDesc,
     required this.date,
     required this.status,
+    this.rawStatus = '',
     this.price = 0,
     this.createdAt,
     this.raw = const {},
@@ -27,9 +29,29 @@ class RepairItem {
   }
 
   String get technicianName {
-    final value = raw['technicianName']?.toString().trim() ?? '';
+    final value =
+        raw['technicianName']?.toString().trim() ??
+        raw['technician']?.toString().trim() ??
+        '';
+    if (value.isNotEmpty) return value;
+
+    final notes = raw['shopkeeperNotes'];
+    if (notes is List && notes.isNotEmpty) {
+      final latest = notes.last;
+      if (latest is Map) {
+        final assigned = latest['assignedPerson']?.toString().trim() ?? '';
+        if (assigned.isNotEmpty) return assigned;
+      }
+    }
+
     return value.isEmpty ? '' : value;
   }
+
+  bool get isCompleted => rawStatus == 'completed' || status == 'Completed';
+
+  bool get isRejected => rawStatus == 'rejected' || status == 'Rejected';
+
+  bool get isActive => !isCompleted && !isRejected;
 }
 
 List<RepairItem> sampleRepairs = [

@@ -23,7 +23,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   late final ApiClient _api;
   bool _ordersExpanded = false;
   bool _isSending = false;
-  final _currencySymbol = Get.find<ProfileController>().currencySymbol;
+  // A getter, not a field: captured at construction this read the
+  // GBP fallback before the profile had loaded and never updated.
+  String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
 
   Map<String, dynamic> get _repair => widget.repair;
 

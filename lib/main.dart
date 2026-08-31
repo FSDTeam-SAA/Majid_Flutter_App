@@ -11,12 +11,14 @@ import 'features/auth/presentation/controller/auth_controller.dart';
 import 'features/auth/presentation/pages/login_screen_view.dart';
 import 'features/home/presentation/controller/home_controller.dart';
 import 'features/onboarding/presentation/pages/splash_screen_view.dart';
+import 'core/utils/shop_logo_settings.dart';
 import 'features/profile/presentation/controller/profile_controller.dart';
 import 'features/stock/presentation/controller/stock_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await TokenManager.clearPersistedSessionOnFreshInstall();
+  await ShopLogoSettings.load();
   Get.put(AuthController());
   Get.put(ProfileThemeController());
   Get.lazyPut(() => HomeController(), fenix: true);

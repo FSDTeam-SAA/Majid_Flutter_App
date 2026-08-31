@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../invoice/presentation/pages/invoice_page.dart';
@@ -22,6 +23,7 @@ class DeviceReportPage extends StatefulWidget {
 
 class _DeviceReportPageState extends State<DeviceReportPage> {
   bool _isGeneratingPdf = false;
+  final GlobalKey _downloadCertificateButtonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +58,12 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => InvoicePage()),
+                            MaterialPageRoute(
+                              builder: (_) => InvoicePage(
+                                initialTabIndex: 0,
+                                initialDraft: _invoiceDraftPrefill,
+                              ),
+                            ),
                           ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
@@ -96,6 +103,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                       SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
+                          key: _downloadCertificateButtonKey,
                           onPressed: _isGeneratingPdf ? null : _generatePdf,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _kSmartActionsGreen,
@@ -172,7 +180,9 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         riskDescription: _riskDescription,
       );
       if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)]);
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], sharePositionOrigin: _shareOriginFor(_downloadCertificateButtonKey));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -245,6 +255,123 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
     return result;
   }
+
+  Map<String, dynamic>? get _marketValueData {
+    final data = _data['marketValue'];
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+
+    final report = widget.report['marketValue'];
+    if (report is Map) {
+      return Map<String, dynamic>.from(report);
+    }
+
+    return null;
+  }
+
+  String _normalizeCountryValue(String? value) {
+    final clean = value?.trim() ?? '';
+    if (clean.isEmpty ||
+        clean == 'N/A' ||
+        clean.toLowerCase() == 'bangladesh') {
+      return 'United Kingdom';
+    }
+    return clean;
+  }
+
+  String? get _formattedMarketValue {
+    final marketValue = _marketValueData;
+    if (marketValue == null) return null;
+
+    final rawAmount = marketValue['amount'];
+    if (rawAmount == null) return null;
+
+    final parsedAmount = rawAmount is num
+        ? rawAmount.toDouble()
+        : double.tryParse(rawAmount.toString());
+    if (parsedAmount == null) return null;
+
+    final currency = marketValue['currency']?.toString().trim().toUpperCase();
+    final symbol = switch (currency) {
+      'GBP' => '£',
+      'EUR' => '€',
+      'USD' => '\$',
+      _ => null,
+    };
+
+    final decimals = parsedAmount % 1 == 0 ? 0 : 2;
+    final amountText = parsedAmount.toStringAsFixed(decimals);
+
+    if (symbol != null) {
+      return '$symbol$amountText';
+    }
+
+    if (currency != null && currency.isNotEmpty) {
+      return '$amountText $currency';
+    }
+
+    return amountText;
+  }
+
+  String get _invoiceItemName {
+    final fields = _allFieldsForPdf;
+    final deviceName = fields['DEVICE NAME']?.trim() ?? '';
+    if (deviceName.isNotEmpty && deviceName != 'N/A') return deviceName;
+    return _data['deviceName']?.toString().trim().isNotEmpty == true
+        ? _data['deviceName'].toString().trim()
+        : 'Device Report Item';
+  }
+
+  String get _invoiceStatusLabel {
+    final provider = _providerFields;
+    final labels = <String>[];
+
+    void addIfPresent(String key, String label) {
+      final value = provider[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) {
+        labels.add('$label: $value');
+      }
+    }
+
+    addIfPresent('device_status', 'Status');
+    addIfPresent('activation_status', 'Activation');
+    addIfPresent('icloud_lock', 'iCloud Lock');
+    addIfPresent('sim_lock', 'SIM Lock');
+    addIfPresent('blacklist_status', 'Blacklist');
+
+    return labels.join(' • ');
+  }
+
+  String get _invoiceDescription {
+    final fields = _allFieldsForPdf;
+    final parts = <String>[
+      if ((fields['MANUFACTURER'] ?? '').trim().isNotEmpty &&
+          fields['MANUFACTURER'] != 'N/A')
+        fields['MANUFACTURER']!,
+      if ((fields['SERIAL NUMBER'] ?? '').trim().isNotEmpty &&
+          fields['SERIAL NUMBER'] != 'N/A')
+        'SN ${fields['SERIAL NUMBER']}',
+      if ((fields['IMEI'] ?? '').trim().isNotEmpty && fields['IMEI'] != 'N/A')
+        'IMEI ${fields['IMEI']}',
+      if ((fields['COUNTRY'] ?? '').trim().isNotEmpty &&
+          fields['COUNTRY'] != 'N/A')
+        _normalizeCountryValue(fields['COUNTRY']),
+    ];
+    return parts.join(' • ');
+  }
+
+  InvoiceDraftPrefill get _invoiceDraftPrefill => InvoiceDraftPrefill(
+    itemName: _invoiceItemName,
+    description: _invoiceDescription,
+    condition: _riskLabel,
+    imeiSerial:
+        widget.report['imei']?.toString() ?? _allFieldsForPdf['IMEI'] ?? '',
+    statusLabel: _invoiceStatusLabel,
+    price: double.tryParse(
+      _marketValueData?['amount']?.toString().trim() ?? '',
+    ),
+  );
 
   _DeviceCategory get _category {
     final fields = _providerFields;
@@ -340,7 +467,13 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       fields.addAll([
         _DisplayField(
           'FIND MY IPHONE',
-          resolve(['find_my_iphone', 'fmi', 'fmi_status', 'findmyiphone', 'find_my']),
+          resolve([
+            'find_my_iphone',
+            'fmi',
+            'fmi_status',
+            'findmyiphone',
+            'find_my',
+          ]),
         ),
         _DisplayField(
           'ICLOUD STATUS',
@@ -446,11 +579,21 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       fields.addAll([
         _DisplayField(
           'KNOX GUARD',
-          resolve(['knox_guard', 'knoxguard', 'knox_status', 'knox', 'knox_lock']),
+          resolve([
+            'knox_guard',
+            'knoxguard',
+            'knox_status',
+            'knox',
+            'knox_lock',
+          ]),
         ),
         _DisplayField(
           'ACTIVATION STATUS',
-          resolve(['activation_status', 'activationstatus', 'device_activation']),
+          resolve([
+            'activation_status',
+            'activationstatus',
+            'device_activation',
+          ]),
         ),
         _DisplayField(
           'BLACKLIST STATUS',
@@ -490,7 +633,10 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           'OPERATING SYSTEM',
           resolve(['operating_system', 'operatingsystem', 'os']),
         ),
-        _DisplayField('COUNTRY', resolve(['country', 'purchase_country'])),
+        _DisplayField(
+          'COUNTRY',
+          _normalizeCountryValue(resolve(['country', 'purchase_country'])),
+        ),
         _DisplayField(
           'REPLACED DEVICE',
           resolve(['replaced_device', 'replaceddevice', 'replaced']),
@@ -500,7 +646,11 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       fields.addAll([
         _DisplayField(
           'ACTIVATION STATUS',
-          resolve(['activation_status', 'activationstatus', 'device_activation']),
+          resolve([
+            'activation_status',
+            'activationstatus',
+            'device_activation',
+          ]),
         ),
         _DisplayField(
           'BLACKLIST STATUS',
@@ -544,7 +694,10 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           'OPERATING SYSTEM',
           resolve(['operating_system', 'operatingsystem', 'os']),
         ),
-        _DisplayField('COUNTRY', resolve(['country', 'purchase_country'])),
+        _DisplayField(
+          'COUNTRY',
+          _normalizeCountryValue(resolve(['country', 'purchase_country'])),
+        ),
         _DisplayField(
           'REPLACED DEVICE',
           resolve(['replaced_device', 'replaceddevice', 'replaced']),
@@ -561,6 +714,18 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       fields.add(_DisplayField(_snakeToLabel(entry.key), entry.value));
     }
 
+    final marketValue = _formattedMarketValue;
+    if (marketValue != null && marketValue.isNotEmpty) {
+      fields.add(
+        _DisplayField(
+          'MARKET EXPECTED VALUE',
+          marketValue,
+          fullWidth: true,
+          isMarketValue: true,
+        ),
+      );
+    }
+
     return fields.where((f) => f.value != 'N/A').toList();
   }
 
@@ -572,7 +737,17 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       final field = fields[i];
 
       if (field.fullWidth) {
-        widgets.add(DeviceFieldFull(label: field.label, value: field.value));
+        if (field.isMarketValue) {
+          widgets.add(
+            _MarketValueCard(
+              label: field.label,
+              value: field.value,
+              subtitle: _marketValueSubtitle,
+            ),
+          );
+        } else {
+          widgets.add(DeviceFieldFull(label: field.label, value: field.value));
+        }
         widgets.add(SizedBox(height: 10));
         i++;
         continue;
@@ -695,11 +870,33 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     return {for (final f in fields) f.label: f.value};
   }
 
+  String get _marketValueSubtitle {
+    final currency = _marketValueData?['currency']?.toString().trim();
+    if (currency != null && currency.isNotEmpty) {
+      return 'Estimated $currency resale value';
+    }
+    return 'Estimated resale value';
+  }
+
   static String _snakeToLabel(String key) {
     return key
         .replaceAll('_', ' ')
         .replaceAllMapped(RegExp(r'(^|\s)\w'), (m) => m.group(0)!.toUpperCase())
         .toUpperCase();
+  }
+
+  Rect? _shareOriginFor(GlobalKey key) {
+    final context = key.currentContext;
+    if (context == null) return null;
+
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+
+    final origin = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    if (size.width <= 0 || size.height <= 0) return null;
+
+    return Rect.fromLTWH(origin.dx, origin.dy, size.width, size.height);
   }
 }
 
@@ -707,6 +904,199 @@ class _DisplayField {
   final String label;
   final String value;
   final bool fullWidth;
+  final bool isMarketValue;
 
-  _DisplayField(this.label, this.value, {this.fullWidth = false});
+  _DisplayField(
+    this.label,
+    this.value, {
+    this.fullWidth = false,
+    this.isMarketValue = false,
+  });
+}
+
+class _MarketValueCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String subtitle;
+
+  const _MarketValueCard({
+    required this.label,
+    required this.value,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.primary;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent, width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: Center(child: _MarketValueTrendGlyph(color: accent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketValueTrendGlyph extends StatelessWidget {
+  final Color color;
+
+  const _MarketValueTrendGlyph({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 1,
+            right: 1,
+            bottom: 1,
+            top: 1,
+            child: CustomPaint(painter: _MarketTrendPainter(color)),
+          ),
+          Positioned(
+            left: 5,
+            bottom: 4,
+            child: _MarketBar(height: 6, color: color),
+          ),
+          Positioned(
+            left: 12,
+            bottom: 4,
+            child: _MarketBar(height: 11, color: color),
+          ),
+          Positioned(
+            left: 19,
+            bottom: 4,
+            child: _MarketBar(height: 16, color: color),
+          ),
+          Positioned(
+            left: 26,
+            bottom: 4,
+            child: _MarketBar(height: 21, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketBar extends StatelessWidget {
+  final double height;
+  final Color color;
+
+  const _MarketBar({required this.height, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 4.5,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border.all(color: color, width: 1.35),
+        borderRadius: BorderRadius.circular(1.5),
+      ),
+    );
+  }
+}
+
+class _MarketTrendPainter extends CustomPainter {
+  final Color color;
+
+  const _MarketTrendPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final axisPaint = Paint()
+      ..color = color.withValues(alpha: 0.34)
+      ..strokeWidth = 1.35
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawLine(
+      Offset(2, size.height - 2),
+      Offset(size.width - 2, size.height - 2),
+      axisPaint,
+    );
+    canvas.drawLine(Offset(2, size.height - 2), Offset(2, 2), axisPaint);
+
+    final trendPaint = Paint()
+      ..color = color
+      ..strokeWidth = 2.3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(7, 23)
+      ..lineTo(14, 17)
+      ..lineTo(20, 18)
+      ..lineTo(28, 8);
+
+    canvas.drawPath(path, trendPaint);
+    canvas.drawLine(const Offset(28, 8), const Offset(24.8, 8.7), trendPaint);
+    canvas.drawLine(const Offset(28, 8), const Offset(27.1, 11.4), trendPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MarketTrendPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
 }

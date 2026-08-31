@@ -9,7 +9,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/user_avatar.dart';
+import '../../../../core/widgets/more_menu_button.dart';
 import '../../../invoice/data/repositories/invoice_repository_impl.dart';
 import '../../../invoice/domain/entities/invoice.dart';
 import '../../../invoice/domain/repositories/invoice_repository.dart';
@@ -46,7 +46,9 @@ class _CashMovementItem {
 }
 
 class _CashManagementPageState extends State<CashManagementPage> {
-  final _currencySymbol = Get.find<ProfileController>().currencySymbol;
+  // A getter, not a field: captured at construction this read the
+  // GBP fallback before the profile had loaded and never updated.
+  String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
   final _amountCtrl = TextEditingController();
 
   late final CashManagementRepository _cashRepo;
@@ -145,9 +147,9 @@ class _CashManagementPageState extends State<CashManagementPage> {
   }) async {
     final id = _shopkeeperId;
     if (id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User session not found')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User session not found')));
       return;
     }
 
@@ -278,8 +280,9 @@ class _CashManagementPageState extends State<CashManagementPage> {
                   }
                   Navigator.pop(ctx);
                   final currentInDrawer = _cashData?.cashInDrawer ?? 0;
-                  final newInDrawer =
-                      currentInDrawer == 0 ? amount : currentInDrawer;
+                  final newInDrawer = currentInDrawer == 0
+                      ? amount
+                      : currentInDrawer;
                   _saveCashRecord(
                     startingDayCash: amount,
                     banked: _cashData?.banked ?? 0,
@@ -696,7 +699,7 @@ class _CashManagementPageState extends State<CashManagementPage> {
         children: [
           AppHeader(
             title: 'Cash Management',
-            trailing: const UserAvatar(size: 38),
+            trailing: const MoreMenuButton(size: 38),
           ),
           Expanded(
             child: _isLoading

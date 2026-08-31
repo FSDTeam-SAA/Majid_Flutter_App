@@ -69,9 +69,7 @@ class CashManagementRepositoryImpl implements CashManagementRepository {
 
     final data = response.data;
     if (data is Map<String, dynamic> && data['data'] != null) {
-      return CashManagementData.fromJson(
-        data['data'] as Map<String, dynamic>,
-      );
+      return CashManagementData.fromJson(data['data'] as Map<String, dynamic>);
     }
     throw Exception('Invalid server response');
   }

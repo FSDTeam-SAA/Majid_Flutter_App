@@ -9,12 +9,17 @@ class TransactionEntry {
   final double amount;
   final TransactionKind kind;
 
+  /// How it was paid (Cash, Card, Bank Transfer, ...). Empty when the invoice
+  /// did not record one; the tile then falls back to [kind].
+  final String method;
+
   const TransactionEntry({
     required this.title,
     required this.subtitle,
     required this.time,
     required this.amount,
     required this.kind,
+    this.method = '',
   });
 
   bool get isCredit =>
@@ -24,13 +29,13 @@ class TransactionEntry {
   IconData get icon {
     switch (kind) {
       case TransactionKind.cashReceived:
-        return Icons.swap_horiz_rounded;
+        return Icons.compare_arrows_rounded;
       case TransactionKind.cardReceived:
         return Icons.credit_card_rounded;
       case TransactionKind.expense:
-        return Icons.arrow_outward_rounded;
+        return Icons.call_made_rounded;
       case TransactionKind.refund:
-        return Icons.sync_alt_rounded;
+        return Icons.swap_horiz_rounded;
     }
   }
 }

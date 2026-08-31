@@ -21,4 +21,3 @@ abstract final class TransactionColors {
   static const coral = Color(0xFFFF6B4A);
   static const blue = Color(0xFF3B82F6);
 }
-

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/transaction_entry.dart';
+import 'payment_method_icon.dart';
 import 'transaction_colors.dart';
 
 class TransactionTile extends StatelessWidget {
@@ -35,14 +36,28 @@ class TransactionTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 9),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _iconColor.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(entry.icon, color: _iconColor, size: 21),
+          Builder(
+            builder: (context) {
+              // Prefer the recorded payment method so cash, card and bank
+              // transfers are told apart at a glance.
+              final hasMethod = entry.method.trim().isNotEmpty;
+              final style = hasMethod
+                  ? PaymentMethodIcon.styleFor(entry.method)
+                  : null;
+              final tint = style == null
+                  ? _iconColor
+                  : PaymentMethodIcon.readableTint(style.color);
+
+              return Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: 0.20),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(style?.icon ?? entry.icon, color: tint, size: 24),
+              );
+            },
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -53,7 +68,7 @@ class TransactionTile extends StatelessWidget {
                   entry.title,
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 15,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -62,7 +77,7 @@ class TransactionTile extends StatelessWidget {
                   entry.subtitle,
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -75,7 +90,7 @@ class TransactionTile extends StatelessWidget {
                 '$sign${Get.find<ProfileController>().currencySymbol}${entry.amount.abs().toStringAsFixed(2)}',
                 style: TextStyle(
                   color: amountColor,
-                  fontSize: 16,
+                  fontSize: 17.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
                 ),

@@ -28,6 +28,7 @@ abstract class ProfileRepository {
     String? shopName,
     String? shopAddress,
     String? imagePath,
+    String? currencyCode,
   });
 
   /// Changes the current user's password.

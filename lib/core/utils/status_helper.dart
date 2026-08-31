@@ -227,6 +227,13 @@ class StatusHelper {
         val == 'warning' ||
         val == 'pending' ||
         val == 'in progress' ||
+        val == 'waiting for parts' ||
+        val == 'quote sent' ||
+        val == 'diagnosing' ||
+        val == 'repairing' ||
+        val == 'order assigned' ||
+        val == 'approved' ||
+        val == 'reassigned' ||
         val == 'financed' ||
         val == 'payment plan active' ||
         val == 'limited warranty' ||
@@ -241,6 +248,7 @@ class StatusHelper {
         val == 'lost mode' ||
         val == 'blocked' ||
         val == 'locked' ||
+        val == 'rejected' ||
         val == 'on' ||
         val == 'failed' ||
         val == 'flagged' ||
@@ -283,40 +291,48 @@ class StatusHelper {
       case StatusTone.safe: // Emerald / Green
         return StatusStyle(
           textColor: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
-          backgroundColor:
-              isDark ? const Color(0x3310B981) : const Color(0xFFD1FAE5),
-          borderColor:
-              isDark ? const Color(0x4D10B981) : const Color(0xFFA7F3D0),
+          backgroundColor: isDark
+              ? const Color(0x3310B981)
+              : const Color(0xFFD1FAE5),
+          borderColor: isDark
+              ? const Color(0x4D10B981)
+              : const Color(0xFFA7F3D0),
           tone: tone,
         );
 
       case StatusTone.warning: // Amber / Yellow
         return StatusStyle(
           textColor: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-          backgroundColor:
-              isDark ? const Color(0x33F59E0B) : const Color(0xFFFEF3C7),
-          borderColor:
-              isDark ? const Color(0x4DF59E0B) : const Color(0xFFFDE68A),
+          backgroundColor: isDark
+              ? const Color(0x33F59E0B)
+              : const Color(0xFFFEF3C7),
+          borderColor: isDark
+              ? const Color(0x4DF59E0B)
+              : const Color(0xFFFDE68A),
           tone: tone,
         );
 
       case StatusTone.danger: // Red / Rose
         return StatusStyle(
           textColor: isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C),
-          backgroundColor:
-              isDark ? const Color(0x33EF4444) : const Color(0xFFFEE2E2),
-          borderColor:
-              isDark ? const Color(0x4DEF4444) : const Color(0xFFFECACA),
+          backgroundColor: isDark
+              ? const Color(0x33EF4444)
+              : const Color(0xFFFEE2E2),
+          borderColor: isDark
+              ? const Color(0x4DEF4444)
+              : const Color(0xFFFECACA),
           tone: tone,
         );
 
       case StatusTone.neutral: // Slate / Neutral
         return StatusStyle(
           textColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-          backgroundColor:
-              isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-          borderColor:
-              isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          backgroundColor: isDark
+              ? const Color(0xFF1E293B)
+              : const Color(0xFFF1F5F9),
+          borderColor: isDark
+              ? const Color(0xFF334155)
+              : const Color(0xFFE2E8F0),
           tone: tone,
         );
     }

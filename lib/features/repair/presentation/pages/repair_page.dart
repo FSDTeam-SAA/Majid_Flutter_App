@@ -8,7 +8,7 @@ import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/user_avatar.dart';
+import '../../../../core/widgets/more_menu_button.dart';
 import '../../../../core/utils/sound_effects.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
@@ -59,11 +59,8 @@ class _RepairPageState extends State<RepairPage> {
     return sortedRepairs.take(5).toList();
   }
 
-  // "Pending" = anything not yet completed or rejected — every in-progress
-  // status (quote sent, diagnosing, repairing, waiting for parts, etc.) is
-  // bucketed into 'In Progress' by formatRepairStatus.
   List<RepairItem> get _pendingRepairs =>
-      _repairs.where((item) => item.status == 'In Progress').toList();
+      _repairs.where((item) => item.isActive).toList();
 
   String? _repairId(RepairItem item) => item.raw['_id']?.toString();
 
@@ -681,6 +678,10 @@ class _RepairPageState extends State<RepairPage> {
                 : problems
                       .where((p) => p.toLowerCase().contains(query))
                       .toList();
+            final customProblem = searchCtrl.text.trim();
+            final hasExactCustomMatch = problems.any(
+              (problem) => problem.trim().toLowerCase() == query,
+            );
 
             return Padding(
               padding: EdgeInsets.fromLTRB(
@@ -763,19 +764,39 @@ class _RepairPageState extends State<RepairPage> {
                   const SizedBox(height: 14),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 300),
-                    child: problems.isEmpty
+                    child: problems.isEmpty && customProblem.isEmpty
                         ? _buildEmptyProblemState()
-                        : filtered.isEmpty
+                        : filtered.isEmpty && customProblem.isEmpty
                         ? _buildEmptyProblemState(
                             message: 'No matching problems found.',
                           )
                         : ListView.separated(
                             shrinkWrap: true,
-                            itemCount: filtered.length,
+                            itemCount:
+                                filtered.length +
+                                ((!hasExactCustomMatch &&
+                                        customProblem.isNotEmpty)
+                                    ? 1
+                                    : 0),
                             separatorBuilder: (_, _) =>
                                 const SizedBox(height: 8),
                             itemBuilder: (_, index) {
-                              final item = filtered[index];
+                              if (!hasExactCustomMatch &&
+                                  customProblem.isNotEmpty &&
+                                  index == 0) {
+                                return _buildProblemTile(
+                                  'Use "$customProblem"',
+                                  icon: Icons.edit_note_rounded,
+                                  onTap: () =>
+                                      Navigator.pop(sheetCtx, customProblem),
+                                );
+                              }
+                              final filteredIndex =
+                                  (!hasExactCustomMatch &&
+                                      customProblem.isNotEmpty)
+                                  ? index - 1
+                                  : index;
+                              final item = filtered[filteredIndex];
                               return _buildProblemTile(
                                 item,
                                 onTap: () => Navigator.pop(sheetCtx, item),
@@ -792,7 +813,11 @@ class _RepairPageState extends State<RepairPage> {
     );
   }
 
-  Widget _buildProblemTile(String label, {required VoidCallback onTap}) {
+  Widget _buildProblemTile(
+    String label, {
+    required VoidCallback onTap,
+    IconData icon = Icons.history_rounded,
+  }) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -805,11 +830,7 @@ class _RepairPageState extends State<RepairPage> {
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.history_rounded,
-              color: AppColors.textSecondary,
-              size: 18,
-            ),
+            Icon(icon, color: AppColors.textSecondary, size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -889,6 +910,7 @@ class _RepairPageState extends State<RepairPage> {
     BuildContext context,
     List<Customer> customers,
   ) {
+    final searchCtrl = TextEditingController();
     return showModalBottomSheet<_CustomerPick>(
       context: context,
       isScrollControlled: true,
@@ -897,119 +919,195 @@ class _RepairPageState extends State<RepairPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetCtx) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.fieldBorder,
-                      borderRadius: BorderRadius.circular(2),
+        return StatefulBuilder(
+          builder: (sheetCtx, setState) {
+            final query = searchCtrl.text.trim().toLowerCase();
+            final filtered = query.isEmpty
+                ? customers
+                : customers.where((customer) {
+                    final haystack = [
+                      customer.fullName,
+                      customer.phone,
+                      customer.email,
+                    ].join(' ').toLowerCase();
+                    return haystack.contains(query);
+                  }).toList();
+
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.fieldBorder,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Customer',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Choose an existing customer to auto-fill their details.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12.5,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(sheetCtx).size.height * 0.5,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        if (customers.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Text(
-                              'No saved customers yet.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 13,
-                              ),
-                            ),
-                          )
-                        else
-                          ...customers.map(
-                            (customer) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _buildTechnicianTile(
-                                sheetCtx,
-                                icon: Icons.person_outline_rounded,
-                                title: customer.fullName.isEmpty
-                                    ? customer.email
-                                    : customer.fullName,
-                                subtitle: customer.phone.isEmpty
-                                    ? customer.email
-                                    : customer.phone,
-                                onTap: () => Navigator.pop(
-                                  sheetCtx,
-                                  _CustomerPick(customer),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Customer',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Search by customer name, phone, or email.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldBackground,
+                        borderRadius: BorderRadius.circular(50),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(
+                            alpha: AppColors.isDark ? 0.6 : 0.72,
+                          ),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: TextField(
+                        controller: searchCtrl,
+                        autofocus: true,
+                        onChanged: (_) => setState(() {}),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search customer name or phone',
+                          hintStyle: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppColors.textSecondary,
+                            size: 20,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 4,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(sheetCtx).size.height * 0.5,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            if (customers.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                child: Text(
+                                  'No saved customers yet.',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
+                            else if (filtered.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                child: Text(
+                                  'No customers matched your search.',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
+                            else
+                              ...filtered.map(
+                                (customer) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _buildTechnicianTile(
+                                    sheetCtx,
+                                    icon: Icons.person_outline_rounded,
+                                    title: customer.fullName.isEmpty
+                                        ? customer.email
+                                        : customer.fullName,
+                                    subtitle: customer.phone.isEmpty
+                                        ? customer.email
+                                        : customer.phone,
+                                    onTap: () => Navigator.pop(
+                                      sheetCtx,
+                                      _CustomerPick(customer),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(
+                        sheetCtx,
+                        const _CustomerPick(null, openCustomerPage: true),
+                      ),
+                      icon: Icon(
+                        Icons.person_add_alt_1_rounded,
+                        color: AppColors.primary,
+                        size: 16,
+                      ),
+                      label: Text(
+                        'Add Customer',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.5),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.pop(
-                    sheetCtx,
-                    const _CustomerPick(null, openCustomerPage: true),
-                  ),
-                  icon: Icon(
-                    Icons.person_add_alt_1_rounded,
-                    color: AppColors.primary,
-                    size: 16,
-                  ),
-                  label: Text(
-                    'Add Customer',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: AppColors.primary.withValues(alpha: 0.5),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1286,7 +1384,7 @@ class _RepairPageState extends State<RepairPage> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                UserAvatar(),
+                MoreMenuButton(),
               ],
             ),
             showBackButton: false,
@@ -1325,9 +1423,7 @@ class _RepairPageState extends State<RepairPage> {
       );
     }
 
-    final completed = _repairs
-        .where((item) => item.status == 'Completed')
-        .length;
+    final completed = _repairs.where((item) => item.isCompleted).length;
     final inProgress = _repairs.length - completed;
     final totalSales = _repairs.fold<double>(
       0,
@@ -1344,6 +1440,38 @@ class _RepairPageState extends State<RepairPage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(
               children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.fieldBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.navigation_outlined,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Use the bottom navigation bar to switch back to the main menu without closing the app.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
                 RepairStatsRow(
                   inProgress: inProgress,
                   completed: completed,
