@@ -69,6 +69,31 @@ class CheckoutTokens {
   static Color get readoutDivider =>
       isDark ? const Color(0xFF1B333D) : const Color(0xFFE6ECF3);
 
+  // Lime accents from the client's mockup: restrained, used for the active
+  // operators and the primary action only.
+  static Color get limeInk =>
+      isDark ? const Color(0xFF9BDB4D) : const Color(0xFF3E9B24);
+  static Color get limeSoft =>
+      isDark ? const Color(0xFF1D2B18) : const Color(0xFFF1F8E6);
+  static Gradient get limeGradient => LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: isDark
+        ? const [Color(0xFFA9DE3C), Color(0xFF35B455)]
+        : const [Color(0xFFC6E64A), Color(0xFF3FC060)],
+  );
+
+  /// The running expression, blue in the mockup so it reads as working-out
+  /// rather than the final figure.
+  static Color get expressionInk =>
+      isDark ? const Color(0xFF8FB6FF) : const Color(0xFF3B5BDB);
+
+  /// Face of a keypad key: plain white on the soft ground.
+  static Color get keySurface =>
+      isDark ? const Color(0xFF16252C) : Colors.white;
+  static Color get keyEdge =>
+      isDark ? const Color(0xFF20343C) : const Color(0xFFEDEFF1);
+
   /// Warm rail behind the arithmetic operators, matching the client mockup.
   static Color get operatorColor =>
       isDark ? const Color(0xFFF2564B) : const Color(0xFFF1463E);

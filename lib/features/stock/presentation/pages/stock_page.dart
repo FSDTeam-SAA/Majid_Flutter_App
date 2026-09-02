@@ -32,10 +32,14 @@ import '../widgets/checkout_search_field.dart';
 import '../widgets/checkout_section_header.dart';
 import '../widgets/checkout_shortcut_card.dart';
 import '../widgets/checkout_tab_bar.dart';
+import '../widgets/checkout_total_qty_button.dart';
 import '../widgets/price_edit_sheet.dart';
 import '../widgets/price_override_summary.dart';
 import '../widgets/ready_orders_card.dart';
 import '../widgets/ready_orders_sheet.dart';
+import '../../domain/entities/calculation_line.dart';
+import 'calculation_note_page.dart';
+import 'quantity_review_page.dart';
 import 'add_category_sheet.dart';
 import 'add_new_device_page.dart';
 import 'inventory_screen.dart';
@@ -72,6 +76,10 @@ class _StockPageState extends State<StockPage> {
   bool _isInventoryLoading = true;
   String _inventoryError = '';
   AmountExpression _expression = AmountExpression.empty;
+
+  /// Names given to calculated lines, keyed by the term as typed.
+  final Map<String, String> _lineNames = {};
+  String _calculationNote = '';
 
   @override
   void initState() {
@@ -294,8 +302,6 @@ class _StockPageState extends State<StockPage> {
 
   void _appendDecimal() => _updateExpression(_expression.addDecimal());
 
-  void _appendPercent() => _updateExpression(_expression.addPercent());
-
   void _appendOperator(String operator) =>
       _updateExpression(_expression.addOperator(operator));
 
@@ -344,6 +350,62 @@ class _StockPageState extends State<StockPage> {
       return haystack.contains(query);
     }).toList();
   }
+
+  /// Names the calculated lines before they reach the review screen.
+  Future<void> _openCalculationNote() async {
+    if (_expression.isEmpty) {
+      showErrorSnackbar('Add an amount first');
+      return;
+    }
+    HapticFeedback.selectionClick();
+
+    final result = await Navigator.push<CalculationNoteResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CalculationNotePage(
+          lines: _namedLines,
+          initialNote: _calculationNote,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _lineNames
+        ..clear()
+        ..addEntries(
+          result.lines
+              .where((line) => line.name.isNotEmpty)
+              .map((line) => MapEntry(line.expression, line.name)),
+        );
+      _calculationNote = result.note;
+    });
+  }
+
+  /// Opens the item-by-item review of everything typed into the calculator.
+  Future<void> _openQuantityReview() async {
+    if (_expression.isEmpty) {
+      showErrorSnackbar('Add an amount first');
+      return;
+    }
+    HapticFeedback.selectionClick();
+
+    await Navigator.push<double>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuantityReviewPage(
+          lines: _namedLines,
+          currencySymbol: _profileCtrl.currencySymbol,
+        ),
+      ),
+    );
+  }
+
+  /// Calculator lines with any names the shopkeeper has given them.
+  List<CalculationLine> get _namedLines => [
+    for (final line in _expression.lines)
+      line.copyWith(name: _lineNames[line.expression] ?? ''),
+  ];
 
   void _clearAll() {
     HapticFeedback.mediumImpact();
@@ -504,15 +566,23 @@ class _StockPageState extends State<StockPage> {
             showExpression: _expression.hasOperation,
             hasAmount: _hasTypedAmount,
             onClear: _clearAll,
+            onNote: _openCalculationNote,
           ),
-          const SizedBox(height: 0),
+          const SizedBox(height: 8),
           CheckoutKeypad(
             onDigit: _appendDigit,
             onDecimal: _appendDecimal,
-            onPercent: _appendPercent,
             onOperator: _appendOperator,
             onBackspace: _backspace,
             activeOperator: _expression.pendingOperator,
+          ),
+          const SizedBox(height: 26),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: CheckoutTotalQtyButton(
+              quantity: _expression.totalQuantity,
+              onTap: _openQuantityReview,
+            ),
           ),
         ],
       ),

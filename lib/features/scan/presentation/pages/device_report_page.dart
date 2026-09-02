@@ -1,10 +1,22 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
+import '../../../../core/utils/document_saver.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../../../customer/data/repositories/customer_repository_impl.dart';
+import '../../../customer/domain/entities/customer.dart';
+import '../../../invoice/data/repositories/invoice_repository_impl.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../domain/entities/smart_invoice_data.dart';
+import '../utils/device_certificate_pdf.dart';
+import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
+import '../widgets/smart_invoice_sheet.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/app_header.dart';
-import '../../../invoice/presentation/pages/invoice_page.dart';
-import '../utils/device_certificate_pdf.dart';
 import '../widgets/ai_risk_card.dart';
 import '../widgets/device_field_card.dart';
 
@@ -23,7 +35,9 @@ class DeviceReportPage extends StatefulWidget {
 
 class _DeviceReportPageState extends State<DeviceReportPage> {
   bool _isGeneratingPdf = false;
+  bool _isCreatingInvoice = false;
   final GlobalKey _downloadCertificateButtonKey = GlobalKey();
+  final GlobalKey _smartInvoiceButtonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -56,15 +70,10 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => InvoicePage(
-                                initialTabIndex: 0,
-                                initialDraft: _invoiceDraftPrefill,
-                              ),
-                            ),
-                          ),
+                          key: _smartInvoiceButtonKey,
+                          onPressed: _isCreatingInvoice
+                              ? null
+                              : _createSmartInvoice,
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
                               color: _kSmartActionsGreen,
@@ -81,14 +90,25 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.description_outlined,
-                                size: 18,
-                                color: _kSmartActionsGreen,
-                              ),
+                              _isCreatingInvoice
+                                  ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: _kSmartActionsGreen,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.description_outlined,
+                                      size: 18,
+                                      color: _kSmartActionsGreen,
+                                    ),
                               SizedBox(height: 4),
                               Text(
-                                'Create Smart Invoice',
+                                _isCreatingInvoice
+                                    ? 'Generating...'
+                                    : 'Create Smart Invoice',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: _kSmartActionsGreen,
@@ -165,23 +185,252 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
   // ─── PDF ───
 
+  /// Pulls a value out of the report, trying the display labels first and then
+  /// the raw provider keys.
+  String _reportValue(List<String> candidates) {
+    final fields = _allFieldsForPdf;
+    final provider = _providerFields;
+
+    for (final key in candidates) {
+      final byLabel = fields[key.toUpperCase()]?.trim();
+      if (byLabel != null && byLabel.isNotEmpty && byLabel != 'N/A') {
+        return byLabel;
+      }
+      final byKey = provider[key]?.trim();
+      if (byKey != null && byKey.isNotEmpty && byKey != 'N/A') return byKey;
+    }
+    return 'N/A';
+  }
+
+  SmartInvoiceDevice get _smartInvoiceDevice {
+    return SmartInvoiceDevice(
+      itemName: _invoiceItemName,
+      imei: widget.report['imei']?.toString() ?? _reportValue(['imei']),
+      serial: _reportValue(['serial number', 'serial_number', 'serial']),
+      warranty: _reportValue([
+        'limited warranty',
+        'warranty status',
+        'warranty',
+      ]),
+      purchaseDate: _reportValue([
+        'estimated purchase date',
+        'purchase date',
+        'purchase_date',
+      ]),
+      warrantyType: _reportValue(['warranty type', 'warranty_type']),
+      blacklist: _reportValue(['blacklist status', 'blacklist_status']),
+      simLock: _reportValue(['sim lock', 'sim_lock', 'simlock']),
+      activation: _reportValue([
+        'activation status',
+        'activation_status',
+        'device activation',
+      ]),
+      coverage: _reportValue([
+        'coverage end date',
+        'coverage',
+        'coverage_status',
+      ]),
+      registration: _reportValue(['registration', 'registration_status']),
+      replaced: _reportValue(['replaced', 'replacement']),
+      openRepair: _reportValue(['open repair', 'repair status']),
+      riskScore: (_riskScore * 100).round(),
+      aiSummary: _riskDescription.trim().isEmpty
+          ? 'IMEI Risk Analysis Report'
+          : 'IMEI Risk Analysis Report',
+    );
+  }
+
+  /// Mirrors the website: ask only for what the scan cannot supply, then build
+  /// and file the invoice.
+  Future<void> _createSmartInvoice() async {
+    final marketValue = _marketValueData;
+    final suggestedAmount = marketValue == null
+        ? null
+        : double.tryParse(marketValue['amount']?.toString().trim() ?? '');
+
+    final profileCtrlForList = Get.find<ProfileController>();
+    var listShopkeeperId = profileCtrlForList.userId;
+    if (listShopkeeperId.isEmpty) {
+      await profileCtrlForList.fetchProfile();
+      listShopkeeperId = profileCtrlForList.userId;
+    }
+
+    // Saved customers, so an existing one can be picked instead of retyped.
+    var savedCustomers = <Customer>[];
+    if (listShopkeeperId.isNotEmpty) {
+      try {
+        savedCustomers = await CustomerRepositoryImpl(
+          ApiClient(baseUrl),
+        ).getCustomers(listShopkeeperId);
+      } catch (_) {
+        savedCustomers = [];
+      }
+    }
+    if (!mounted) return;
+
+    final customer = await showSmartInvoiceSheet(
+      context: context,
+      suggestedAmount: suggestedAmount,
+      suggestedCurrency:
+          marketValue?['currency']?.toString().trim().toUpperCase() ?? 'USD',
+      existingCustomers: savedCustomers,
+    );
+    if (customer == null || !mounted) return;
+
+    setState(() => _isCreatingInvoice = true);
+    try {
+      final profileCtrl = Get.find<ProfileController>();
+      var shopkeeperId = profileCtrl.userId;
+      if (shopkeeperId.isEmpty) {
+        await profileCtrl.fetchProfile();
+        shopkeeperId = profileCtrl.userId;
+      }
+
+      final now = DateTime.now();
+      final device = _smartInvoiceDevice;
+      final imeiTail = device.imei.length > 6
+          ? device.imei.substring(device.imei.length - 6)
+          : device.imei;
+
+      final safeImei = device.imei.replaceAll(RegExp(r'[^0-9A-Za-z]'), '');
+      final pdfFile = await VerifiedInvoicePdf.build(
+        // The website names the download after the IMEI.
+        fileName: 'Invoice_${safeImei.isEmpty ? imeiTail : safeImei}.pdf',
+        invoiceNumber: 'INV-$imeiTail-${now.year}',
+        createdAt: now,
+        shopName: profileCtrl.shopName,
+        shopEmail: profileCtrl.email,
+        shopPhone: profileCtrl.whatsappNumber.isNotEmpty
+            ? profileCtrl.whatsappNumber
+            : profileCtrl.phone,
+        customerName: customer.fullName,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+        customerAddress: customer.addressLine,
+        paymentLabel: customer.paymentMethod,
+        isPaid: customer.isPaid,
+        currencySymbol: customer.currencySymbol,
+        items: [
+          VerifiedInvoiceItem(
+            name: device.itemName,
+            imei: device.imei,
+            serial: device.serial,
+            warranty: device.warranty,
+            purchaseDate: device.purchaseDate,
+            warrantyType: device.warrantyType,
+            blacklist: device.blacklist,
+            simLock: device.simLock,
+            activation: device.activation,
+            isVerified: true,
+            quantity: 1,
+            lineTotal: customer.amount,
+          ),
+        ],
+        apiSummary: VerifiedInvoiceApiSummary(
+          coverage: device.coverage,
+          registration: device.registration,
+          replaced: device.replaced,
+          openRepair: device.openRepair,
+          riskScore: device.riskScore,
+          aiSummary: device.aiSummary,
+        ),
+      );
+
+      var customerId = customer.existingCustomerId ?? '';
+      if (customerId.isEmpty) {
+        try {
+          final parts = customer.fullName.split(RegExp(r'\s+'));
+          final created = await CustomerRepositoryImpl(ApiClient(baseUrl))
+              .createCustomer(
+                firstName: parts.first,
+                lastName: parts.length > 1 ? parts.sublist(1).join(' ') : '',
+                email: customer.email,
+                phone: customer.phone,
+                address: customer.addressLine,
+              );
+          customerId = created.id;
+        } catch (_) {
+          // A failed customer save should not block the invoice.
+        }
+      }
+
+      final payload = FormData();
+      payload.fields.addAll([
+        MapEntry('shopkeeperId', shopkeeperId),
+        MapEntry('type', 'Custom invoice'),
+        if (customerId.isNotEmpty) MapEntry('customerInfo', customerId),
+        MapEntry('totalAmount', customer.amount.toString()),
+        MapEntry('paymentMethod', customer.paymentMethod),
+        MapEntry('paymentStatus', customer.isPaid ? 'paid' : 'due'),
+        MapEntry('currency', customer.currencyCode),
+        if (customer.isPaid) MapEntry('amountPaid', customer.amount.toString()),
+        if (!customer.isPaid) MapEntry('dueAmount', customer.amount.toString()),
+      ]);
+      payload.files.add(
+        MapEntry(
+          'invoice',
+          await MultipartFile.fromFile(
+            pdfFile.path,
+            filename: pdfFile.uri.pathSegments.last,
+          ),
+        ),
+      );
+
+      await InvoiceRepositoryImpl(ApiClient(baseUrl)).createInvoice(payload);
+
+      SavedDocument? saved;
+      try {
+        saved = await DocumentSaver.save(pdfFile);
+      } catch (_) {
+        saved = null;
+      }
+      if (!mounted) return;
+
+      showSuccessSnackbar(
+        saved == null
+            ? 'Smart invoice created'
+            : 'Smart invoice saved to ${saved.locationLabel}',
+      );
+      await Share.shareXFiles([
+        XFile(saved?.file.path ?? pdfFile.path),
+      ], sharePositionOrigin: _shareOriginFor(_smartInvoiceButtonKey));
+    } on DioException catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(
+        e.response?.data?['message']?.toString() ??
+            'Failed to create smart invoice',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar('Failed to create smart invoice');
+    } finally {
+      if (mounted) setState(() => _isCreatingInvoice = false);
+    }
+  }
+
   Future<void> _generatePdf() async {
     setState(() => _isGeneratingPdf = true);
     try {
-      final fields = _allFieldsForPdf;
-      final deviceName = fields['DEVICE NAME'] ?? 'Unknown Device';
-      final imei = widget.report['imei']?.toString() ?? fields['IMEI'] ?? '';
-
+      final device = _smartInvoiceDevice;
       final file = await DeviceCertificatePdf.build(
-        deviceName: deviceName,
-        imei: imei,
-        fields: fields,
+        deviceName: device.itemName,
+        imei: device.imei,
+        serialNumber: device.serial,
+        fields: _allFieldsForPdf,
         riskScore: _riskScore,
         riskDescription: _riskDescription,
       );
+
+      SavedDocument? saved;
+      try {
+        saved = await DocumentSaver.save(file);
+      } catch (_) {
+        saved = null;
+      }
       if (!mounted) return;
+
       await Share.shareXFiles([
-        XFile(file.path),
+        XFile(saved?.file.path ?? file.path),
       ], sharePositionOrigin: _shareOriginFor(_downloadCertificateButtonKey));
     } catch (e) {
       if (!mounted) return;
@@ -322,56 +571,6 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         ? _data['deviceName'].toString().trim()
         : 'Device Report Item';
   }
-
-  String get _invoiceStatusLabel {
-    final provider = _providerFields;
-    final labels = <String>[];
-
-    void addIfPresent(String key, String label) {
-      final value = provider[key]?.toString().trim() ?? '';
-      if (value.isNotEmpty) {
-        labels.add('$label: $value');
-      }
-    }
-
-    addIfPresent('device_status', 'Status');
-    addIfPresent('activation_status', 'Activation');
-    addIfPresent('icloud_lock', 'iCloud Lock');
-    addIfPresent('sim_lock', 'SIM Lock');
-    addIfPresent('blacklist_status', 'Blacklist');
-
-    return labels.join(' • ');
-  }
-
-  String get _invoiceDescription {
-    final fields = _allFieldsForPdf;
-    final parts = <String>[
-      if ((fields['MANUFACTURER'] ?? '').trim().isNotEmpty &&
-          fields['MANUFACTURER'] != 'N/A')
-        fields['MANUFACTURER']!,
-      if ((fields['SERIAL NUMBER'] ?? '').trim().isNotEmpty &&
-          fields['SERIAL NUMBER'] != 'N/A')
-        'SN ${fields['SERIAL NUMBER']}',
-      if ((fields['IMEI'] ?? '').trim().isNotEmpty && fields['IMEI'] != 'N/A')
-        'IMEI ${fields['IMEI']}',
-      if ((fields['COUNTRY'] ?? '').trim().isNotEmpty &&
-          fields['COUNTRY'] != 'N/A')
-        _normalizeCountryValue(fields['COUNTRY']),
-    ];
-    return parts.join(' • ');
-  }
-
-  InvoiceDraftPrefill get _invoiceDraftPrefill => InvoiceDraftPrefill(
-    itemName: _invoiceItemName,
-    description: _invoiceDescription,
-    condition: _riskLabel,
-    imeiSerial:
-        widget.report['imei']?.toString() ?? _allFieldsForPdf['IMEI'] ?? '',
-    statusLabel: _invoiceStatusLabel,
-    price: double.tryParse(
-      _marketValueData?['amount']?.toString().trim() ?? '',
-    ),
-  );
 
   _DeviceCategory get _category {
     final fields = _providerFields;

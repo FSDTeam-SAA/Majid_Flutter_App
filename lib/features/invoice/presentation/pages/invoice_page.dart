@@ -8,12 +8,14 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
+import '../../../../core/utils/document_saver.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../../../customer/domain/repositories/customer_repository.dart';
 import '../../../customer/presentation/controller/customer_controller.dart';
 import '../../../customer/presentation/widgets/add_customer_sheet.dart';
@@ -22,6 +24,8 @@ import '../../domain/entities/invoice.dart' as invoice_entity;
 import '../../domain/repositories/invoice_repository.dart';
 import '../controller/invoice_data.dart';
 import '../utils/invoice_pdf_builder.dart';
+import '../utils/purchase_receipt_pdf.dart';
+import '../utils/verified_invoice_pdf.dart';
 import '../widgets/invoice_customer_picker.dart';
 import '../widgets/new_item_name_dialog.dart';
 import '../widgets/invoice_input_field.dart';
@@ -591,6 +595,32 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
+  /// Keeps the generated PDF on the device. The builder writes into the
+  /// temporary directory, which the OS may purge at any time.
+  Future<SavedDocument?> _saveInvoiceCopy(File pdfFile, String prefix) async {
+    try {
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      return await DocumentSaver.save(
+        pdfFile,
+        fileName: '${prefix}_$stamp.pdf',
+      );
+    } catch (e) {
+      debugPrint('Could not save invoice copy: $e');
+      return null;
+    }
+  }
+
+  /// Reads an IMEI or serial straight into [controller] with the camera, so
+  /// the numbers no longer have to be typed by hand.
+  Future<void> _scanIntoField(TextEditingController controller) async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (code == null || code.trim().isEmpty || !mounted) return;
+    setState(() => controller.text = code.trim());
+  }
+
   Future<void> _createInvoice() async {
     final hasExistingCustomer =
         _selectedCustomerId != null && _selectedCustomerId!.isNotEmpty;
@@ -626,7 +656,7 @@ class _InvoicePageState extends State<InvoicePage> {
       final paymentType = _recordedPaymentMethod ?? 'Cash';
       final totalAmount = _totalAmount;
 
-      final pdfItems = <InvoicePdfItem>[];
+      final pdfItems = <VerifiedInvoiceItem>[];
       for (final item in validItems) {
         final name = item.nameCtrl.text.trim();
         final code = [
@@ -638,46 +668,28 @@ class _InvoicePageState extends State<InvoicePage> {
         final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
         final discount = double.tryParse(item.discountCtrl.text.trim()) ?? 0;
         final tax = double.tryParse(item.taxCtrl.text.trim()) ?? 0;
+        final lineTotal = (qty * unitPrice) - discount + tax;
         final imeis = item.imeiControllers
             .map((c) => c.text.trim())
             .where((v) => v.isNotEmpty)
             .toList();
 
-        if (imeis.isEmpty) {
-          pdfItems.add(
-            InvoicePdfItem(
-              name: name,
-              code: code,
-              quantity: qty,
-              unitPrice: unitPrice,
-              discount: discount,
-              tax: tax,
-            ),
-          );
-        } else {
-          for (final imei in imeis) {
-            pdfItems.add(
-              InvoicePdfItem(
-                name: name,
-                code: code,
-                imeiSerial: imei,
-                quantity: 1,
-                unitPrice: unitPrice,
-                discount: discount / imeis.length,
-                tax: tax / imeis.length,
-              ),
-            );
-          }
-        }
+        pdfItems.add(
+          VerifiedInvoiceItem(
+            name: code.isEmpty ? name : '$name\n$code',
+            imei: imeis.join(', '),
+            quantity: qty,
+            lineTotal: lineTotal < 0 ? 0 : lineTotal,
+            isVerified: imeis.isNotEmpty,
+          ),
+        );
       }
 
-      final pdfFile = await InvoicePdfBuilder.build(
-        fileNamePrefix: 'invoice',
-        invoiceTitle: 'SALES INVOICE',
-        invoiceNumber: now.millisecondsSinceEpoch.toString(),
+      final pdfFile = await VerifiedInvoicePdf.build(
+        fileName: 'invoice_${now.millisecondsSinceEpoch}.pdf',
+        invoiceNumber: 'INV-${now.millisecondsSinceEpoch}',
         createdAt: now,
         shopName: _profileCtrl.shopName,
-        shopAddress: _profileCtrl.shopAddress,
         shopEmail: _profileCtrl.email,
         shopPhone: _profileCtrl.whatsappNumber.isNotEmpty
             ? _profileCtrl.whatsappNumber
@@ -686,12 +698,12 @@ class _InvoicePageState extends State<InvoicePage> {
         customerEmail: _emailCtrl.text.trim(),
         customerPhone: _phoneCtrl.text.trim(),
         customerAddress: _addressCtrl.text.trim(),
-        paymentType: paymentType,
+        paymentLabel: paymentType,
+        isPaid:
+            _recordedAmountPaid != null && _recordedAmountPaid! >= totalAmount,
         currencySymbol: _profileCtrl.currencySymbol,
-        amountPaid: _recordedAmountPaid,
         items: pdfItems,
-        totalAmount: totalAmount,
-        footerNote: 'Generated from iMoScan invoice flow.',
+        subtitle: 'SALES INVOICE',
       );
 
       String customerId;
@@ -748,8 +760,13 @@ class _InvoicePageState extends State<InvoicePage> {
       );
 
       await _invoiceRepo.createInvoice(payload);
+      final saved = await _saveInvoiceCopy(pdfFile, 'invoice');
       if (!mounted) return;
-      showSuccessSnackbar('Invoice created successfully!');
+      showSuccessSnackbar(
+        saved == null
+            ? 'Invoice created successfully!'
+            : 'Invoice saved to ${saved.locationLabel}',
+      );
       _isViewInvoicesLoaded = false;
       _fetchViewInvoices();
       setState(() {
@@ -1310,6 +1327,27 @@ class _InvoicePageState extends State<InvoicePage> {
                     child: InvoiceInputField(
                       hint: 'IMEI / Serial #${imeiIndex + 1}',
                       controller: item.imeiControllers[imeiIndex],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () =>
+                        _scanIntoField(item.imeiControllers[imeiIndex]),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -2216,15 +2254,55 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  double get _purchaseGrandTotal {
-    double total = 0;
+  /// The lines exactly as the receipt prints them. The total is summed from
+  /// these, so the table and the amount due can never disagree.
+  List<InvoicePdfItem> get _purchaseLines {
+    final lines = <InvoicePdfItem>[];
+
     for (final item in _purchaseItems) {
-      final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
-      final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
-      total += qty * price;
+      final name = item.nameCtrl.text.trim();
+      if (name.isEmpty) continue;
+
+      final code = [
+        item.storageCtrl.text.trim(),
+        item.colorCtrl.text.trim(),
+        item.conditionCtrl.text.trim(),
+      ].where((v) => v.isNotEmpty).join(' / ');
+      final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+      final imeis = item.imeiControllers
+          .map((c) => c.text.trim())
+          .where((v) => v.isNotEmpty)
+          .toList();
+
+      if (imeis.isEmpty) {
+        lines.add(
+          InvoicePdfItem(
+            name: name,
+            code: code,
+            quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
+            unitPrice: unitPrice,
+          ),
+        );
+      } else {
+        // One handset per IMEI; the quantity field is validated to match.
+        for (final imei in imeis) {
+          lines.add(
+            InvoicePdfItem(
+              name: name,
+              code: code,
+              imeiSerial: imei,
+              quantity: 1,
+              unitPrice: unitPrice,
+            ),
+          );
+        }
+      }
     }
-    return total;
+    return lines;
   }
+
+  double get _purchaseGrandTotal =>
+      _purchaseLines.fold<double>(0, (sum, line) => sum + line.lineTotal);
 
   Widget _buildPurchaseInvoiceTab() {
     return Column(
@@ -2778,6 +2856,27 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
+                    onTap: () =>
+                        _scanIntoField(item.imeiControllers[imeiIndex]),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
                     onTap: () => setState(() {
                       if (item.imeiControllers.length > 1) {
                         item.imeiControllers[imeiIndex].dispose();
@@ -3040,6 +3139,26 @@ class _InvoicePageState extends State<InvoicePage> {
       showErrorSnackbar('Please add at least one item');
       return false;
     }
+
+    for (final item in _purchaseItems) {
+      final name = item.nameCtrl.text.trim();
+      if (name.isEmpty) continue;
+
+      final imeis = item.imeiControllers
+          .map((c) => c.text.trim())
+          .where((v) => v.isNotEmpty)
+          .length;
+      if (imeis == 0) continue;
+
+      final quantity = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
+      if (imeis != quantity) {
+        showErrorSnackbar(
+          '$name has $imeis IMEI/serial ${imeis == 1 ? 'number' : 'numbers'} '
+          'but a quantity of $quantity. Make them match.',
+        );
+        return false;
+      }
+    }
     return true;
   }
 
@@ -3061,61 +3180,26 @@ class _InvoicePageState extends State<InvoicePage> {
         _pLastNameCtrl.text.trim(),
       ].where((v) => v.isNotEmpty).join(' ');
 
-      final pdfItems = <InvoicePdfItem>[];
-      for (final item in _purchaseItems) {
-        final name = item.nameCtrl.text.trim();
-        if (name.isEmpty) continue;
+      final pdfItems = _purchaseLines;
 
-        final code = [
-          item.storageCtrl.text.trim(),
-          item.colorCtrl.text.trim(),
-          item.conditionCtrl.text.trim(),
-        ].where((v) => v.isNotEmpty).join(' / ');
-        final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
-        final imeis = item.imeiControllers
-            .map((c) => c.text.trim())
-            .where((v) => v.isNotEmpty)
-            .toList();
-
-        if (imeis.isEmpty) {
-          pdfItems.add(
-            InvoicePdfItem(
-              name: name,
-              code: code,
-              quantity: int.tryParse(item.quantityCtrl.text.trim()) ?? 1,
-              unitPrice: unitPrice,
-            ),
-          );
-        } else {
-          for (final imei in imeis) {
-            pdfItems.add(
-              InvoicePdfItem(
-                name: name,
-                code: code,
-                imeiSerial: imei,
-                quantity: 1,
-                unitPrice: unitPrice,
-              ),
-            );
-          }
-        }
-      }
-
-      final pdfFile = await InvoicePdfBuilder.buildPurchaseReceipt(
+      final pdfFile = await PurchaseReceiptPdf.build(
         fileNamePrefix: 'purchase_receipt',
-        invoiceNumber: now.millisecondsSinceEpoch.toString(),
         createdAt: now,
         shopName: _profileCtrl.shopName,
         shopAddress: _profileCtrl.shopAddress,
         shopPhone: _profileCtrl.whatsappNumber.isNotEmpty
             ? _profileCtrl.whatsappNumber
             : _profileCtrl.phone,
+        shopEmail: _profileCtrl.email,
+        preparedBy: _profileCtrl.fullName,
         customerName: customerName,
         customerPhone: _pPhoneCtrl.text.trim(),
+        customerEmail: _pEmailCtrl.text.trim(),
+        customerAddress: _pAddressCtrl.text.trim(),
         customerIdNumber: _pIdNumberCtrl.text.trim(),
         items: pdfItems,
         totalAmount: grandTotal,
-        currencySymbol: _profileCtrl.currencySymbol,
+        currencyCode: _profileCtrl.currencyCode.toUpperCase(),
       );
 
       final payload = FormData();
@@ -3136,8 +3220,13 @@ class _InvoicePageState extends State<InvoicePage> {
       );
 
       await _invoiceRepo.createInvoice(payload);
+      final saved = await _saveInvoiceCopy(pdfFile, 'purchase_receipt');
       if (!mounted) return null;
-      showSuccessSnackbar('Purchase receipt created successfully!');
+      showSuccessSnackbar(
+        saved == null
+            ? 'Purchase receipt created successfully!'
+            : 'Purchase receipt saved to ${saved.locationLabel}',
+      );
       _isViewInvoicesLoaded = false;
       _fetchViewInvoices();
       setState(() {

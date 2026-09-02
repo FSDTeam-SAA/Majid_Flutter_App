@@ -1,3 +1,5 @@
+import '../../domain/entities/calculation_line.dart';
+
 /// Immutable calculator input for the checkout keypad.
 ///
 /// Holds the raw keystrokes (e.g. `450.2+24.12-10%`) and evaluates them with
@@ -177,6 +179,63 @@ class AmountExpression {
           : result - numbers[i + 1];
     }
     return result;
+  }
+
+  /// Every additive term as its own line, so the calculation can be reviewed
+  /// and named item by item.
+  List<CalculationLine> get lines {
+    if (isEmpty) return const [];
+
+    final result = <CalculationLine>[];
+    for (final term in _terms()) {
+      final trimmed = term.trim();
+      if (trimmed.isEmpty) continue;
+
+      final factors = trimmed.split('*');
+      final first = double.tryParse(factors.first.replaceAll('%', '')) ?? 0;
+      final value = _reduce([
+        for (final f in factors) double.tryParse(f.replaceAll('%', '')) ?? 0,
+      ], List.filled(factors.length - 1, '*'));
+
+      result.add(
+        CalculationLine(
+          expression: trimmed.replaceAll('*', ' × '),
+          quantity: factors.length > 1 ? first.round() : 1,
+          amount: value ?? 0,
+        ),
+      );
+    }
+    return result;
+  }
+
+  /// Quantity the shopkeeper is really counting: a term like `20 x 2` counts
+  /// as 20 units, a bare `90` counts as one line of one.
+  int get totalQuantity {
+    if (isEmpty) return 0;
+    var total = 0;
+    for (final term in _terms()) {
+      if (term.isEmpty) continue;
+      final factors = term.split('*');
+      final first = double.tryParse(factors.first.replaceAll('%', '')) ?? 0;
+      total += factors.length > 1 ? first.round() : 1;
+    }
+    return total;
+  }
+
+  /// Splits on + and - only, so multiplication stays inside a term.
+  List<String> _terms() {
+    final terms = <String>[];
+    final buffer = StringBuffer();
+    for (final char in input.split('')) {
+      if (char == '+' || char == '-') {
+        terms.add(buffer.toString());
+        buffer.clear();
+      } else {
+        buffer.write(char);
+      }
+    }
+    terms.add(buffer.toString());
+    return terms;
   }
 
   /// Human readable form of the keystrokes, e.g. `450.2 + 24.12 − 10%`.
