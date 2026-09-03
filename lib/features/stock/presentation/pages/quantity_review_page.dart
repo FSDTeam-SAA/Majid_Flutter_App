@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../customer/data/repositories/customer_repository_impl.dart';
+import '../../../customer/domain/entities/customer.dart';
 import '../../domain/entities/calculation_line.dart';
 import '../theme/checkout_tokens.dart';
+import '../../../scan/presentation/widgets/searchable_picker_sheet.dart';
 
 /// A stock item pulled into the checkout, whose selling price can be adjusted
 /// before payment.
@@ -42,11 +47,16 @@ class QuantityReviewPage extends StatefulWidget {
   final List<ReviewStockItem> stockItems;
   final String currencySymbol;
 
+  /// Shopkeeper id, used to load the customer list. When empty the Choose
+  /// Customer row still shows but has nothing to search.
+  final String shopkeeperId;
+
   const QuantityReviewPage({
     super.key,
     required this.lines,
     required this.currencySymbol,
     this.stockItems = const [],
+    this.shopkeeperId = '',
   });
 
   @override
@@ -59,6 +69,58 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
     for (final item in _stock)
       TextEditingController(text: _plain(item.newPrice)),
   ];
+
+  Customer? _selectedCustomer;
+  List<Customer> _customers = [];
+  bool _isLoadingCustomers = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomers();
+  }
+
+  Future<void> _loadCustomers() async {
+    if (widget.shopkeeperId.trim().isEmpty) return;
+    setState(() => _isLoadingCustomers = true);
+    try {
+      final customers = await CustomerRepositoryImpl(
+        ApiClient(baseUrl),
+      ).getCustomers(widget.shopkeeperId);
+      if (!mounted) return;
+      setState(() => _customers = customers);
+    } catch (_) {
+      // Choose Customer is optional, so a failed fetch just leaves it empty
+      // rather than blocking the review screen.
+    } finally {
+      if (mounted) setState(() => _isLoadingCustomers = false);
+    }
+  }
+
+  /// Select-only, on purpose: the spec asks for the Create New Customer
+  /// option to be removed from this screen.
+  Future<void> _pickCustomer() async {
+    if (_customers.isEmpty) return;
+    final picked = await showSearchablePicker<Customer>(
+      context: context,
+      title: 'Choose customer',
+      searchHint: 'Search name, phone or email',
+      emptyMessage: 'No customers match',
+      options: [
+        for (final customer in _customers)
+          PickerOption(
+            value: customer,
+            title: customer.fullName.isEmpty ? 'Customer' : customer.fullName,
+            subtitle: [
+              customer.phone,
+              customer.email,
+            ].where((v) => v.trim().isNotEmpty).join(' • '),
+          ),
+      ],
+    );
+    if (!mounted) return;
+    setState(() => _selectedCustomer = picked ?? _selectedCustomer);
+  }
 
   @override
   void dispose() {
@@ -100,6 +162,8 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
               padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
               children: [
                 _banner(),
+                const SizedBox(height: 16),
+                _customerCard(),
                 const SizedBox(height: 16),
                 _itemsCard(),
                 const SizedBox(height: 16),
@@ -158,6 +222,73 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// "Choose Customer" - optional, select-only, matching the spec.
+  Widget _customerCard() {
+    final selected = _selectedCustomer;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _pickCustomer,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: CheckoutTokens.keySurface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: CheckoutTokens.keyEdge),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.person_outline_rounded,
+                size: 19,
+                color: selected == null
+                    ? CheckoutTokens.softText
+                    : CheckoutTokens.limeInk,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choose customer',
+                      style: CheckoutTokens.text(
+                        size: 11,
+                        weight: FontWeight.w600,
+                        color: CheckoutTokens.softText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      selected == null
+                          ? (_isLoadingCustomers
+                                ? 'Loading customers…'
+                                : 'Optional - tap to select')
+                          : selected.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: CheckoutTokens.text(
+                        size: 14,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: CheckoutTokens.softText,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

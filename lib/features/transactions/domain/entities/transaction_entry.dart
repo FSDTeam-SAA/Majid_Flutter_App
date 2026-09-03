@@ -13,6 +13,15 @@ class TransactionEntry {
   /// did not record one; the tile then falls back to [kind].
   final String method;
 
+  // Carried for the Transaction Details sheet. All optional because the
+  // sheet is also used with the sample rows on the home dashboard.
+  final String invoiceId;
+  final String invoiceRef;
+  final DateTime? date;
+  final String customerName;
+  final String? pdfUrl;
+  final bool isPaid;
+
   const TransactionEntry({
     required this.title,
     required this.subtitle,
@@ -20,6 +29,12 @@ class TransactionEntry {
     required this.amount,
     required this.kind,
     this.method = '',
+    this.invoiceId = '',
+    this.invoiceRef = '',
+    this.date,
+    this.customerName = '',
+    this.pdfUrl,
+    this.isPaid = true,
   });
 
   bool get isCredit =>

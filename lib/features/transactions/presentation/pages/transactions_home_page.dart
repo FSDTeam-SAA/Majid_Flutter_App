@@ -12,6 +12,7 @@ import '../../domain/entities/transaction_entry.dart';
 import '../widgets/transaction_colors.dart';
 import '../widgets/transaction_tile.dart';
 import 'cash_management_page.dart';
+import 'end_of_day_report_page.dart';
 import 'reports_page.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
@@ -35,7 +36,13 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
   late final ProfileController _profileCtrl;
 
   bool _balanceHidden = false;
+  bool _filterOpen = false;
+  String _selectedFilter = 'All';
   final List<TransactionEntry> _transactions = [];
+
+  // Kept alongside the trimmed _transactions list so the End of Day Report
+  // can total every invoice from today, not just the 8 most recent rows.
+  List<Invoice> _invoices = [];
 
   double _totalBalance = 0;
   double _cashBalance = 0;
@@ -95,6 +102,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
       if (!mounted) return;
       setState(() {
+        _invoices = invoices;
         _transactions
           ..clear()
           ..addAll(transactions);
@@ -105,6 +113,161 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
         _trendPercent = _calculateTrendPercent(invoices);
       });
     } catch (_) {}
+  }
+
+  static const _filterOptions = ['All', 'Cash', 'Card', 'Expenses', 'Banked'];
+
+  List<TransactionEntry> get _visibleTransactions {
+    switch (_selectedFilter) {
+      case 'Cash':
+        return _transactions
+            .where((e) => e.kind == TransactionKind.cashReceived)
+            .toList();
+      case 'Card':
+        return _transactions
+            .where((e) => e.kind == TransactionKind.cardReceived)
+            .toList();
+      case 'Expenses':
+        return _transactions
+            .where((e) => e.kind == TransactionKind.expense)
+            .toList();
+      case 'Banked':
+        return _transactions
+            .where(
+              (e) =>
+                  e.method.toLowerCase().contains('bank') ||
+                  e.method.toLowerCase().contains('transfer'),
+            )
+            .toList();
+      default:
+        return _transactions;
+    }
+  }
+
+  void _selectFilter(String value) {
+    if (value == 'Reports') {
+      setState(() => _filterOpen = false);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EndOfDayReportPage(
+            invoices: _invoices,
+            currencySymbol: _currencySymbol,
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _selectedFilter = value;
+      _filterOpen = false;
+    });
+  }
+
+  /// State 1 in the spec: a pill on the far left holding the current choice,
+  /// which expands the category bubbles to its right. Selecting one updates
+  /// the pill and closes the bubbles again.
+  Widget _filterBar(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _filterOpen = !_filterOpen),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.filter_alt_rounded,
+                    size: 15,
+                    color: TransactionColors.greenBright,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _selectedFilter,
+                    style: TextStyle(
+                      color: AppColors.background,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _filterOpen
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 17,
+                    color: AppColors.background,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_filterOpen) ...[
+            const SizedBox(width: 8),
+            for (final option in [..._filterOptions, 'Reports']) ...[
+              _filterBubble(option),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _filterBubble(String label) {
+    final isSelected = label == _selectedFilter;
+    final isReports = label == 'Reports';
+    return GestureDetector(
+      onTap: () => _selectFilter(label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.textPrimary : AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isReports
+                ? TransactionColors.greenBright
+                : (isSelected ? AppColors.textPrimary : AppColors.fieldBorder),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isReports) ...[
+              Icon(
+                Icons.description_outlined,
+                size: 14,
+                color: TransactionColors.greenText,
+              ),
+              const SizedBox(width: 5),
+            ],
+            if (!isReports && isSelected) ...[
+              Icon(Icons.check_rounded, size: 14, color: AppColors.background),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? AppColors.background
+                    : (isReports
+                          ? TransactionColors.greenText
+                          : AppColors.textPrimary),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   List<TransactionEntry> _buildTransactionsFromInvoices(
@@ -126,6 +289,17 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                 : _invoiceAmount(invoice),
             kind: _transactionKind(invoice),
             method: (invoice.paymentMethod ?? '').trim(),
+            invoiceId: invoice.id,
+            invoiceRef: invoice.id.isEmpty
+                ? ''
+                : 'INV-${invoice.id.substring(invoice.id.length > 6 ? invoice.id.length - 6 : 0)}'
+                      .toUpperCase(),
+            date: _invoiceDate(invoice),
+            customerName: invoice.customerName.trim().toUpperCase() == 'N/A'
+                ? ''
+                : invoice.customerName.trim(),
+            pdfUrl: invoice.pdfUrl,
+            isPaid: (invoice.paymentStatus ?? '').trim().toLowerCase() != 'due',
           ),
         )
         .toList();
@@ -460,8 +634,10 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              if (_transactions.isEmpty)
+              const SizedBox(height: 10),
+              _filterBar(context),
+              const SizedBox(height: 12),
+              if (_visibleTransactions.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   child: Text(
@@ -474,7 +650,9 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                   ),
                 )
               else
-                ..._transactions.map((entry) => TransactionTile(entry: entry)),
+                ..._visibleTransactions.map(
+                  (entry) => TransactionTile(entry: entry),
+                ),
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {

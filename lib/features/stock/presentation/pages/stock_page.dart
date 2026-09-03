@@ -20,6 +20,7 @@ import '../../domain/entities/inventory_item.dart';
 import '../../domain/entities/ready_order.dart';
 import '../../domain/repositories/cart_repository.dart';
 import '../../domain/repositories/inventory_repository.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../controller/stock_controller.dart';
 import '../theme/checkout_tokens.dart';
 import '../utils/amount_expression.dart';
@@ -389,6 +390,8 @@ class _StockPageState extends State<StockPage> {
       return;
     }
     HapticFeedback.selectionClick();
+    final shopkeeperId = await _resolveShopkeeperId() ?? '';
+    if (!mounted) return;
 
     await Navigator.push<double>(
       context,
@@ -396,6 +399,7 @@ class _StockPageState extends State<StockPage> {
         builder: (_) => QuantityReviewPage(
           lines: _namedLines,
           currencySymbol: _profileCtrl.currencySymbol,
+          shopkeeperId: shopkeeperId,
         ),
       ),
     );
@@ -528,6 +532,16 @@ class _StockPageState extends State<StockPage> {
     });
   }
 
+  /// Scans a barcode, IMEI or serial straight into the search field.
+  Future<void> _scanIntoSearch() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (code == null || code.trim().isEmpty || !mounted) return;
+    setState(() => _searchCtrl.text = code.trim());
+  }
+
   /// Slides in directly beneath the section title when search is toggled on.
   Widget _buildInlineSearch() {
     return AnimatedSize(
@@ -542,6 +556,7 @@ class _StockPageState extends State<StockPage> {
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
                 onClear: _toggleSearch,
+                onScan: _scanIntoSearch,
               ),
             )
           : const SizedBox(width: double.infinity),

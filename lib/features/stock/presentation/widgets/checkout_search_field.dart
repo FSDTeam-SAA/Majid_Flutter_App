@@ -9,12 +9,17 @@ class CheckoutSearchField extends StatelessWidget {
   final VoidCallback onClear;
   final bool autofocus;
 
+  /// Opens the barcode/IMEI scanner and fills the field with the result.
+  /// Omitted where a scanner does not make sense for that search.
+  final VoidCallback? onScan;
+
   const CheckoutSearchField({
     super.key,
     required this.controller,
     required this.onChanged,
     required this.onClear,
     this.autofocus = false,
+    this.onScan,
   });
 
   @override
@@ -40,13 +45,33 @@ class CheckoutSearchField extends StatelessWidget {
             weight: FontWeight.w500,
             color: CheckoutTokens.softText,
           ),
-          suffixIcon: GestureDetector(
-            onTap: onClear,
-            child: Icon(
-              Icons.close_rounded,
-              color: CheckoutTokens.softText,
-              size: 18,
-            ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onScan != null)
+                GestureDetector(
+                  onTap: onScan,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: CheckoutTokens.accent,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              GestureDetector(
+                onTap: onClear,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: CheckoutTokens.softText,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
