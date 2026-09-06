@@ -4,6 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
@@ -610,6 +613,41 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
+  /// Downloads a previously generated invoice from its Cloudinary URL and
+  /// keeps a copy on the device, for the "Download" action in the registry.
+  Future<void> _downloadInvoiceFromUrl(
+    invoice_entity.Invoice invoice,
+  ) async {
+    final url = invoice.pdfUrl;
+    if (url == null || url.isEmpty) {
+      showErrorSnackbar('No PDF is attached to this invoice');
+      return;
+    }
+
+    try {
+      final response = await Dio().get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('Empty response');
+
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/${invoice.reference}.pdf');
+      await tempFile.writeAsBytes(bytes);
+
+      final saved = await DocumentSaver.save(
+        tempFile,
+        fileName: '${invoice.reference}.pdf',
+      );
+      if (!mounted) return;
+      showSuccessSnackbar('Invoice saved to ${saved.locationLabel}');
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar('Could not download the invoice');
+    }
+  }
+
   /// Reads an IMEI or serial straight into [controller] with the camera, so
   /// the numbers no longer have to be typed by hand.
   Future<void> _scanIntoField(TextEditingController controller) async {
@@ -1144,45 +1182,21 @@ class _InvoicePageState extends State<InvoicePage> {
                   letterSpacing: 1,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  if (_createInvoiceItems.length > 1) {
-                    setState(() {
-                      _createInvoiceItems[index].dispose();
-                      _createInvoiceItems.removeAt(index);
-                    });
-                  } else {
-                    setState(() {
-                      _createInvoiceItems[index].inventoryId = null;
-                      _createInvoiceItems[index].nameCtrl.clear();
-                      _createInvoiceItems[index].descriptionCtrl.clear();
-                      _createInvoiceItems[index].colorCtrl.clear();
-                      _createInvoiceItems[index].conditionCtrl.clear();
-                      _createInvoiceItems[index].quantityCtrl.text = '1';
-                      _createInvoiceItems[index].priceCtrl.text = '0';
-                      _createInvoiceItems[index].discountCtrl.clear();
-                      _createInvoiceItems[index].taxCtrl.clear();
-                      for (final c
-                          in _createInvoiceItems[index].imeiControllers.sublist(
-                            1,
-                          )) {
-                        c.dispose();
-                      }
-                      _createInvoiceItems[index].imeiControllers
-                        ..removeRange(
-                          1,
-                          _createInvoiceItems[index].imeiControllers.length,
-                        )
-                        ..first.clear();
-                    });
-                  }
-                },
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.redAccent,
-                  size: 22,
+              // Hidden rather than left to silently clear the fields when
+              // it's the only item - see the same fix on the shared
+              // Purchase/Delivery item card.
+              if (_createInvoiceItems.length > 1)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _createInvoiceItems[index].dispose();
+                    _createInvoiceItems.removeAt(index);
+                  }),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.redAccent,
+                    size: 22,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1295,24 +1309,9 @@ class _InvoicePageState extends State<InvoicePage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              GestureDetector(
-                onTap: () => setState(
+              _buildAddImeiButton(
+                () => setState(
                   () => item.imeiControllers.add(TextEditingController()),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add, color: AppColors.primary, size: 16),
-                    const SizedBox(width: 2),
-                    Text(
-                      'Add',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -1350,22 +1349,20 @@ class _InvoicePageState extends State<InvoicePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      if (item.imeiControllers.length > 1) {
+                  if (item.imeiControllers.length > 1) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => setState(() {
                         item.imeiControllers[imeiIndex].dispose();
                         item.imeiControllers.removeAt(imeiIndex);
-                      } else {
-                        item.imeiControllers[imeiIndex].clear();
-                      }
-                    }),
-                    child: const Icon(
-                      Icons.remove_circle_outline,
-                      color: Colors.redAccent,
-                      size: 22,
+                      }),
+                      child: const Icon(
+                        Icons.remove_circle_outline,
+                        color: Colors.redAccent,
+                        size: 22,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             );
@@ -1452,6 +1449,42 @@ class _InvoicePageState extends State<InvoicePage> {
       onAddCustomer: () =>
           _addCustomerFromPicker(_customerSearchCtrl, _selectCustomer),
       onSelect: _selectCustomer,
+    );
+  }
+
+  /// Pill button next to "IMEI / Serial Numbers" that appends another field.
+  Widget _buildAddImeiButton(VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, color: AppColors.primary, size: 16),
+              const SizedBox(width: 3),
+              Text(
+                'Add',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -2707,36 +2740,21 @@ class _InvoicePageState extends State<InvoicePage> {
                   letterSpacing: 1,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  if (items.length > 1) {
-                    setState(() {
-                      items[index].dispose();
-                      items.removeAt(index);
-                    });
-                  } else {
-                    setState(() {
-                      items[index].nameCtrl.clear();
-                      items[index].storageCtrl.clear();
-                      items[index].colorCtrl.clear();
-                      items[index].conditionCtrl.clear();
-                      items[index].quantityCtrl.text = '1';
-                      items[index].priceCtrl.text = '0';
-                      for (final c in items[index].imeiControllers.sublist(1)) {
-                        c.dispose();
-                      }
-                      items[index].imeiControllers
-                        ..removeRange(1, items[index].imeiControllers.length)
-                        ..first.clear();
-                    });
-                  }
-                },
-                child: Icon(
-                  Icons.delete_outline,
-                  color: Colors.redAccent,
-                  size: 22,
+              // Nothing to delete down to with only one device on the
+              // invoice, so the icon stayed but did nothing useful - it just
+              // silently cleared the fields instead. Hidden instead now.
+              if (items.length > 1)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    items[index].dispose();
+                    items.removeAt(index);
+                  }),
+                  child: Icon(
+                    Icons.delete_outline,
+                    color: Colors.redAccent,
+                    size: 22,
+                  ),
                 ),
-              ),
             ],
           ),
           SizedBox(height: 12),
@@ -2820,24 +2838,9 @@ class _InvoicePageState extends State<InvoicePage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              GestureDetector(
-                onTap: () => setState(
+              _buildAddImeiButton(
+                () => setState(
                   () => item.imeiControllers.add(TextEditingController()),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add, color: AppColors.primary, size: 16),
-                    const SizedBox(width: 2),
-                    Text(
-                      'Add',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -2875,22 +2878,20 @@ class _InvoicePageState extends State<InvoicePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      if (item.imeiControllers.length > 1) {
+                  if (item.imeiControllers.length > 1) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => setState(() {
                         item.imeiControllers[imeiIndex].dispose();
                         item.imeiControllers.removeAt(imeiIndex);
-                      } else {
-                        item.imeiControllers[imeiIndex].clear();
-                      }
-                    }),
-                    child: Icon(
-                      Icons.remove_circle_outline,
-                      color: Colors.redAccent,
-                      size: 22,
+                      }),
+                      child: Icon(
+                        Icons.remove_circle_outline,
+                        color: Colors.redAccent,
+                        size: 22,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             );
@@ -3565,8 +3566,14 @@ class _InvoicePageState extends State<InvoicePage> {
       children: [
         Row(
           children: [
+            Icon(
+              Icons.folder_copy_rounded,
+              color: AppColors.primary,
+              size: 19,
+            ),
+            const SizedBox(width: 8),
             Text(
-              'Invoices',
+              'Billing History',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 17,
@@ -3574,112 +3581,256 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
             ),
             const Spacer(),
-            Text(
-              '${_viewInvoices.length} total',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.fieldBackground,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.fieldBorder),
+              ),
+              child: Text(
+                '${_viewInvoices.length} RECORDS',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
             ),
           ],
         ),
         SizedBox(height: 14),
-        ..._viewInvoices.map((inv) {
-          final type = inv.type;
-          final amount = inv.totalAmount;
-          final date = _formatInvoiceDate(inv.createdAt);
-          final customer = inv.customerName;
-          final pdfUrl = inv.pdfUrl;
-          return Padding(
+        ..._viewInvoices.map(
+          (inv) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (pdfUrl != null) {
-                  showDialog(
-                    context: context,
-                    useSafeArea: false,
-                    builder: (_) => _PdfViewerPage(
-                      url: pdfUrl,
-                      title:
-                          '${type[0].toUpperCase()}${type.substring(1)} Invoice',
-                    ),
-                  );
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.fieldBackground,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.fieldBorder),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.receipt_long,
-                        color: AppColors.primary,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${type[0].toUpperCase()}${type.substring(1)} Invoice',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            customer,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (amount != null)
-                          Text(
-                            '${_profileCtrl.currencySymbol}${amount.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        if (date.isNotEmpty)
-                          Text(
-                            date,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
+            child: _buildInvoiceRegistryCard(inv),
+          ),
+        ),
         SizedBox(height: 100),
       ],
+    );
+  }
+
+  static const Color _registryAmber = Color(0xFFE8792A);
+
+  Widget _buildInvoiceRegistryCard(invoice_entity.Invoice inv) {
+    final date = _formatInvoiceDate(inv.createdAt);
+    final amount = inv.totalAmount;
+    final pdfUrl = inv.pdfUrl;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  inv.reference,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _registryAmber,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  inv.classification,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                Icons.person_rounded,
+                size: 15,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  inv.customerName,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (inv.customerPhone != null) ...[
+                const SizedBox(width: 12),
+                Icon(
+                  Icons.call_rounded,
+                  size: 13,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    inv.customerPhone!,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 12,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                date.isEmpty ? 'Date unknown' : date,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              if (amount != null) ...[
+                const Spacer(),
+                Text(
+                  '${_profileCtrl.currencySymbol}${amount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(height: 1, color: AppColors.fieldBorder),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _registryActionButton(
+                  label: 'View',
+                  icon: Icons.visibility_outlined,
+                  onTap: pdfUrl == null
+                      ? null
+                      : () => showDialog(
+                          context: context,
+                          useSafeArea: false,
+                          builder: (_) => _PdfViewerPage(
+                            url: pdfUrl,
+                            title: inv.classification,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _registryActionButton(
+                  label: 'Download',
+                  icon: Icons.download_rounded,
+                  isPrimary: true,
+                  onTap: () => _downloadInvoiceFromUrl(inv),
+                ),
+              ),
+              if (inv.isRefundable) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _registryActionButton(
+                    label: 'Refund',
+                    icon: Icons.replay_rounded,
+                    isDanger: true,
+                    onTap: () => showErrorSnackbar(
+                      'Refund needs manager sign-off, coming once that\'s '
+                      'wired up on the server',
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _registryActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback? onTap,
+    bool isPrimary = false,
+    bool isDanger = false,
+  }) {
+    final accent = isDanger ? AppColors.dangerColor : AppColors.primary;
+    final background = isPrimary ? accent : Colors.transparent;
+    final foreground = isPrimary ? AppColors.buttonText : accent;
+    final isDisabled = onTap == null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(11),
+        child: Ink(
+          height: 38,
+          decoration: BoxDecoration(
+            color: isDisabled
+                ? AppColors.fieldBackground
+                : background,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: isDisabled
+                  ? AppColors.fieldBorder
+                  : (isPrimary ? Colors.transparent : accent),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isDisabled ? AppColors.textSecondary : foreground,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isDisabled ? AppColors.textSecondary : foreground,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -3972,6 +4123,7 @@ class _PdfViewerPage extends StatefulWidget {
 class _PdfViewerPageState extends State<_PdfViewerPage> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  bool _isPreparingShare = false;
 
   @override
   void initState() {
@@ -3990,6 +4142,33 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
       ..loadRequest(Uri.parse(viewerUrl));
   }
 
+  /// Fetches the PDF the viewer is showing and hands it to the OS share
+  /// sheet, so it can go straight to WhatsApp, email or Files - not just a
+  /// link to it.
+  Future<void> _sharePdf() async {
+    if (_isPreparingShare) return;
+    setState(() => _isPreparingShare = true);
+    try {
+      final response = await Dio().get<List<int>>(
+        widget.url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('Empty response');
+
+      final tempDir = await getTemporaryDirectory();
+      final safeName = widget.title.replaceAll(RegExp(r'[^\w\s-]'), '');
+      final file = File('${tempDir.path}/$safeName.pdf');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles([XFile(file.path)], subject: widget.title);
+    } catch (_) {
+      if (mounted) showErrorSnackbar('Could not prepare the PDF for sharing');
+    } finally {
+      if (mounted) setState(() => _isPreparingShare = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
@@ -4004,6 +4183,30 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Share',
+              icon: _isPreparingShare
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : const Icon(Icons.ios_share_rounded),
+              onPressed: _isPreparingShare ? null : _sharePdf,
+            ),
+            IconButton(
+              tooltip: 'Open in browser',
+              icon: const Icon(Icons.open_in_new_rounded),
+              onPressed: () => launchUrl(
+                Uri.parse(widget.url),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
         ),
         body: Stack(
           children: [

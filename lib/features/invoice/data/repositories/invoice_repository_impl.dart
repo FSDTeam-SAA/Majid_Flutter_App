@@ -86,6 +86,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
               : null),
       createdAt: item['createdAt']?.toString(),
       customerName: _invoiceCustomerName(item),
+      customerPhone: _invoiceCustomerPhone(item),
       pdfUrl: pdfUrl,
       paymentMethod: item['paymentMethod']?.toString(),
       paymentStatus: item['paymentStatus']?.toString(),
@@ -101,7 +102,14 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       if (name.isNotEmpty) return name;
       return info['email']?.toString() ?? 'Customer';
     }
-    return 'N/A';
+    return 'Walk-in Customer';
+  }
+
+  String? _invoiceCustomerPhone(Map<String, dynamic> invoice) {
+    final info = invoice['customerInfo'];
+    if (info is! Map) return null;
+    final phone = info['phone']?.toString().trim();
+    return (phone == null || phone.isEmpty) ? null : phone;
   }
 
   InvoiceProduct _productFromJson(Map<String, dynamic> item) {

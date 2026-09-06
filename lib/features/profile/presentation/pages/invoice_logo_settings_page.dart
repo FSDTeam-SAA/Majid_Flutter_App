@@ -231,83 +231,91 @@ class _InvoiceLogoSettingsPageState extends State<InvoiceLogoSettingsPage> {
           ),
         ),
       ),
-      child: Row(
+      // Logo + text sit above the buttons now: squeezed beside a 92px image,
+      // the button row had too little width and "Upload Logo" wrapped onto
+      // two lines.
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: 92,
-              height: 92,
-              color: AppColors.fieldBackground,
-              child: provider == null
-                  ? Icon(
-                      Icons.storefront_rounded,
-                      color: AppColors.textSecondary,
-                      size: 34,
-                    )
-                  : Image(
-                      image: provider,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(
-                        Icons.storefront_rounded,
-                        color: AppColors.textSecondary,
-                        size: 34,
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _pickedImagePath != null
-                      ? 'New logo ready to save'
-                      : (_profileCtrl.imageUrl.isNotEmpty
-                            ? 'Saved logo loaded'
-                            : 'No saved logo found'),
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 92,
+                  height: 92,
+                  color: AppColors.fieldBackground,
+                  child: provider == null
+                      ? Icon(
+                          Icons.storefront_rounded,
+                          color: AppColors.textSecondary,
+                          size: 34,
+                        )
+                      : Image(
+                          image: provider,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Icon(
+                            Icons.storefront_rounded,
+                            color: AppColors.textSecondary,
+                            size: 34,
+                          ),
+                        ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'PNG, SVG-style artwork image, or JPG with a clean background works best.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12.5,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        label: _pickedImagePath != null
-                            ? 'Change Logo'
-                            : 'Upload Logo',
-                        icon: Icons.upload_rounded,
-                        onTap: _pickLogoImage,
-                        isPrimary: true,
+                    Text(
+                      _pickedImagePath != null
+                          ? 'New logo ready to save'
+                          : (_profileCtrl.imageUrl.isNotEmpty
+                                ? 'Saved logo loaded'
+                                : 'No saved logo found'),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildActionButton(
-                        label: 'Use Current',
-                        icon: Icons.refresh_rounded,
-                        onTap: () => setState(() => _pickedImagePath = null),
+                    const SizedBox(height: 6),
+                    Text(
+                      'PNG, SVG-style artwork image, or JPG with a clean background works best.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.45,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  label: _pickedImagePath != null
+                      ? 'Change Logo'
+                      : 'Upload Logo',
+                  icon: Icons.upload_rounded,
+                  onTap: _pickLogoImage,
+                  isPrimary: true,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildActionButton(
+                  label: 'Use Current',
+                  icon: Icons.refresh_rounded,
+                  onTap: () => setState(() => _pickedImagePath = null),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -883,8 +891,11 @@ class _InvoiceLogoSettingsPageState extends State<InvoiceLogoSettingsPage> {
           backgroundColor: isPrimary
               ? AppColors.primary.withValues(alpha: AppColors.isDark ? 0.2 : 1)
               : AppColors.fieldBackground.withValues(alpha: 0.76),
+          // Light mode fills this button solid green, so the label needs to be
+          // white rather than the same green as the background - which is
+          // what made the "Upload/Change Logo" button read as blank.
           foregroundColor: isPrimary
-              ? AppColors.primary
+              ? (AppColors.isDark ? AppColors.primary : Colors.white)
               : AppColors.textPrimary,
           side: BorderSide(
             color: isPrimary ? AppColors.primary : AppColors.fieldBorder,
