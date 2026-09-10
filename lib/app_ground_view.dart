@@ -6,9 +6,9 @@ import 'core/animation/app_motion.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
-import 'features/orders/presentation/pages/orders_page.dart';
 import 'features/repair/presentation/pages/repair_page.dart';
 import 'features/scan/presentation/pages/scan_device_page.dart';
+import 'features/stock/presentation/pages/stock_categories_page.dart';
 import 'features/stock/presentation/pages/stock_page.dart';
 import 'features/transactions/presentation/pages/transactions_home_page.dart';
 
@@ -38,7 +38,7 @@ class _AppGroundViewState extends State<AppGroundView> {
   Widget build(BuildContext context) {
     final themeCtrl = Get.find<ProfileThemeController>();
     final pages = [
-      OrdersPage(),
+      const StockCategoriesPage(),
       StockPage(),
       ScanDevicePage(),
       const TransactionsHomePage(),
@@ -56,8 +56,16 @@ class _AppGroundViewState extends State<AppGroundView> {
               : Brightness.dark,
         ),
         child: Scaffold(
-          extendBody: true,
+          // Docked (not floating) navigation, so pages end above the bar
+          // instead of scrolling underneath it.
+          extendBody: false,
           backgroundColor: AppColors.background,
+          bottomNavigationBar: isKeyboardOpen
+              ? null
+              : AppBottomNavBar(
+                  selectedIndex: _selectedIndex,
+                  onTap: _selectTab,
+                ),
           body: Stack(
             children: [
               Positioned.fill(
@@ -89,24 +97,6 @@ class _AppGroundViewState extends State<AppGroundView> {
                   child: KeyedSubtree(
                     key: ValueKey(_selectedIndex),
                     child: pages[_selectedIndex],
-                  ),
-                ),
-              ),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                left: 0,
-                right: 0,
-                bottom: isKeyboardOpen ? -120 : 0,
-                child: IgnorePointer(
-                  ignoring: isKeyboardOpen,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 180),
-                    opacity: isKeyboardOpen ? 0 : 1,
-                    child: AppBottomNavBar(
-                      selectedIndex: _selectedIndex,
-                      onTap: _selectTab,
-                    ),
                   ),
                 ),
               ),

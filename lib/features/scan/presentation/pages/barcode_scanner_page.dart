@@ -4,6 +4,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../privacy/domain/app_permission.dart';
+import '../../../privacy/presentation/controller/app_permissions_controller.dart';
 
 class BarcodeScannerPage extends StatefulWidget {
   const BarcodeScannerPage({super.key});
@@ -58,6 +60,22 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
   static const _maxStartAttempts = 3;
 
   Future<void> _startCamera() async {
+    // Requested in context: the camera prompt belongs here, at the moment the
+    // scanner opens, not at app launch.
+    final allowed = await AppPermissionsController.instance.ensure(
+      AppPermission.camera,
+    );
+    if (!allowed) {
+      if (mounted) {
+        setState(
+          () => _startError =
+              'Camera access is needed to scan. Allow it in Device Settings '
+              'to use the scanner.',
+        );
+      }
+      return;
+    }
+
     try {
       await _scannerController.start();
       if (mounted) {

@@ -39,6 +39,11 @@ import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
 import '../../../transactions/data/repositories/cash_management_repository_impl.dart';
 import '../../../transactions/domain/repositories/cash_management_repository.dart';
+import '../../../consent/domain/trade_in_consent.dart';
+import '../../../consent/presentation/controller/consent_controller.dart';
+import '../../../consent/presentation/pages/request_consent_page.dart';
+import '../../../privacy/domain/app_permission.dart';
+import '../../../privacy/presentation/controller/app_permissions_controller.dart';
 
 class InvoiceDraftPrefill {
   final String itemName;
@@ -48,6 +53,7 @@ class InvoiceDraftPrefill {
   final String imeiSerial;
   final String statusLabel;
   final double? price;
+  final int quantity;
 
   const InvoiceDraftPrefill({
     required this.itemName,
@@ -57,6 +63,7 @@ class InvoiceDraftPrefill {
     this.imeiSerial = '',
     this.statusLabel = '',
     this.price,
+    this.quantity = 1,
   });
 }
 
@@ -64,7 +71,22 @@ class InvoicePage extends StatefulWidget {
   final int initialTabIndex;
   final InvoiceDraftPrefill? initialDraft;
 
-  const InvoicePage({super.key, this.initialTabIndex = 0, this.initialDraft});
+  /// Several pre-filled line items, used when a whole basket is handed over
+  /// from the Stock section's Checkout Review. [initialDraft] stays as the
+  /// single-item shorthand every other caller already uses.
+  final List<InvoiceDraftPrefill> initialDrafts;
+
+  /// Customer chosen on Checkout Review, so an optional selection made there
+  /// is not thrown away when the basket reaches the invoice.
+  final String? initialCustomerId;
+
+  const InvoicePage({
+    super.key,
+    this.initialTabIndex = 0,
+    this.initialDraft,
+    this.initialDrafts = const [],
+    this.initialCustomerId,
+  });
 
   @override
   State<InvoicePage> createState() => _InvoicePageState();
@@ -121,6 +143,12 @@ class _InvoicePageState extends State<InvoicePage> {
   final _pIdNumberCtrl = TextEditingController();
   final _pCustomerNameCtrl = TextEditingController();
   final List<_PurchaseItem> _purchaseItems = [_PurchaseItem()];
+
+  /// Customer consent for this trade-in. Until it is approved, the ID
+  /// capture and the handset scan on this tab stay locked — the client was
+  /// explicit that permission is taken before anything is photographed or
+  /// scanned, not after.
+  TradeInConsent? _tradeInConsent;
   bool _isSendingPurchase = false;
   double _availableCash = 0;
   bool _didApplyInitialDraft = false;
@@ -562,11 +590,36 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   void _applyInitialDraftIfNeeded() {
-    final draft = widget.initialDraft;
-    if (_didApplyInitialDraft || draft == null) return;
+    final drafts = widget.initialDrafts.isNotEmpty
+        ? widget.initialDrafts
+        : (widget.initialDraft == null
+              ? const <InvoiceDraftPrefill>[]
+              : [widget.initialDraft!]);
+    if (_didApplyInitialDraft || drafts.isEmpty) return;
     _didApplyInitialDraft = true;
 
-    final item = _createInvoiceItems.first;
+    // The list starts with one blank row; every draft beyond the first needs
+    // a row of its own.
+    while (_createInvoiceItems.length < drafts.length) {
+      _createInvoiceItems.add(_CreateInvoiceItem());
+    }
+    for (var i = 0; i < drafts.length; i++) {
+      _applyDraftToItem(_createInvoiceItems[i], drafts[i]);
+    }
+    _applyInitialCustomerIfNeeded();
+  }
+
+  /// Selects the customer handed over from Checkout Review, once the customer
+  /// list has actually loaded.
+  void _applyInitialCustomerIfNeeded() {
+    final id = widget.initialCustomerId;
+    if (id == null || id.isEmpty || _selectedCustomerId != null) return;
+
+    final match = _customers.firstWhereOrNull((customer) => customer.id == id);
+    if (match != null) _selectCustomer(match);
+  }
+
+  void _applyDraftToItem(_CreateInvoiceItem item, InvoiceDraftPrefill draft) {
     _applyInvoiceProductDefaults(
       item,
       draft.itemName,
@@ -595,6 +648,9 @@ class _InvoicePageState extends State<InvoicePage> {
       item.priceCtrl.text = draft.price!.toStringAsFixed(
         draft.price! % 1 == 0 ? 0 : 2,
       );
+    }
+    if (draft.quantity > 1) {
+      item.quantityCtrl.text = '${draft.quantity}';
     }
   }
 
@@ -651,12 +707,234 @@ class _InvoicePageState extends State<InvoicePage> {
   /// Reads an IMEI or serial straight into [controller] with the camera, so
   /// the numbers no longer have to be typed by hand.
   Future<void> _scanIntoField(TextEditingController controller) async {
+    // Requested in context: the camera prompt appears here, when the scanner
+    // is opened, rather than at app launch.
+    final allowed = await AppPermissionsController.instance.ensure(
+      AppPermission.camera,
+    );
+    if (!allowed) {
+      showErrorSnackbar('Camera access is needed to scan a barcode or IMEI');
+      return;
+    }
+    if (!mounted) return;
+
     final code = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
     );
     if (code == null || code.trim().isEmpty || !mounted) return;
     setState(() => controller.text = code.trim());
+  }
+
+  /// True once the customer has verified their code and agreed to the
+  /// declaration for this trade-in, and the details still match what they
+  /// approved.
+  bool get _hasTradeInConsent =>
+      (_tradeInConsent?.allowsCapture ?? false) && !_consentDetailsChanged;
+
+  /// The item, value and payment method are locked once consent is approved:
+  /// the developer notes require fresh consent for any change to them. Rather
+  /// than freezing the fields, we detect the drift and ask again.
+  bool get _consentDetailsChanged {
+    final consent = _tradeInConsent;
+    if (consent == null || !consent.allowsCapture) return false;
+
+    final valueChanged =
+        (consent.agreedValue - _tradeInAgreedValue).abs() > 0.005;
+    return consent.itemName != _tradeInItemName ||
+        valueChanged ||
+        consent.paymentMethod != (_recordedPaymentMethod ?? 'Cash');
+  }
+
+  /// The customer's agreed value, taken from the first priced purchase line.
+  double get _tradeInAgreedValue {
+    for (final item in _purchaseItems) {
+      final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
+      if (price > 0) return price;
+    }
+    return _purchaseGrandTotal;
+  }
+
+  String get _tradeInItemName {
+    for (final item in _purchaseItems) {
+      final name = item.nameCtrl.text.trim();
+      if (name.isNotEmpty) return name;
+    }
+    return '';
+  }
+
+  String get _tradeInCustomerName {
+    final typed = [
+      _pFirstNameCtrl.text.trim(),
+      _pLastNameCtrl.text.trim(),
+    ].where((value) => value.isNotEmpty).join(' ');
+    return typed.isNotEmpty ? typed : _pCustomerNameCtrl.text.trim();
+  }
+
+  /// Sends the secure link and 6-digit code, then walks the customer through
+  /// verification and the declaration.
+  Future<void> _requestCustomerConsent() async {
+    if (_pEmailCtrl.text.trim().isEmpty && _pPhoneCtrl.text.trim().isEmpty) {
+      showErrorSnackbar(
+        'Add the customer\'s email or phone number before requesting consent',
+      );
+      return;
+    }
+    if (_tradeInItemName.isEmpty) {
+      showErrorSnackbar('Add the item before requesting consent');
+      return;
+    }
+
+    final approved = await Navigator.push<TradeInConsent>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RequestConsentPage(
+          customerName: _tradeInCustomerName,
+          customerEmail: _pEmailCtrl.text.trim(),
+          customerPhone: _pPhoneCtrl.text.trim(),
+          itemName: _tradeInItemName,
+          agreedValue: _tradeInAgreedValue,
+          paymentMethod: _recordedPaymentMethod ?? 'Cash',
+          currencySymbol: _profileCtrl.currencySymbol,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _tradeInConsent = approved);
+  }
+
+  /// Customer consent panel on the Purchase (trade-in) tab.
+  ///
+  /// Before approval it explains what will be collected and offers the
+  /// "Request Customer Consent" action; after approval it shows the consent
+  /// reference and the date the ID image is deleted.
+  Widget _buildCustomerConsentCard() {
+    final consent = _tradeInConsent;
+    final approved = _hasTradeInConsent;
+    final needsFreshConsent = _consentDetailsChanged;
+
+    return Container(
+      padding: EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: approved
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: approved
+              ? AppColors.primary.withValues(alpha: 0.34)
+              : AppColors.fieldBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                approved
+                    ? Icons.verified_user_rounded
+                    : Icons.privacy_tip_outlined,
+                size: 19,
+                color: approved ? AppColors.primary : AppColors.textSecondary,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  approved
+                      ? 'Consent approved'
+                      : needsFreshConsent
+                      ? 'Details changed — fresh consent needed'
+                      : 'Customer consent required',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            approved
+                ? 'Verified by the customer. You can now scan the handset and '
+                      'capture their ID.'
+                : needsFreshConsent
+                ? 'The item, value or payment method has changed since the '
+                      'customer approved. Ask them to consent again before '
+                      'continuing.'
+                : 'Send the customer a secure link and 6-digit code. They agree '
+                      'to the terms first — only then can their ID be '
+                      'photographed and the handset scanned.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12.5,
+              height: 1.5,
+            ),
+          ),
+          if (approved && consent != null) ...[
+            SizedBox(height: 10),
+            Text(
+              'Reference ${consent.reference} • delivered by '
+              '${consent.channel.label} • terms ${consent.termsVersion}',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (consent.idImageDeleteAfter != null) ...[
+              SizedBox(height: 4),
+              Text(
+                'ID image deleted automatically by '
+                '${consent.idImageDeleteAfter!.day}/'
+                '${consent.idImageDeleteAfter!.month}/'
+                '${consent.idImageDeleteAfter!.year}',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ],
+          SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _requestCustomerConsent,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                padding: EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: Icon(
+                approved ? Icons.refresh_rounded : Icons.send_rounded,
+                size: 17,
+              ),
+              label: Text(
+                approved
+                    ? 'Request consent again'
+                    : 'Request Customer Consent',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Gate in front of anything that captures the customer's data.
+  bool _blockedWithoutConsent() {
+    if (_hasTradeInConsent) return false;
+    showErrorSnackbar(
+      'Request customer consent before scanning or photographing their details',
+    );
+    return true;
   }
 
   Future<void> _createInvoice() async {
@@ -2407,7 +2685,9 @@ class _InvoicePageState extends State<InvoicePage> {
           hint: 'Customer Billing Address',
           controller: _pAddressCtrl,
         ),
-        SizedBox(height: 10),
+        SizedBox(height: 14),
+        _buildCustomerConsentCard(),
+        SizedBox(height: 14),
         InvoiceInputField(
           hint: 'Customer ID Number',
           controller: _pIdNumberCtrl,
@@ -2668,7 +2948,9 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Widget _buildPurchaseItemCard(int index) =>
-      _buildItemCard(_purchaseItems, index);
+      // Only the trade-in tab is consent-gated: a delivery note captures no
+      // customer identity documents.
+      _buildItemCard(_purchaseItems, index, requiresConsent: true);
 
   void _applyProductDefaults(_PurchaseItem item, String name) {
     item.nameCtrl.text = name;
@@ -2697,7 +2979,11 @@ class _InvoicePageState extends State<InvoicePage> {
     item.conditionCtrl.clear();
   }
 
-  Widget _buildItemCard(List<_PurchaseItem> items, int index) {
+  Widget _buildItemCard(
+    List<_PurchaseItem> items,
+    int index, {
+    bool requiresConsent = false,
+  }) {
     final item = items[index];
     final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
     final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
@@ -2846,6 +3132,41 @@ class _InvoicePageState extends State<InvoicePage> {
             ],
           ),
           SizedBox(height: 8),
+          if (requiresConsent) ...[
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              margin: EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: AppColors.dangerColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: AppColors.dangerColor.withValues(alpha: 0.28),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: AppColors.dangerColor,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Scan the customer's handset — imoscan never reads this "
+                      "device's own IMEI automatically.",
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           ...List.generate(item.imeiControllers.length, (imeiIndex) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -2859,8 +3180,12 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () =>
-                        _scanIntoField(item.imeiControllers[imeiIndex]),
+                    onTap: () {
+                      // Scanning the customer's handset is one of the actions
+                      // the client requires consent for first.
+                      if (requiresConsent && _blockedWithoutConsent()) return;
+                      _scanIntoField(item.imeiControllers[imeiIndex]);
+                    },
                     child: Container(
                       width: 40,
                       height: 40,
@@ -2932,6 +3257,8 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Future<void> _showCaptureNidSheet() async {
+    // Consent first, then the photo library prompt — in that order.
+    if (_blockedWithoutConsent()) return;
     File? frontImage = _nidFrontImage;
     File? backImage = _nidBackImage;
 
@@ -3099,6 +3426,16 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Future<File?> _pickNidImage() async {
+    final allowed = await AppPermissionsController.instance.ensure(
+      AppPermission.photos,
+    );
+    if (!allowed) {
+      showErrorSnackbar('Photo access is needed to attach an ID image');
+      return null;
+    }
+
+    // The system picker is used deliberately: only the image the shopkeeper
+    // selects reaches the app, never the whole library.
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
@@ -3239,6 +3576,10 @@ class _InvoicePageState extends State<InvoicePage> {
         _pAddressCtrl.clear();
         _pIdNumberCtrl.clear();
         _pCustomerNameCtrl.clear();
+        // Consent belongs to one transaction; the next trade-in starts fresh.
+        // The approved record itself stays in the consent audit trail.
+        _tradeInConsent = null;
+        ConsentController.instance.reset();
         _nidFrontImage = null;
         _nidBackImage = null;
         for (final item in _purchaseItems) {

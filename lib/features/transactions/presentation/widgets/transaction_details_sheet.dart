@@ -153,6 +153,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
                       Expanded(
                         child: _column([
                           _paymentMethodRow(),
+                          _row('Card', _cardLabel()),
                           _row('Authorisation', _notRecorded()),
                           _row('Served by', _notRecorded()),
                         ]),
@@ -264,6 +265,26 @@ class _TransactionDetailsSheet extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Card brand plus the last four digits, and nothing else.
+  ///
+  /// Whatever the payment record holds, only the final four digits ever reach
+  /// the screen: the digits are stripped out of the recorded method, masked,
+  /// and everything before them is dropped. A record that somehow carried a
+  /// full card number would still render as `Visa •••• 4242`.
+  String _cardLabel() {
+    final method = entry.method.trim();
+    if (method.isEmpty) return _notRecorded();
+
+    final digits = method.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 4) return _notRecorded();
+
+    final brand = method
+        .replaceAll(RegExp(r'[\d\*•\-\s]+'), ' ')
+        .trim();
+    final last4 = digits.substring(digits.length - 4);
+    return '${brand.isEmpty ? 'Card' : brand} •••• $last4';
   }
 
   Widget _paymentMethodRow() {

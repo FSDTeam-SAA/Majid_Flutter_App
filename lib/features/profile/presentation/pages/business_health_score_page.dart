@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_header.dart';
 import '../../domain/entities/dashboard_stats.dart';
 import '../controller/profile_controller.dart';
 
@@ -152,13 +153,16 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
             Expanded(
               child: _MetricCard(
                 icon: Icons.receipt_long_outlined,
-                iconBgColor: const Color(0xFF1A2A1A),
-                iconColor: const Color(0xFF4EE86A),
+                // Was a hardcoded dark tile, which read as a black disc beside
+                // the light Sales card on the soft-white theme. Both cards now
+                // resolve through the palette, so they match in either theme.
+                iconBgColor: AppColors.fieldBackground,
+                iconColor: AppColors.primary,
                 label: 'Orders',
                 value: '$totalOrders',
                 change: 'Total orders',
                 changePositive: true,
-                lineColor: const Color(0xFF4EE86A),
+                lineColor: AppColors.primary,
               ),
             ),
           ],
@@ -383,72 +387,11 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.maybePop(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF111B1F),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.fieldBorder),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                color: AppColors.textPrimary,
-                size: 16,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'Business Health Score',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ),
-          Obx(() {
-            final url = _profileCtrl.imageUrl;
-            return Container(
-              width: 40,
-              height: 40,
-              clipBehavior: Clip.antiAlias,
-              decoration: const BoxDecoration(shape: BoxShape.circle),
-              child: url.isNotEmpty
-                  ? Image.network(
-                      url,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: AppColors.fieldBorder,
-                        child: Icon(
-                          Icons.person,
-                          color: AppColors.textPrimary,
-                          size: 24,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: AppColors.fieldBorder,
-                      child: Icon(
-                        Icons.person,
-                        color: AppColors.textPrimary,
-                        size: 24,
-                      ),
-                    ),
-            );
-          }),
-        ],
-      ),
-    );
+    // Uses the shared header: the old one hardcoded a near-black circle for
+    // the back button, which sat as a dark blob on the soft-white light theme,
+    // and carried the profile avatar the client asked to be taken off the
+    // profile screens.
+    return const AppHeader(title: 'Business Health Score');
   }
 }
 

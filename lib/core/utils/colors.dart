@@ -26,12 +26,13 @@ class AppColors {
   static bool get isDark => _palette.brightness == Brightness.dark;
   static Color get inputAccentBorder =>
       _palette.primaryColor.withValues(alpha: isDark ? 0.6 : 0.72);
+  // Neutral on light so the soft-white ground stays free of the old blue cast.
   static Color get tabBackground =>
-      isDark ? const Color(0xFF192638) : const Color(0xFFDEEBF5);
+      isDark ? const Color(0xFF192638) : const Color(0xFFF1F4F1);
   static Color get tabBorder =>
-      isDark ? const Color(0xFF223342) : const Color(0xFFC8DCF0);
+      isDark ? const Color(0xFF223342) : const Color(0xFFE2E6E2);
   static Color get tabInactiveText =>
-      isDark ? const Color(0xFFA9B3C1) : const Color(0xFF6B7E99);
+      isDark ? const Color(0xFFA9B3C1) : const Color(0xFF7A857A);
   static Color get buttonText =>
       isDark ? _palette.onPrimaryColor : Colors.white;
   static Color get secondaryButtonText =>

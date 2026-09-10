@@ -7,6 +7,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../app_ground_view.dart';
+import '../../../security/presentation/sign_in_security_flow.dart';
 import '../controller/auth_controller.dart';
 import '../widgets/_auth_widgets.dart';
 import 'signup_screen_view.dart';
@@ -72,6 +73,20 @@ class LoginScreenView extends StatelessWidget {
                                 onPressed: () async {
                                   final success = await auth.login();
                                   if (success) {
+                                    // A correct password is only the first
+                                    // step: two-factor, new-device approval
+                                    // and the one-off permissions screen all
+                                    // run before the app opens.
+                                    if (!context.mounted) return;
+                                    final cleared =
+                                        await SignInSecurityFlow.run(context);
+                                    if (!cleared) {
+                                      await auth.logout();
+                                      showErrorSnackbar(
+                                        'Sign-in was not completed',
+                                      );
+                                      return;
+                                    }
                                     Get.offAll(() => AppGroundView());
                                   } else if (auth.isEmailNotVerified.value) {
                                     showErrorSnackbar(

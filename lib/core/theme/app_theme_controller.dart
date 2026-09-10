@@ -101,17 +101,20 @@ const _midnightPalette = ProfileThemePalette(
 
 const _sunrisePalette = ProfileThemePalette(
   title: 'Light Mode',
-  subtitle: 'Figma light surface',
+  subtitle: 'Soft white surface',
   brightness: Brightness.light,
-  backgroundColor: Color(0xFFD7EEFF),
+  // Soft white (#F8FAF8) is the single page ground the client signed off on.
+  // It carries no yellow cast, and the pale-lime tint below stays almost
+  // invisible so screens read as flat paper rather than a coloured wash.
+  backgroundColor: Color(0xFFF8FAF8),
   gradient: _lightProfileGradient,
-  surfaceColor: Color(0xCCFFFFFF),
-  surfaceBorderColor: Color(0xFFE4E7EC),
+  surfaceColor: Color(0xF2FFFFFF),
+  surfaceBorderColor: Color(0xFFE6E9E6),
   primaryColor: Color(0xFF30D158),
   onPrimaryColor: Colors.white,
   textPrimary: Color(0xFF1A1C1E),
   textSecondary: Color(0xFF667085),
-  fieldBackgroundColor: Color(0xFFF9FBFF),
+  fieldBackgroundColor: Color(0xFFFCFDFC),
   cardBackgroundColor: Color(0xFFFFFFFF),
   dangerColor: Color(0xFFD64545),
 );
@@ -128,14 +131,17 @@ const _darkProfileGradient = LinearGradient(
   stops: [0.0, 0.34, 0.66, 1.0],
 );
 
+// Barely-there lime breath over the soft white ground. The alpha is kept in
+// the 0x08-0x12 range on purpose: any stronger and the pages pick up the tint
+// the client asked us to remove.
 const _lightProfileGradient = LinearGradient(
   begin: Alignment.topCenter,
   end: Alignment.bottomCenter,
   colors: [
-    Color(0xF0BEE7FF),
-    Color(0x88F4FBFF),
-    Color(0x88F4FBFF),
-    Color(0xF0BEE7FF),
+    Color(0x12CFEFC6),
+    Color(0x08F4FBF4),
+    Color(0x08F4FBF4),
+    Color(0x12CFEFC6),
   ],
   stops: [0.0, 0.34, 0.66, 1.0],
 );

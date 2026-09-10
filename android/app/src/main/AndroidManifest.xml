@@ -1,5 +1,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Camera: IMEI/barcode scanning, identity-document capture and repair
+         evidence. Requested in context, never at launch. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Photos: the system picker is used, so only the images the shopkeeper
+         selects reach the app. READ_MEDIA_IMAGES covers older devices. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Location: delivery and live tracking only, while the app is in use.
+         ACCESS_BACKGROUND_LOCATION is deliberately not declared. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Notifications: orders, repairs, deliveries and security alerts. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Bluetooth: receipt printers and barcode scanners. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- RECORD_AUDIO is intentionally NOT declared: the microphone feature was
+         removed on the client's instruction. -->
     <application
         android:label="majid_flutter_app"
         android:name="${applicationName}"

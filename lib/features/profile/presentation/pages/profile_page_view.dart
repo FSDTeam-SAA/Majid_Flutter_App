@@ -13,13 +13,14 @@ import '../widgets/profile_menu_item.dart';
 import 'business_health_score_page.dart';
 import 'edit_profile_page.dart';
 import 'invoice_logo_settings_page.dart';
-import 'payment_history_page.dart';
 import 'shopkeeper_id_card_page.dart';
-import 'upgrade_plan_page.dart';
 import '../../../customer/presentation/pages/customer_page.dart';
 import '../../../invoice/presentation/pages/invoice_page.dart';
 import '../../../staff/presentation/pages/staff_page.dart';
 import '../../../supplier/presentation/pages/supplier_page.dart';
+import '../../../legal/domain/legal_documents.dart';
+import '../../../legal/presentation/pages/legal_document_page.dart';
+import '../../../privacy/presentation/pages/privacy_permissions_page.dart';
 
 class ProfilePageView extends StatefulWidget {
   const ProfilePageView({super.key});
@@ -155,37 +156,19 @@ class _ProfilePageViewState extends State<ProfilePageView>
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children: [
-                        SizedBox(height: 20),
-                        _buildAvatar(profileCtrl, palette),
-                        SizedBox(height: 14),
-                        Obx(
-                          () => Text(
-                            profileCtrl.fullName.isNotEmpty
-                                ? profileCtrl.fullName
-                                : 'User',
-                            style: TextStyle(
-                              color: palette.textPrimary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Obx(
-                          () => Text(
-                            profileCtrl.email,
-                            style: TextStyle(
-                              color: palette.textSecondary,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 14),
-                        _buildCreditsRow(profileCtrl, context, palette),
+                        SizedBox(height: 16),
+                        // Owner name, then the brand name directly beneath it.
+                        // No logo, avatar or email here: the client asked for
+                        // both to come off this screen, and the email stays
+                        // inside Account Information only.
+                        _buildIdentity(profileCtrl, palette),
                         SizedBox(height: 16),
                         _buildThemeButton(themeCtrl, palette),
-                        SizedBox(height: 24),
+                        SizedBox(height: 22),
+                        _buildSectionLabel('Business', palette),
+                        SizedBox(height: 10),
                         ProfileMenuItem(
+                          leadingIcon: Icons.payments_outlined,
                           label: 'Currency symbol',
                           value:
                               ProfileController.currencyNames[profileCtrl
@@ -201,14 +184,18 @@ class _ProfilePageViewState extends State<ProfilePageView>
                         SizedBox(height: 8),
                         _buildSection(null, [
                           (
+                            Icons.description_outlined,
                             'Invoice',
+                            null,
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => InvoicePage()),
                             ),
                           ),
                           (
+                            Icons.image_outlined,
                             'Invoice & Receipt Logo',
+                            null,
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -217,7 +204,9 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             ),
                           ),
                           (
+                            Icons.badge_outlined,
                             'Shopkeeper Id Card',
+                            null,
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -226,7 +215,9 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             ),
                           ),
                           (
+                            Icons.manage_accounts_outlined,
                             'Account Information',
+                            null,
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -235,7 +226,20 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             ),
                           ),
                           (
+                            Icons.lock_outline_rounded,
+                            'Privacy & Permissions',
+                            null,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPermissionsPage(),
+                              ),
+                            ),
+                          ),
+                          (
+                            Icons.monitor_heart_outlined,
                             'Business Health Score',
+                            null,
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -244,7 +248,11 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             ),
                           ),
                           (
+                            Icons.people_outline_rounded,
                             'Customers',
+                            // The owner always has full customer access; staff
+                            // access is set per role in Staff Management.
+                            _isStaff ? null : 'Owner: Full access',
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -253,7 +261,9 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             ),
                           ),
                           (
+                            Icons.local_shipping_outlined,
                             'Suppliers',
+                            null,
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -265,57 +275,82 @@ class _ProfilePageViewState extends State<ProfilePageView>
                           // accounts can add/delete other staff otherwise.
                           if (!_isStaff)
                             (
+                              Icons.groups_outlined,
                               'Staff Management',
+                              null,
                               () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => StaffPage()),
                               ),
                             ),
                         ], palette),
-                        SizedBox(height: 24),
-                        // Subscription/billing is shopkeeper-only.
-                        if (!_isStaff) ...[
-                          _buildSection('Subscription', [
-                            (
-                              'Upgrade Plan',
-                              () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => UpgradePlanPage(),
+                        SizedBox(height: 22),
+                        // Legal sits directly above Support, as specified.
+                        _buildSection('Legal', [
+                          (
+                            Icons.gavel_outlined,
+                            'Terms & Conditions',
+                            null,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LegalDocumentPage(
+                                  document: LegalDocuments.terms,
                                 ),
                               ),
                             ),
-                            (
-                              'Payment History',
-                              () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PaymentHistoryPage(),
+                          ),
+                          (
+                            Icons.privacy_tip_outlined,
+                            'Privacy Policy',
+                            null,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LegalDocumentPage(
+                                  document: LegalDocuments.privacyPolicy,
                                 ),
                               ),
                             ),
-                          ], palette),
-                          SizedBox(height: 24),
-                        ],
+                          ),
+                          (
+                            Icons.cookie_outlined,
+                            'Cookie & Tracking Policy',
+                            null,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LegalDocumentPage(
+                                  document: LegalDocuments.cookiePolicy,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ], palette),
+                        SizedBox(height: 22),
                         _buildSection('Support', [
                           (
+                            Icons.help_outline_rounded,
                             'Help Center',
+                            null,
                             () => _showInfo(
                               context,
                               'Help Center is coming soon.',
                             ),
                           ),
                           (
+                            Icons.info_outline_rounded,
                             'About App',
+                            null,
                             () => _showInfo(
                               context,
                               'iMoScan helps verify devices, manage checkout, repairs, and invoices.',
                             ),
                           ),
                         ], palette),
-                        SizedBox(height: 32),
+                        SizedBox(height: 28),
                         _buildLogoutBtn(palette),
-                        SizedBox(height: 100),
+                        SizedBox(height: 28),
                       ],
                     ),
                   ),
@@ -495,95 +530,87 @@ class _ProfilePageViewState extends State<ProfilePageView>
     );
   }
 
-  Widget _buildAvatar(ProfileController ctrl, ProfileThemePalette palette) {
+  /// Owner name as the primary line, brand name directly underneath.
+  ///
+  /// Both are read from the account record — nothing here is hard-coded — and
+  /// the space the removed avatar and email used to take is collapsed rather
+  /// than left as a gap.
+  Widget _buildIdentity(
+    ProfileController ctrl,
+    ProfileThemePalette palette,
+  ) {
     return Obx(() {
-      final url = ctrl.imageUrl;
-      return Container(
-        width: 96,
-        height: 96,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: palette.surfaceBorderColor, width: 2),
-        ),
-        child: ClipOval(
-          child: url.isNotEmpty
-              ? Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      Icon(Icons.person, color: palette.textPrimary, size: 50),
-                )
-              : Icon(Icons.person, color: palette.textPrimary, size: 50),
-        ),
+      final ownerName = ctrl.fullName.isNotEmpty ? ctrl.fullName : 'Owner';
+      final brandName = ctrl.shopName;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              ownerName,
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+              ),
+            ),
+          ),
+          if (brandName.isNotEmpty) ...[
+            SizedBox(height: 2),
+            Text(
+              brandName,
+              style: TextStyle(
+                color: palette.primaryColor,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
       );
     });
   }
 
-  Widget _buildCreditsRow(
-    ProfileController ctrl,
-    BuildContext context,
-    ProfileThemePalette palette,
-  ) {
-    return Obx(
-      () => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Your credits: ${ctrl.balance.toStringAsFixed(0)}',
-            style: TextStyle(color: palette.textPrimary, fontSize: 14),
-          ),
-          SizedBox(width: 12),
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => UpgradePlanPage()),
-            ),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                border: Border.all(color: palette.primaryColor),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'Upgrade',
-                style: TextStyle(
-                  color: palette.primaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
+  Widget _buildSectionLabel(String label, ProfileThemePalette palette) {
+    return SizedBox(
+      width: double.infinity,
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: palette.textSecondary,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }
 
+  /// Rows are `(category icon, label, optional trailing value, action)` so
+  /// every entry carries one aligned 24pt outline icon, as specified.
   Widget _buildSection(
     String? title,
-    List<(String, VoidCallback)> items,
+    List<(IconData, String, String?, VoidCallback)> items,
     ProfileThemePalette palette,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (title != null) ...[
-          Text(
-            title,
-            style: TextStyle(
-              color: palette.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          _buildSectionLabel(title, palette),
           SizedBox(height: 10),
         ],
         ...items.map(
           (item) => Padding(
             padding: EdgeInsets.only(bottom: 8),
             child: ProfileMenuItem(
-              label: item.$1,
-              onTap: item.$2,
+              leadingIcon: item.$1,
+              label: item.$2,
+              value: item.$3,
+              onTap: item.$4,
               backgroundColor: palette.surfaceColor,
               borderColor: palette.surfaceBorderColor,
               textColor: palette.textPrimary,

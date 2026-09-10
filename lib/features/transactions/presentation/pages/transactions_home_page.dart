@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/more_menu_button.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../../../invoice/data/repositories/invoice_repository_impl.dart';
 import '../../../invoice/domain/entities/invoice.dart';
 import '../../../invoice/domain/repositories/invoice_repository.dart';
@@ -37,6 +37,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
   bool _balanceHidden = false;
   bool _filterOpen = false;
+  final TextEditingController _searchCtrl = TextEditingController();
   String _selectedFilter = 'All';
   final List<TransactionEntry> _transactions = [];
 
@@ -49,6 +50,12 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
   double _cardPayments = 0;
   double _expenseToday = 0;
   double _trendPercent = 0;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -117,7 +124,27 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
   static const _filterOptions = ['All', 'Cash', 'Card', 'Expenses', 'Banked'];
 
+  /// Search runs on top of the category filter, so "Cash" + "iPhone" narrows
+  /// to cash rows mentioning an iPhone rather than replacing the filter.
   List<TransactionEntry> get _visibleTransactions {
+    final query = _searchCtrl.text.trim().toLowerCase();
+    final byCategory = _categoryFiltered;
+    if (query.isEmpty) return byCategory;
+
+    return byCategory.where((entry) {
+      final haystack = [
+        entry.title,
+        entry.subtitle,
+        entry.customerName,
+        entry.invoiceRef,
+        entry.method,
+        entry.amount.toStringAsFixed(2),
+      ].where((value) => value.isNotEmpty).join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
+  }
+
+  List<TransactionEntry> get _categoryFiltered {
     switch (_selectedFilter) {
       case 'Cash':
         return _transactions
@@ -162,6 +189,75 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
       _selectedFilter = value;
       _filterOpen = false;
     });
+  }
+
+  /// Search with the scanner kept inside the field, as the developer notes
+  /// require — the separate top-right scanner shortcut is not reinstated.
+  Widget _searchField(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          Icon(Icons.search_rounded, size: 19, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (_) => setState(() {}),
+              cursorColor: AppColors.primary,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Search invoice, customer or amount',
+                hintStyle: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13.5,
+                ),
+              ),
+            ),
+          ),
+          if (_searchCtrl.text.isNotEmpty)
+            GestureDetector(
+              onTap: () => setState(_searchCtrl.clear),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          GestureDetector(
+            onTap: _scanIntoSearch,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
+              child: Icon(
+                Icons.qr_code_scanner_rounded,
+                size: 20,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _scanIntoSearch() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (code == null || code.trim().isEmpty || !mounted) return;
+    setState(() => _searchCtrl.text = code.trim());
   }
 
   /// State 1 in the spec: a pill on the far left holding the current choice,
@@ -474,7 +570,10 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                     );
                   }),
                   const Spacer(),
-                  const MoreMenuButton(size: 38),
+                  // The three-dot overflow was removed from this header on the
+                  // client's instruction: "leave the corner clean with no
+                  // replacement icon". Profile is still reachable from the
+                  // other tabs' headers.
                 ],
               ),
               const SizedBox(height: 24),
@@ -634,6 +733,8 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              _searchField(context),
               const SizedBox(height: 10),
               _filterBar(context),
               const SizedBox(height: 12),

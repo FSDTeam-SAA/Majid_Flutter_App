@@ -1537,7 +1537,7 @@ class _RepairPageState extends State<RepairPage> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 110),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

@@ -38,15 +38,17 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera access to scan IMEI and barcodes.</string>
+	<string>imoscan uses the camera to scan IMEI numbers and barcodes, capture an identity document for a trade-in, and record repair evidence.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to your photo library to select device images and documents.</string>
+	<string>imoscan uses the system photo picker so you can add selected repair or trade-in images. Only the photos you choose are shared with the app.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>This app needs permission to save certificates and invoices to your photo library.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app does not record audio, but the camera may request microphone access for video capture.</string>
+	<string>imoscan saves invoices, receipts and device certificates you generate to your photo library.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app does not use your location, but a linked library may request access.</string>
+	<string>imoscan uses your location only while the app is open, for delivery and live order tracking. It is never tracked in the background.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>imoscan uses Bluetooth to connect to your receipt printer and barcode scanner.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>imoscan uses Bluetooth to connect to your receipt printer and barcode scanner.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -17,12 +17,14 @@ class CheckoutTokens {
   static Color get surface => isDark ? const Color(0xFF0E1F27) : Colors.white;
   static Color get surfaceRaised =>
       isDark ? const Color(0xFF14262F) : Colors.white;
+  // Light values are neutral soft-white greys: the client asked for the blue
+  // cast to come off every surface, not just the page ground.
   static Color get surfaceMuted =>
-      isDark ? const Color(0xFF0B1A21) : const Color(0xFFF2F6FB);
+      isDark ? const Color(0xFF0B1A21) : const Color(0xFFF4F6F4);
   static Color get border =>
-      isDark ? const Color(0xFF1D3742) : const Color(0xFFE4EAF2);
+      isDark ? const Color(0xFF1D3742) : const Color(0xFFE6E9E6);
   static Color get borderStrong =>
-      isDark ? const Color(0xFF27454F) : const Color(0xFFD5DFEB);
+      isDark ? const Color(0xFF27454F) : const Color(0xFFDCE0DC);
 
   // Text
   static Color get strongText => AppColors.textPrimary;
@@ -44,7 +46,7 @@ class CheckoutTokens {
   // teal navy in midnight - so the calculator reads as part of the app rather
   // than a neutral widget pasted on top.
   static Color get keypadPanel =>
-      isDark ? const Color(0xFF0A1B22) : const Color(0xFFE7EEF6);
+      isDark ? const Color(0xFF0A1B22) : const Color(0xFFEEF1EE);
 
   /// Hairline that keeps the frosted keypad tray readable on the gradient.
   static Color get trayBorder => isDark
@@ -53,11 +55,11 @@ class CheckoutTokens {
 
   /// Fill of a single keypad key.
   static Color get keyFill =>
-      isDark ? const Color(0xFF162C35) : const Color(0xFFF6FAFE);
+      isDark ? const Color(0xFF162C35) : const Color(0xFFFAFBFA);
 
   /// Numerals on the keypad: grey and light, as in the reference calculator.
   static Color get keyLabel =>
-      isDark ? const Color(0xFFC3D3DA) : const Color(0xFF55636F);
+      isDark ? const Color(0xFFC3D3DA) : const Color(0xFF5A625A);
 
   /// The big readout above the keys.
   static Color get readout => isDark ? Colors.white : const Color(0xFF3A3D40);
@@ -67,7 +69,7 @@ class CheckoutTokens {
       isDark ? const Color(0xFF0E2129) : Colors.white;
 
   static Color get readoutDivider =>
-      isDark ? const Color(0xFF1B333D) : const Color(0xFFE6ECF3);
+      isDark ? const Color(0xFF1B333D) : const Color(0xFFE9ECE9);
 
   // Lime accents from the client's mockup: restrained, used for the active
   // operators and the primary action only.
@@ -92,7 +94,7 @@ class CheckoutTokens {
   static Color get keySurface =>
       isDark ? const Color(0xFF16252C) : Colors.white;
   static Color get keyEdge =>
-      isDark ? const Color(0xFF20343C) : const Color(0xFFEDEFF1);
+      isDark ? const Color(0xFF20343C) : const Color(0xFFEDEFED);
 
   /// Warm rail behind the arithmetic operators, matching the client mockup.
   static Color get operatorColor =>
