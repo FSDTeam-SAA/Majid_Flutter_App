@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -191,17 +190,11 @@ class TwoFactorSettingsPage extends StatelessWidget {
     TwoFactorMethod method,
     String destination,
   ) async {
-    final dispatch = await security.sendChallenge(
+    await security.sendChallenge(
       method: method,
       destination: destination,
     );
     if (!context.mounted) return false;
-
-    if (dispatch.debugCode != null && !kReleaseMode) {
-      // No mail/SMS gateway in the app: surfaced in debug only so the flow can
-      // be walked on device before the backend routes exist.
-      showSuccessSnackbar('Test code: ${dispatch.debugCode}');
-    }
 
     final verified = await Navigator.push<bool>(
       context,
@@ -209,12 +202,16 @@ class TwoFactorSettingsPage extends StatelessWidget {
         builder: (_) => VerifyCodePage(
           title: 'Security Verification',
           message: 'Enter the 6-digit code sent to $destination.',
-          onVerify: security.verifyChallenge,
+          onVerify: (code) =>
+              security.verifyChallenge(code, email: destination),
           onResend: () async {
             await security.sendChallenge(
               method: method,
               destination: destination,
             );
+            if (context.mounted) {
+              showSuccessSnackbar('Verification code sent to $destination');
+            }
           },
         ),
       ),
@@ -226,6 +223,10 @@ class TwoFactorSettingsPage extends StatelessWidget {
       await security.setEmailVerified(true);
     } else {
       await security.setPhoneVerified(true);
+    }
+    await security.load();
+    if (context.mounted) {
+      showSuccessSnackbar('${method.label} verified successfully');
     }
     return true;
   }

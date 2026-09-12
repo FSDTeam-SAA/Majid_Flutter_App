@@ -40,6 +40,21 @@ class _CodeInputFieldState extends State<CodeInputField> {
   final FocusNode _focusNode = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+    if (widget.autofocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.enabled) {
+          _focusNode.requestFocus();
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
@@ -59,28 +74,9 @@ class _CodeInputFieldState extends State<CodeInputField> {
     final value = _controller.text;
 
     return Stack(
+      alignment: Alignment.center,
       children: [
-        // The real field is transparent and sits behind the boxes; tapping
-        // anywhere on the row focuses it.
-        Positioned.fill(
-          child: Opacity(
-            opacity: 0,
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              autofocus: widget.autofocus,
-              enabled: widget.enabled,
-              keyboardType: TextInputType.number,
-              autofillHints: const [AutofillHints.oneTimeCode],
-              maxLength: widget.length,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: _handleChanged,
-              decoration: const InputDecoration(counterText: ''),
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: widget.enabled ? () => _focusNode.requestFocus() : null,
+        IgnorePointer(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(widget.length, (index) {
@@ -120,6 +116,28 @@ class _CodeInputFieldState extends State<CodeInputField> {
                 ),
               );
             }),
+          ),
+        ),
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0,
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              autofocus: widget.autofocus,
+              enabled: widget.enabled,
+              keyboardType: TextInputType.number,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              maxLength: widget.length,
+              showCursor: false,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: _handleChanged,
+              decoration: const InputDecoration(
+                counterText: '',
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
           ),
         ),
       ],

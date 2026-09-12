@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/colors.dart';
@@ -61,16 +60,11 @@ class _TwoFactorChallengePageState extends State<TwoFactorChallengePage> {
 
   Future<void> _dispatch() async {
     if (_method == TwoFactorMethod.authenticator) return;
-    final dispatch = await _security.sendChallenge(
+    await _security.sendChallenge(
       method: _method,
       destination: _destination,
     );
     if (!mounted) return;
-    if (dispatch.debugCode != null && !kReleaseMode) {
-      // Delivery is the backend's job; in debug the code is surfaced so the
-      // sign-in flow can be walked on device.
-      showSuccessSnackbar('Test code: ${dispatch.debugCode}');
-    }
   }
 
   /// The methods that are actually set up on this account — offering an
@@ -161,7 +155,7 @@ class _TwoFactorChallengePageState extends State<TwoFactorChallengePage> {
       _hasError = false;
     });
 
-    final ok = await _security.verifyChallenge(_code);
+    final ok = await _security.verifyChallenge(_code, email: widget.email);
     if (!mounted) return;
 
     if (ok) {

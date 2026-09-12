@@ -15,6 +15,29 @@ class AuthEndpoints {
   static String verifyOtp = "$baseApiUrl/auth/verify-otp";
   static String resetPassword = "$baseApiUrl/auth/reset-password";
   static String changePassword = "$baseApiUrl/auth/change-password";
+  static String send2FaChallenge = "$baseApiUrl/auth/2fa/send-challenge";
+  static String verify2Fa = "$baseApiUrl/auth/2fa/verify";
+}
+
+class SecurityEndpoints {
+  static String settings = "$baseApiUrl/security/2fa/settings";
+  static String toggleTwoFactor = "$baseApiUrl/security/2fa/toggle";
+  static String setMethod = "$baseApiUrl/security/2fa/method";
+  static String authenticatorSetup =
+      "$baseApiUrl/security/2fa/authenticator/setup";
+  static String authenticatorConfirm =
+      "$baseApiUrl/security/2fa/authenticator/confirm";
+  static String removeAuthenticator =
+      "$baseApiUrl/security/2fa/authenticator";
+  static String sendChallenge = "$baseApiUrl/security/2fa/send-challenge";
+  static String verifyChallenge = "$baseApiUrl/security/2fa/verify-challenge";
+  static String confirmDestination =
+      "$baseApiUrl/security/2fa/confirm-destination";
+  static String devices = "$baseApiUrl/security/devices";
+  static String registerDevice = "$baseApiUrl/security/devices/register";
+  static String removeDevice(String deviceId) =>
+      "$baseApiUrl/security/devices/$deviceId";
+  static String verifyCode = "$baseApiUrl/security/verify-code";
 }
 
 class UserEndpoints {
