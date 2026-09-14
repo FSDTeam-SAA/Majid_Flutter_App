@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/more_menu_button.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
@@ -9,18 +11,15 @@ import '../../domain/entities/category.dart';
 import '../controller/stock_basket_controller.dart';
 import '../controller/stock_controller.dart';
 import '../theme/checkout_tokens.dart';
-import '../widgets/checkout_empty_panel.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
-import '../widgets/checkout_shortcut_card.dart';
+import 'add_category_sheet.dart';
+import 'add_new_device_page.dart';
 import 'category_stock_page.dart';
 import 'stock_checkout_review_page.dart';
 
-/// Entry point of the Stock section: "Choose a category or scan an item".
-///
-/// Reached from Quick Stock Access on the checkout header. Browsing by
-/// category and searching (including by IMEI/serial, via the scanner in the
-/// search field) both land on the same [CategoryStockPage].
+/// Entry point of the Stock section: displays categories same as website,
+/// with image previews, item counts, edit/delete actions, and quick category/device creation.
 class StockCategoriesPage extends StatefulWidget {
   const StockCategoriesPage({super.key});
 
@@ -59,8 +58,6 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
         .toList();
   }
 
-  /// A scanned barcode/IMEI is a stock lookup, not a category filter, so it
-  /// opens the all-stock list pre-filtered on the scanned code.
   Future<void> _scan() async {
     final code = await Navigator.push<String>(
       context,
@@ -82,6 +79,62 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
     );
   }
 
+  void _confirmDeleteCategory(Category category) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Delete Category',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${category.name}"?',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final success = await _stockCtrl.deleteCategory(category.id);
+              if (success) {
+                showSuccessSnackbar('Category deleted successfully');
+              } else {
+                showErrorSnackbar(
+                  _stockCtrl.errorMessage.value.isNotEmpty
+                      ? _stockCtrl.errorMessage.value
+                      : 'Failed to delete category',
+                );
+              }
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: Color(0xFFFF4444),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = Get.find<ProfileController>().currencySymbol;
@@ -89,14 +142,11 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
     return GradientScaffold(
       child: Column(
         children: [
+          // Header Row
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
             child: Row(
               children: [
-                // This screen is both the first bottom-nav destination and a
-                // page pushed from Quick Stock Access. As a tab there is
-                // nothing to go back to, so it carries the profile menu
-                // instead of a dead back arrow.
                 if (Navigator.canPop(context))
                   CheckoutIconButton(
                     icon: Icons.arrow_back_rounded,
@@ -106,33 +156,128 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                   const MoreMenuButton(size: 38),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Stock Categories',
-                        style: CheckoutTokens.text(
-                          size: 20,
-                          weight: FontWeight.w800,
-                          letterSpacing: -0.4,
+                  child: Obx(() {
+                    final count = _visibleCategories.length;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Stock Categories',
+                          style: CheckoutTokens.text(
+                            size: 20,
+                            weight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        Text(
+                          '$count ${count == 1 ? 'category' : 'categories'} available',
+                          style: CheckoutTokens.text(
+                            size: 12,
+                            weight: FontWeight.w600,
+                            color: CheckoutTokens.softText,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+
+          // Action Buttons Bar (same as website: Add Item, Add Category)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AddNewDevicePage()),
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Ink(
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(
+                          color: CheckoutTokens.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: CheckoutTokens.border),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              size: 18,
+                              color: AppColors.textPrimary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Add Device',
+                              style: CheckoutTokens.text(
+                                size: 13,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Choose a category or scan an item',
-                        style: CheckoutTokens.text(
-                          size: 12,
-                          weight: FontWeight.w600,
-                          color: CheckoutTokens.softText,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => showAddCategorySheet(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Ink(
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(
+                          color: CheckoutTokens.accent,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: CheckoutTokens.accent.withValues(alpha: 0.25),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.add_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Add Category',
+                              style: CheckoutTokens.text(
+                                size: 13,
+                                weight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+
+          // Search Field
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 6),
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
             child: CheckoutSearchField(
               controller: _searchCtrl,
               onChanged: (_) => setState(() {}),
@@ -140,6 +285,8 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
               onScan: _scan,
             ),
           ),
+
+          // Categories Grid / Empty Panel
           Expanded(
             child: Obx(() {
               _stockCtrl.isLoading.value;
@@ -151,14 +298,81 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                 onRefresh: _stockCtrl.fetchCategories,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                  padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
                   children: [
                     if (categories.isEmpty)
-                      const CheckoutEmptyPanel(
-                        icon: Icons.category_outlined,
-                        title: 'No stock categories yet',
-                        subtitle:
-                            'Add a category or device and it will show up here.',
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 48,
+                          horizontal: 24,
+                        ),
+                        decoration: BoxDecoration(
+                          color: CheckoutTokens.surface,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: CheckoutTokens.border,
+                            style: BorderStyle.solid,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: CheckoutTokens.accentSoft,
+                              ),
+                              child: Icon(
+                                Icons.folder_open_rounded,
+                                size: 32,
+                                color: CheckoutTokens.accent,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No categories found',
+                              style: CheckoutTokens.text(
+                                size: 17,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Create a category to organize inventory items.',
+                              textAlign: TextAlign.center,
+                              style: CheckoutTokens.text(
+                                size: 13,
+                                color: CheckoutTokens.softText,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: () => showAddCategorySheet(context),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text(
+                                'Add Category',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: CheckoutTokens.accent,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       )
                     else
                       GridView.builder(
@@ -170,13 +384,12 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 1.05,
+                              childAspectRatio: 0.86,
                             ),
                         itemBuilder: (context, index) {
                           final category = categories[index];
-                          return CheckoutShortcutCard(
-                            title: category.name,
-                            subtitle: 'View stock',
+                          return _WebsiteCategoryCard(
+                            category: category,
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -186,10 +399,17 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                                 ),
                               ),
                             ),
+                            onEdit: () => showAddCategorySheet(
+                              context,
+                              existingId: category.id,
+                              existingName: category.name,
+                              existingImageUrl: category.imageUrl,
+                            ),
+                            onDelete: () => _confirmDeleteCategory(category),
                           );
                         },
                       ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     _AllStockRow(
                       onTap: () => Navigator.push(
                         context,
@@ -203,6 +423,8 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
               );
             }),
           ),
+
+          // Review Bar (when basket items exist)
           Obx(() {
             if (_basket.lines.isEmpty) return const SizedBox.shrink();
             return SafeArea(
@@ -224,6 +446,229 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
   }
 }
 
+/// Category card styled identically to the website (`Inventory.tsx` category cards):
+/// Displays category image with fallback folder icon, top-right 3-dots popup menu
+/// with Edit/Delete options, bold category name, item count, and package icon badge.
+class _WebsiteCategoryCard extends StatelessWidget {
+  final Category category;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _WebsiteCategoryCard({
+    required this.category,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage =
+        category.imageUrl != null && category.imageUrl!.trim().isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: CheckoutTokens.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: CheckoutTokens.border),
+            boxShadow: CheckoutTokens.shadow(blur: 14, y: 6),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top visual preview (Photo or Folder icon) + 3-dots menu
+              Expanded(
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        color: AppColors.isDark
+                            ? const Color(0xFF0D141F)
+                            : const Color(0xFFF1F5F9),
+                        child: hasImage
+                            ? Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Image.network(
+                                  category.imageUrl!,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, _, _) =>
+                                      _buildFolderPlaceholder(),
+                                ),
+                              )
+                            : _buildFolderPlaceholder(),
+                      ),
+                    ),
+                    // Top-right 3-dots menu (Edit & Delete)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: (AppColors.isDark
+                                    ? Colors.black
+                                    : Colors.white)
+                                .withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.more_vert_rounded,
+                            size: 16,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        color: AppColors.cardBackground,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(color: CheckoutTokens.border),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            onEdit();
+                          } else if (value == 'delete') {
+                            onDelete();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            height: 38,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: AppColors.textPrimary,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Edit Category',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            height: 38,
+                            child: Row(
+                              children: const [
+                                Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 16,
+                                  color: Color(0xFFFF4444),
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFFF4444),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom Info Area (Name, Subtitle, Package badge)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: CheckoutTokens.text(
+                              size: 14.5,
+                              weight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            category.itemCount > 0
+                                ? '${category.itemCount} item${category.itemCount == 1 ? '' : 's'}'
+                                : 'Open inventory',
+                            style: CheckoutTokens.text(
+                              size: 11.5,
+                              weight: FontWeight.w600,
+                              color: CheckoutTokens.softText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: CheckoutTokens.accentSoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: 16,
+                        color: CheckoutTokens.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFolderPlaceholder() {
+    return Center(
+      child: Icon(
+        Icons.folder_open_rounded,
+        size: 44,
+        color: CheckoutTokens.accent.withValues(alpha: 0.45),
+      ),
+    );
+  }
+}
+
 class _AllStockRow extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -237,7 +682,7 @@ class _AllStockRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           decoration: BoxDecoration(
             color: CheckoutTokens.surface,
             borderRadius: BorderRadius.circular(20),
@@ -246,15 +691,15 @@ class _AllStockRow extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: CheckoutTokens.accentSoft,
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.inventory_2_rounded,
-                  size: 17,
+                  size: 18,
                   color: CheckoutTokens.accent,
                 ),
               ),
@@ -278,7 +723,6 @@ class _AllStockRow extends StatelessWidget {
   }
 }
 
-/// Sticky "go to Checkout Review" bar, shown only once something is queued.
 class _ReviewBar extends StatelessWidget {
   final String label;
   final String amount;

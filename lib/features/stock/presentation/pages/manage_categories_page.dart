@@ -47,12 +47,37 @@ class ManageCategoriesPage extends StatelessWidget {
 
                   if (stockCtrl.categories.isEmpty) {
                     return Center(
-                      child: Text(
-                        'No categories yet',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 15,
-                        ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.folder_open_rounded,
+                            color: AppColors.textSecondary,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No categories yet',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => showAddCategorySheet(context),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Add Category'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -113,15 +138,17 @@ class ManageCategoriesPage extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.fieldBorder),
+          GestureDetector(
+            onTap: () => showAddCategorySheet(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 20),
             ),
-            child: Icon(Icons.menu, color: AppColors.textPrimary, size: 18),
           ),
         ],
       ),

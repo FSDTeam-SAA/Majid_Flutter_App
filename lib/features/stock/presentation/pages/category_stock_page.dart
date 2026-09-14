@@ -16,6 +16,7 @@ import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_empty_panel.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
+import 'add_new_device_page.dart';
 import 'stock_checkout_review_page.dart';
 
 /// Stock inside one category (or the whole catalogue when no category is
@@ -180,14 +181,42 @@ class _CategoryStockPageState extends State<CategoryStockPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    title,
-                    style: CheckoutTokens.text(
-                      size: 20,
-                      weight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: CheckoutTokens.text(
+                          size: 20,
+                          weight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      Text(
+                        '${_visibleItems.length} ${_visibleItems.length == 1 ? "Item" : "Items"} in Stock',
+                        style: CheckoutTokens.text(
+                          size: 12,
+                          weight: FontWeight.w600,
+                          color: CheckoutTokens.softText,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                CheckoutIconButton(
+                  icon: Icons.add_rounded,
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddNewDevicePage(
+                          initialCategoryId: widget.categoryId,
+                          initialCategoryName: widget.categoryName,
+                        ),
+                      ),
+                    );
+                    _fetch();
+                  },
                 ),
               ],
             ),

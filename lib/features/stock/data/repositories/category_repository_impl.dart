@@ -7,7 +7,9 @@ import '../../domain/repositories/category_repository.dart';
 
 Category categoryFromJson(Map<String, dynamic> json) {
   final image = json['image'];
-  final imageUrl = image is Map ? image['url']?.toString() : null;
+  final imageUrl = image is Map
+      ? image['url']?.toString()
+      : (image is String && image.isNotEmpty ? image : null);
   final itemCount =
       (json['itemCount'] as num?) ?? (json['totalItems'] as num?) ?? 0;
 
@@ -26,15 +28,37 @@ class CategoryRepositoryImpl implements CategoryRepository {
 
   @override
   Future<List<Category>> getCategoriesWithCount(String shopkeeperId) async {
-    final res = await _api.get(
-      '${CategoryEndpoints.withCount}?shopkeeperId=$shopkeeperId',
-    );
-    final data = res.data['data'];
-    if (data is! List) return [];
-    return data
-        .whereType<Map>()
-        .map((item) => categoryFromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    // 1. Try with-count endpoint (returns aggregated items count if available)
+    try {
+      final res = await _api.get(
+        '${CategoryEndpoints.withCount}?shopkeeperId=$shopkeeperId',
+      );
+      final data = res.data['data'];
+      if (data is List && data.isNotEmpty) {
+        return data
+            .whereType<Map>()
+            .map((item) => categoryFromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (_) {
+      // Fall through to fallback
+    }
+
+    // 2. Fallback to /category (CategoryEndpoints.all) — the exact endpoint used by website!
+    try {
+      final res = await _api.get(CategoryEndpoints.all);
+      final data = res.data['data'];
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((item) => categoryFromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (_) {
+      // Return empty if both fail
+    }
+
+    return [];
   }
 
   @override
@@ -82,13 +106,18 @@ class CategoryRepositoryImpl implements CategoryRepository {
     String shopkeeperId,
     String? imagePath,
   ) async {
-    if (imagePath == null || imagePath.isEmpty) {
-      return {'name': name, 'shopkeeperId': shopkeeperId};
+    final map = <String, dynamic>{
+      'name': name.trim(),
+      'shopkeeperId': shopkeeperId.trim(),
+    };
+    if (imagePath != null && imagePath.trim().isNotEmpty) {
+      final path = imagePath.trim();
+      final fileName = path.split(RegExp(r'[/\\]')).last;
+      map['image'] = await MultipartFile.fromFile(
+        path,
+        filename: fileName.isNotEmpty ? fileName : 'category_image.jpg',
+      );
     }
-    return FormData.fromMap({
-      'name': name,
-      'shopkeeperId': shopkeeperId,
-      'image': await MultipartFile.fromFile(imagePath),
-    });
+    return FormData.fromMap(map);
   }
 }

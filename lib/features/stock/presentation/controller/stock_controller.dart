@@ -58,22 +58,55 @@ class StockController extends GetxController {
     // primary source of truth for the grid. All categories are shown here
     // (even empty ones) so a newly created category is immediately tappable
     // to add its first device, matching the Manage Categories list.
-    final cards = List<Category>.from(categories);
+    final baseCategories = List<Category>.from(categories);
 
     try {
       final items = await _inventoryRepo.getByShopkeeperId(shopkeeperId);
       final derivedCards = _buildInventoryCategoryCards(items);
-      final existingIds = cards.map((category) => category.id).toSet();
-      for (final card in derivedCards) {
-        if (!existingIds.contains(card.id)) {
-          cards.add(card);
+
+      final derivedMapById = {
+        for (final c in derivedCards)
+          if (c.id.isNotEmpty) c.id: c,
+      };
+      final derivedMapByName = {
+        for (final c in derivedCards)
+          _normalizedCategoryName(c.name): c,
+      };
+
+      final updatedCards = <Category>[];
+      for (final cat in baseCategories) {
+        final match = derivedMapById[cat.id] ??
+            derivedMapByName[_normalizedCategoryName(cat.name)];
+        if (match != null) {
+          final effectiveCount = match.itemCount > 0 ? match.itemCount : cat.itemCount;
+          final effectiveImage = (cat.imageUrl != null && cat.imageUrl!.isNotEmpty)
+              ? cat.imageUrl
+              : match.imageUrl;
+          updatedCards.add(
+            cat.copyWith(itemCount: effectiveCount, imageUrl: effectiveImage),
+          );
+        } else {
+          updatedCards.add(cat);
         }
       }
+
+      final existingIds = updatedCards.map((c) => c.id).toSet();
+      final existingNames =
+          updatedCards.map((c) => _normalizedCategoryName(c.name)).toSet();
+      for (final card in derivedCards) {
+        if (!existingIds.contains(card.id) &&
+            !existingNames.contains(_normalizedCategoryName(card.name))) {
+          updatedCards.add(card);
+        }
+      }
+
+      inventoryCategoryCards.value = updatedCards;
+      return;
     } on DioException catch (e) {
       debugPrint('Inventory category sync error: $e');
     }
 
-    inventoryCategoryCards.value = cards;
+    inventoryCategoryCards.value = baseCategories;
   }
 
   List<Category> _buildInventoryCategoryCards(List<InventoryItem> items) {
@@ -154,27 +187,27 @@ class StockController extends GetxController {
     }
   }
 
-  Future<bool> createCategory({required String name, String? imagePath}) async {
+  Future<Category?> createCategory({required String name, String? imagePath}) async {
     isSaving.value = true;
     errorMessage.value = '';
     try {
       final shopkeeperId = await _resolveShopkeeperId();
       if (shopkeeperId == null) {
         errorMessage.value = 'Unable to identify current user';
-        return false;
+        return null;
       }
 
-      await _categoryRepo.createCategory(
+      final created = await _categoryRepo.createCategory(
         name: name,
         shopkeeperId: shopkeeperId,
         imagePath: imagePath,
       );
       await fetchCategories();
-      return true;
+      return created;
     } on DioException catch (e) {
       errorMessage.value =
           e.response?.data?['message'] ?? 'Failed to create category';
-      return false;
+      return null;
     } finally {
       isSaving.value = false;
     }

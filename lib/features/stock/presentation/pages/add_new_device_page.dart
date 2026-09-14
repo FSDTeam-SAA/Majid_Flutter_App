@@ -18,6 +18,7 @@ import '../../domain/entities/inventory_item.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../controller/stock_controller.dart';
 import '../../../scan/presentation/pages/barcode_scanner_page.dart';
+import 'add_category_sheet.dart';
 
 class AddNewDevicePage extends StatefulWidget {
   final String? initialCategoryId;
@@ -649,6 +650,22 @@ class _AddNewDevicePageState extends State<AddNewDevicePage> {
         SizedBox(height: 14),
         _AppDropdownField<String>(
           label: 'Category',
+          trailing: GestureDetector(
+            onTap: () async {
+              final created = await showAddCategorySheet(context);
+              if (created != null && mounted) {
+                setState(() => _selectedCategoryId = created.id);
+              }
+            },
+            child: Text(
+              '+ New Category',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
           value: _selectedCategoryId,
           hint: _categoryLabel(),
           items: _stockCtrl.categories.map((category) => category.id).toList(),
@@ -1683,6 +1700,7 @@ class _ScanInputField extends StatelessWidget {
 
 class _AppDropdownField<T> extends StatelessWidget {
   final String label;
+  final Widget? trailing;
   final T? value;
   final String hint;
   final List<T> items;
@@ -1691,6 +1709,7 @@ class _AppDropdownField<T> extends StatelessWidget {
 
   const _AppDropdownField({
     required this.label,
+    this.trailing,
     required this.value,
     required this.hint,
     required this.items,
@@ -1705,8 +1724,16 @@ class _AppDropdownField<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel(label),
-        SizedBox(height: 8),
+        if (label.isNotEmpty || trailing != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (label.isNotEmpty) _FieldLabel(label),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
         Container(
           padding: EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
