@@ -4,6 +4,11 @@
 class ReadyOrder {
   final String id;
   final String customerName;
+
+  /// Contact details as recorded on the repair, used to match the order back
+  /// to a saved customer at checkout.
+  final String customerPhone;
+  final String customerEmail;
   final String deviceModel;
   final double price;
   final DateTime? completedAt;
@@ -13,6 +18,8 @@ class ReadyOrder {
     required this.customerName,
     required this.deviceModel,
     required this.price,
+    this.customerPhone = '',
+    this.customerEmail = '',
     this.completedAt,
   });
 
@@ -20,11 +27,26 @@ class ReadyOrder {
     return ReadyOrder(
       id: json['_id']?.toString() ?? '',
       customerName: json['firstName']?.toString().trim() ?? 'Customer',
+      customerPhone: json['phoneNumber']?.toString().trim() ?? '',
+      customerEmail: json['email']?.toString().trim() ?? '',
       deviceModel: json['deviceModel']?.toString().trim() ?? 'Device',
       price: _resolvePrice(json),
       completedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
     );
   }
+
+  /// Round-trips this order through the saved checkout draft. Keys match
+  /// [ReadyOrder.fromJson] so the API response and a restored draft parse the
+  /// same way.
+  Map<String, dynamic> toJson() => {
+    '_id': id,
+    'firstName': customerName,
+    'phoneNumber': customerPhone,
+    'email': customerEmail,
+    'deviceModel': deviceModel,
+    'price': price,
+    'updatedAt': completedAt?.toIso8601String(),
+  };
 
   /// The shopkeeper's quote wins; otherwise fall back to the technician's
   /// parts costs, which is all the backend records for some repairs.

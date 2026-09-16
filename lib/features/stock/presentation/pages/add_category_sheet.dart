@@ -14,6 +14,7 @@ void showAddCategorySheet(
 }) {
   final controller = TextEditingController(text: existingName);
   String? pickedImagePath;
+  var isSubmitting = false;
   final isEdit = existingId != null;
 
   showDialog(
@@ -69,6 +70,7 @@ void showAddCategorySheet(
               SizedBox(height: 14),
               GestureDetector(
                 onTap: () async {
+                  if (isSubmitting) return;
                   final picker = ImagePicker();
                   final picked = await picker.pickImage(
                     source: ImageSource.gallery,
@@ -96,7 +98,9 @@ void showAddCategorySheet(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: isSubmitting
+                          ? null
+                          : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
                         side: BorderSide(color: AppColors.primary, width: 1.2),
@@ -117,39 +121,58 @@ void showAddCategorySheet(
                   SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () async {
-                        final name = controller.text.trim();
-                        if (name.isEmpty) {
-                          showErrorSnackbar('Please enter a category name');
-                          return;
-                        }
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final name = controller.text.trim();
+                              if (name.isEmpty) {
+                                showErrorSnackbar(
+                                  'Please enter a category name',
+                                );
+                                return;
+                              }
 
-                        final stockCtrl = Get.find<StockController>();
-                        bool success;
+                              final stockCtrl = Get.find<StockController>();
+                              // The save can take several seconds (the API
+                              // host cold-starts), so the button has to show
+                              // it is working — otherwise the tap looks
+                              // ignored and repeated taps fire duplicate
+                              // create requests.
+                              setDialogState(() => isSubmitting = true);
 
-                        if (isEdit) {
-                          success = await stockCtrl.updateCategory(
-                            id: existingId,
-                            name: name,
-                            imagePath: pickedImagePath,
-                          );
-                        } else {
-                          success = await stockCtrl.createCategory(
-                            name: name,
-                            imagePath: pickedImagePath,
-                          );
-                        }
+                              bool success;
+                              if (isEdit) {
+                                success = await stockCtrl.updateCategory(
+                                  id: existingId,
+                                  name: name,
+                                  imagePath: pickedImagePath,
+                                );
+                              } else {
+                                success = await stockCtrl.createCategory(
+                                  name: name,
+                                  imagePath: pickedImagePath,
+                                );
+                              }
 
-                        if (!context.mounted) return;
-                        if (success) {
-                          Navigator.pop(context);
-                          showSuccessSnackbar(
-                            isEdit ? 'Category updated' : 'Category created',
-                          );
-                        } else {
-                          showErrorSnackbar(stockCtrl.errorMessage.value);
-                        }
-                      },
+                              if (!context.mounted) return;
+                              setDialogState(() => isSubmitting = false);
+
+                              if (success) {
+                                Navigator.pop(context);
+                                showSuccessSnackbar(
+                                  isEdit
+                                      ? 'Category updated'
+                                      : 'Category created',
+                                );
+                              } else {
+                                final error = stockCtrl.errorMessage.value;
+                                showErrorSnackbar(
+                                  error.isEmpty
+                                      ? 'Could not save the category'
+                                      : error,
+                                );
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.black,
@@ -159,13 +182,22 @@ void showAddCategorySheet(
                         padding: EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
                       ),
-                      child: Text(
-                        isEdit ? 'Save Changes' : 'Create Category',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : Text(
+                              isEdit ? 'Save Changes' : 'Create Category',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ],

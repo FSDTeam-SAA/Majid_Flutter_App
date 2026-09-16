@@ -48,6 +48,9 @@ class _RepairPageState extends State<RepairPage> {
     _fetchRepairs();
   }
 
+  /// Rows shown per section before the See All button takes over.
+  static const _visibleLimit = 5;
+
   List<RepairItem> get _recentRepairs {
     final sortedRepairs = [..._repairs]
       ..sort((a, b) {
@@ -56,11 +59,22 @@ class _RepairPageState extends State<RepairPage> {
         return bDate.compareTo(aDate);
       });
 
-    return sortedRepairs.take(5).toList();
+    return sortedRepairs.take(_visibleLimit).toList();
   }
 
-  List<RepairItem> get _pendingRepairs =>
+  List<RepairItem> get _allPendingRepairs =>
       _repairs.where((item) => item.isActive).toList();
+
+  List<RepairItem> get _pendingRepairs =>
+      _allPendingRepairs.take(_visibleLimit).toList();
+
+  /// Total the backend holds, falling back to what was actually fetched.
+  int get _repairCount =>
+      _totalRecords > _repairs.length ? _totalRecords : _repairs.length;
+
+  bool get _hasMoreRepairs =>
+      _repairCount > _recentRepairs.length ||
+      _allPendingRepairs.length > _pendingRepairs.length;
 
   String? _repairId(RepairItem item) => item.raw['_id']?.toString();
 
@@ -1430,119 +1444,109 @@ class _RepairPageState extends State<RepairPage> {
       (sum, item) => sum + item.price,
     );
 
+    // One scroll view for the whole page: the banner, stats and Create button
+    // used to be pinned above a separately scrolling list, which left the
+    // cards fighting for a small window on short screens.
     return RefreshIndicator(
       color: AppColors.primary,
       backgroundColor: AppColors.cardBackground,
       onRefresh: _fetchRepairs,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.fieldBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.navigation_outlined,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Use the bottom navigation bar to switch back to the main menu without closing the app.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                RepairStatsRow(
-                  inProgress: inProgress,
-                  completed: completed,
-                  totalSales: totalSales,
-                ),
-                const SizedBox(height: 20),
-                AppButton(
-                  label: 'Create Repair Request',
-                  onPressed: _showCreateRepairSheet,
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.fieldBorder),
+              ),
+              child: Row(
                 children: [
-                  if (_pendingRepairs.isNotEmpty) ...[
-                    _buildPendingSectionHeader(),
-                    const SizedBox(height: 12),
-                    ..._pendingRepairs.map(
-                      (item) => PendingRepairCard(
-                        item: item,
-                        isNudging: _nudgingIds.contains(_repairId(item)),
-                        onNudge: () => _nudgeTechnician(item),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                RepairRequestDetailsPage(repair: item.raw),
-                          ),
-                        ),
+                  Icon(
+                    Icons.navigation_outlined,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Use the bottom navigation bar to switch back to the main menu without closing the app.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
                       ),
                     ),
-                    const SizedBox(height: 22),
-                  ],
-                  _buildSectionHeader(),
-                  const SizedBox(height: 14),
-                  if (_repairs.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 48),
-                        child: Text(
-                          'No repair requests yet',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    )
-                  else
-                    ..._recentRepairs.map(
-                      (item) => RepairCard(
-                        item: item,
-                        onViewReport: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                RepairRequestDetailsPage(repair: item.raw),
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 24),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            RepairStatsRow(
+              inProgress: inProgress,
+              completed: completed,
+              totalSales: totalSales,
+            ),
+            const SizedBox(height: 20),
+            AppButton(
+              label: 'Create Repair Request',
+              onPressed: _showCreateRepairSheet,
+            ),
+            const SizedBox(height: 24),
+            if (_pendingRepairs.isNotEmpty) ...[
+              _buildPendingSectionHeader(),
+              const SizedBox(height: 12),
+              ..._pendingRepairs.map(
+                (item) => PendingRepairCard(
+                  item: item,
+                  isNudging: _nudgingIds.contains(_repairId(item)),
+                  onNudge: () => _nudgeTechnician(item),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          RepairRequestDetailsPage(repair: item.raw),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+            ],
+            _buildSectionHeader(),
+            const SizedBox(height: 14),
+            if (_repairs.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Text(
+                    'No repair requests yet',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              )
+            else
+              ..._recentRepairs.map(
+                (item) => RepairCard(
+                  item: item,
+                  onViewReport: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          RepairRequestDetailsPage(repair: item.raw),
+                    ),
+                  ),
+                ),
+              ),
+            if (_hasMoreRepairs) ...[
+              const SizedBox(height: 6),
+              _buildSeeAllButton(),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -1566,7 +1570,7 @@ class _RepairPageState extends State<RepairPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            '${_pendingRepairs.length}',
+            '${_allPendingRepairs.length}',
             style: const TextStyle(
               color: Color(0xFFE8920A),
               fontSize: 12,
@@ -1579,32 +1583,44 @@ class _RepairPageState extends State<RepairPage> {
   }
 
   Widget _buildSectionHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Repair Requests',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-          ),
+    return Text(
+      'Repair Requests',
+      style: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 17,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  /// Shown only once there is more than fits in the sections above, so the
+  /// page never offers to "see all" of what is already on screen.
+  Widget _buildSeeAllButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AllRepairRequestsPage()),
         ),
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AllRepairRequestsPage()),
-          ),
-          child: Text(
-            'See All ($_totalRecords)',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.45)),
+          shape: const StadiumBorder(),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'See all requests ($_repairCount)',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
-          ),
+            const SizedBox(width: 6),
+            const Icon(Icons.arrow_forward_rounded, size: 17),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

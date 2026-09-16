@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/more_menu_button.dart';
-import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../../domain/entities/category.dart';
-import '../controller/stock_basket_controller.dart';
 import '../controller/stock_controller.dart';
 import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_empty_panel.dart';
@@ -14,7 +11,6 @@ import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
 import '../widgets/checkout_shortcut_card.dart';
 import 'category_stock_page.dart';
-import 'stock_checkout_review_page.dart';
 
 /// Entry point of the Stock section: "Choose a category or scan an item".
 ///
@@ -31,13 +27,11 @@ class StockCategoriesPage extends StatefulWidget {
 class _StockCategoriesPageState extends State<StockCategoriesPage> {
   final TextEditingController _searchCtrl = TextEditingController();
   late final StockController _stockCtrl;
-  late final StockBasketController _basket;
 
   @override
   void initState() {
     super.initState();
     _stockCtrl = Get.find<StockController>();
-    _basket = StockBasketController.instance;
     if (_stockCtrl.categories.isEmpty) _stockCtrl.fetchCategories();
   }
 
@@ -75,17 +69,8 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
     );
   }
 
-  void _openReview() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const StockCheckoutReviewPage()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final currency = Get.find<ProfileController>().currencySymbol;
-
     return GradientScaffold(
       child: Column(
         children: [
@@ -93,18 +78,17 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
             child: Row(
               children: [
-                // This screen is both the first bottom-nav destination and a
-                // page pushed from Quick Stock Access. As a tab there is
-                // nothing to go back to, so it carries the profile menu
-                // instead of a dead back arrow.
-                if (Navigator.canPop(context))
+                // This screen is both the first bottom-nav destination and
+                // a page pushed from Quick Stock Access. As a tab there is
+                // nothing to go back to, so the header simply starts with the
+                // title.
+                if (Navigator.canPop(context)) ...[
                   CheckoutIconButton(
                     icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.pop(context),
-                  )
-                else
-                  const MoreMenuButton(size: 38),
-                const SizedBox(width: 12),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +135,7 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                 onRefresh: _stockCtrl.fetchCategories,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
                   children: [
                     if (categories.isEmpty)
                       const CheckoutEmptyPanel(
@@ -170,13 +154,18 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 1.05,
+                              childAspectRatio: 0.92,
                             ),
                         itemBuilder: (context, index) {
                           final category = categories[index];
                           return CheckoutShortcutCard(
                             title: category.name,
                             subtitle: 'View stock',
+                            imageUrl: category.imageUrl,
+                            // No artwork yet -> a picture icon, so the tile
+                            // says "this category has no image" instead of
+                            // looking identical to every other card.
+                            icon: Icons.image_outlined,
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -189,35 +178,28 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                           );
                         },
                       ),
-                    const SizedBox(height: 18),
-                    _AllStockRow(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CategoryStockPage(),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               );
             }),
           ),
-          Obx(() {
-            if (_basket.lines.isEmpty) return const SizedBox.shrink();
-            return SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                child: _ReviewBar(
-                  label:
-                      '${_basket.totalQuantity} item${_basket.totalQuantity == 1 ? '' : 's'} ready',
-                  amount: '$currency${_basket.total.toStringAsFixed(2)}',
-                  onTap: _openReview,
-                ),
+          // Pinned above the bottom nav instead of riding at the end of the
+          // grid: browsing all stock is the page's standing escape hatch, so
+          // it should be reachable without scrolling past every category.
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              18,
+              6,
+              18,
+              10 + MediaQuery.paddingOf(context).bottom * 0.2,
+            ),
+            child: _AllStockRow(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CategoryStockPage()),
               ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     );
@@ -269,65 +251,6 @@ class _AllStockRow extends StatelessWidget {
                 Icons.chevron_right_rounded,
                 color: CheckoutTokens.softText,
                 size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Sticky "go to Checkout Review" bar, shown only once something is queued.
-class _ReviewBar extends StatelessWidget {
-  final String label;
-  final String amount;
-  final VoidCallback onTap;
-
-  const _ReviewBar({
-    required this.label,
-    required this.amount,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-          decoration: BoxDecoration(
-            gradient: CheckoutTokens.limeGradient,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: CheckoutTokens.text(
-                    size: 14,
-                    weight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              Text(
-                amount,
-                style: CheckoutTokens.text(
-                  size: 15,
-                  weight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white,
-                size: 22,
               ),
             ],
           ),

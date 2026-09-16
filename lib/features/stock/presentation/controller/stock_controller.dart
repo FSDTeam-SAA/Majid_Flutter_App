@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' hide Category;
+import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 
 import '../../../../core/network/api_service/api_client.dart';
@@ -33,6 +34,11 @@ class StockController extends GetxController {
   }
 
   Future<void> fetchCategories() async {
+    // Pages kick this off from initState and GetX calls it from onInit, both
+    // of which run inside the build phase. Writing to an observable there
+    // marks every listening Obx dirty mid-build, which Flutter throws on, so
+    // wait for the frame to finish before touching any rx value.
+    await _leaveBuildPhase();
     isLoading.value = true;
     try {
       final shopkeeperId = await _resolveShopkeeperId();
@@ -46,10 +52,22 @@ class StockController extends GetxController {
         shopkeeperId,
       );
       await _refreshInventoryCategoryCards(shopkeeperId);
-    } on DioException catch (e) {
-      debugPrint('Categories fetch error: $e');
+    } catch (e) {
+      // Kept non-fatal (the grid simply shows what it already had), but the
+      // reason is recorded rather than swallowed — a failing list endpoint
+      // used to look exactly like "there are no categories".
+      errorMessage.value = _apiErrorMessage(e, 'Failed to load categories');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Yields until the running frame is done when called during a build.
+  Future<void> _leaveBuildPhase() async {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      await SchedulerBinding.instance.endOfFrame;
     }
   }
 
@@ -171,9 +189,8 @@ class StockController extends GetxController {
       );
       await fetchCategories();
       return true;
-    } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to create category';
+    } catch (e) {
+      errorMessage.value = _apiErrorMessage(e, 'Failed to create category');
       return false;
     } finally {
       isSaving.value = false;
@@ -202,9 +219,8 @@ class StockController extends GetxController {
       );
       await fetchCategories();
       return true;
-    } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to update category';
+    } catch (e) {
+      errorMessage.value = _apiErrorMessage(e, 'Failed to update category');
       return false;
     } finally {
       isSaving.value = false;
@@ -218,10 +234,48 @@ class StockController extends GetxController {
       categories.removeWhere((c) => c.id == id);
       inventoryCategoryCards.removeWhere((c) => c.id == id);
       return true;
-    } on DioException catch (e) {
-      errorMessage.value =
-          e.response?.data?['message'] ?? 'Failed to delete category';
+    } catch (e) {
+      errorMessage.value = _apiErrorMessage(e, 'Failed to delete category');
       return false;
+    }
+  }
+
+  /// Turns any thrown error into something a user can act on. The backend
+  /// replies `{success, message, errorSources}`, but a gateway or a crash can
+  /// return HTML or a plain string instead, so every shape is handled here —
+  /// previously `e.response?.data?['message']` threw a second time on those,
+  /// which escaped the catch block and left the UI with no feedback at all.
+  String _apiErrorMessage(Object error, String fallback) {
+    debugPrint('$fallback: $error');
+
+    if (error is! DioException) return fallback;
+
+    final data = error.response?.data;
+    if (data is Map) {
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) return message.trim();
+
+      final sources = data['errorSources'];
+      if (sources is List && sources.isNotEmpty) {
+        final first = sources.first;
+        if (first is Map) {
+          final sourceMessage = first['message'];
+          if (sourceMessage is String && sourceMessage.trim().isNotEmpty) {
+            return sourceMessage.trim();
+          }
+        }
+      }
+    }
+
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return 'Network error — check your connection and try again';
+      default:
+        final status = error.response?.statusCode;
+        return status == null ? fallback : '$fallback (HTTP $status)';
     }
   }
 }

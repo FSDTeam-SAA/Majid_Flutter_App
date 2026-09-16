@@ -51,7 +51,7 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildHeader(context),
+              const AppHeader(title: 'Business Health Score'),
               Expanded(
                 child: Obx(() {
                   if (_profileCtrl.isDashboardLoading.value) {
@@ -62,47 +62,15 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
                     );
                   }
                   final stats = _profileCtrl.dashboardStats.value;
-                  if (stats == null) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.cloud_off_outlined,
-                            color: AppColors.textSecondary,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Could not load dashboard',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          OutlinedButton(
-                            onPressed: _refresh,
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: AppColors.primary),
-                              foregroundColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                  if (stats == null) return _buildErrorState();
+
                   return RefreshIndicator(
                     color: AppColors.primary,
                     backgroundColor: AppColors.cardBackground,
                     onRefresh: _refresh,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
                       child: _buildContent(stats),
                     ),
                   );
@@ -115,173 +83,305 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
     );
   }
 
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            color: AppColors.textSecondary,
+            size: 48,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Could not load dashboard',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: _refresh,
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: AppColors.primary),
+              foregroundColor: AppColors.primary,
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContent(DashboardStats stats) {
-    final overall = stats.healthScoreOverall;
-    final rating = stats.healthScoreRating;
-    final message = stats.healthScoreMessage;
-    final metrics = stats.metrics;
-    final insights = stats.insights;
-
-    final totalSales = stats.totalSales;
-    final totalOrders = stats.totalOrders;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFilterRow(),
-        const SizedBox(height: 12),
-        _buildGaugeCard(overall, rating, message),
-        const SizedBox(height: 12),
-        _buildScoreBreakdown(metrics),
-        const SizedBox(height: 12),
+        _buildFilterBar(),
+        const SizedBox(height: 18),
+        _ScoreHeroCard(
+          score: stats.healthScoreOverall,
+          message: stats.healthScoreMessage,
+        ),
+        const SizedBox(height: 14),
+        _BreakdownCard(metrics: stats.metrics),
+        const SizedBox(height: 14),
+        // Not CrossAxisAlignment.stretch: inside a scroll view that asks the
+        // tiles for infinite height and takes the whole page down with it.
+        // Both tiles have the same structure, so they match anyway.
         Row(
           children: [
             Expanded(
-              child: _MetricCard(
-                icon: Icons.shopping_cart_outlined,
-                iconBgColor: AppColors.fieldBackground,
-                iconColor: AppColors.primary,
-                label: 'Sales',
+              child: _StatTile(
+                icon: Icons.payments_outlined,
+                label: 'Total sales',
                 value:
-                    '${_profileCtrl.currencySymbol}${totalSales.toStringAsFixed(0)}',
-                change: 'Total revenue',
-                changePositive: true,
-                lineColor: AppColors.primary,
+                    '${_profileCtrl.currencySymbol}${_compactNumber(stats.totalSales)}',
+                caption: _periodLabel,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _MetricCard(
+              child: _StatTile(
                 icon: Icons.receipt_long_outlined,
-                // Was a hardcoded dark tile, which read as a black disc beside
-                // the light Sales card on the soft-white theme. Both cards now
-                // resolve through the palette, so they match in either theme.
-                iconBgColor: AppColors.fieldBackground,
-                iconColor: AppColors.primary,
                 label: 'Orders',
-                value: '$totalOrders',
-                change: 'Total orders',
-                changePositive: true,
-                lineColor: AppColors.primary,
+                value: '${stats.totalOrders}',
+                caption: _periodLabel,
               ),
             ),
           ],
         ),
-        if (insights.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _buildInsightsCard(insights),
+        if (stats.insights.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _InsightsCard(insights: stats.insights),
         ],
       ],
     );
   }
 
-  Widget _buildFilterRow() {
-    return Row(
-      children: [
-        _FilterChip(
-          label: 'Daily',
-          selected: _filter == 'daily',
-          onTap: () => _setFilter('daily'),
-        ),
-        const SizedBox(width: 8),
-        _FilterChip(
-          label: 'Monthly',
-          selected: _filter == 'monthly',
-          onTap: () => _setFilter('monthly'),
-        ),
-        const SizedBox(width: 8),
-        _FilterChip(
-          label: 'Yearly',
-          selected: _filter == 'yearly',
-          onTap: () => _setFilter('yearly'),
-        ),
-      ],
+  String get _periodLabel => switch (_filter) {
+    'daily' => 'Today',
+    'yearly' => 'This year',
+    _ => 'This month',
+  };
+
+  /// `1467` -> `1,467`, `24500` -> `24.5k`, so a long figure never pushes the
+  /// tile into an ellipsis.
+  static String _compactNumber(double value) {
+    if (value >= 100000) return '${(value / 1000).toStringAsFixed(0)}k';
+    if (value >= 10000) return '${(value / 1000).toStringAsFixed(1)}k';
+    final whole = value.toStringAsFixed(0);
+    return whole.replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'),
+      (m) => '${m[1]},',
     );
   }
 
-  Widget _buildGaugeCard(int overall, String rating, String message) {
+  /// One segmented control rather than three loose pills, so the period reads
+  /// as a single choice.
+  Widget _buildFilterBar() {
+    const options = {
+      'daily': 'Daily',
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
+    };
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.fieldBorder, width: 1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      child: Row(
+        children: [
+          for (final entry in options.entries)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _setFilter(entry.key),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: _filter == entry.key
+                        ? AppColors.cardBackground
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _filter == entry.key
+                          ? AppColors.fieldBorder
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Text(
+                    entry.value,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _filter == entry.key
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                      fontSize: 13.5,
+                      fontWeight: _filter == entry.key
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card styling shared by every block on this page, so they read as one set.
+BoxDecoration _cardDecoration() => BoxDecoration(
+  color: AppColors.cardBackground,
+  borderRadius: BorderRadius.circular(20),
+  border: Border.all(color: AppColors.fieldBorder),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: AppColors.isDark ? 0.28 : 0.04),
+      blurRadius: 18,
+      offset: const Offset(0, 8),
+    ),
+  ],
+);
+
+Widget _sectionTitle(String title, String subtitle) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 15.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.2,
+        ),
+      ),
+      const SizedBox(height: 3),
+      Text(
+        subtitle,
+        style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+      ),
+    ],
+  );
+}
+
+/// The headline: one number, the band it falls in, and what to do about it.
+class _ScoreHeroCard extends StatelessWidget {
+  final int score;
+  final String message;
+
+  const _ScoreHeroCard({required this.score, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: _cardDecoration().copyWith(
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final gaugeH = w * 0.54;
+              final width = min(constraints.maxWidth, 300.0);
               return SizedBox(
-                width: w,
-                height: gaugeH,
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _GaugePainter(value: overall / 100.0),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '$overall',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              height: 1.1,
-                            ),
+                width: width,
+                height: width * 0.62,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: score / 100),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, progress, _) => Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _GaugePainter(
+                            // Brand green, so the page matches the rest of
+                            // the app. The band is carried by the badge and
+                            // the number below, never by this arc alone.
+                            color: AppColors.primary,
+                            value: progress,
+                            trackColor: AppColors.isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.black.withValues(alpha: 0.06),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Health Score',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${(progress * 100).round()}',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 52,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1,
+                                    letterSpacing: -2,
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '/100',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'HEALTH SCORE',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // End labels, so the arc reads as a 0-100 scale rather
+                      // than an abstract swoosh.
+                      Positioned(left: 0, bottom: 0, child: _endLabel('0')),
+                      Positioned(right: 0, bottom: 0, child: _endLabel('100')),
+                    ],
+                  ),
                 ),
               );
             },
           ),
-          const SizedBox(height: 16),
-          if (rating.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: _ratingColor(rating).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _ratingColor(rating).withValues(alpha: 0.4),
-                ),
-              ),
-              child: Text(
-                rating,
-                style: TextStyle(
-                  color: _ratingColor(rating),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+          const SizedBox(height: 14),
           if (message.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 18),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.45,
+              ),
             ),
           ],
         ],
@@ -289,147 +389,47 @@ class _BusinessHealthScorePageState extends State<BusinessHealthScorePage> {
     );
   }
 
-  Widget _buildScoreBreakdown(DashboardMetrics metrics) {
-    final items = [
-      ('Sales Growth', metrics.salesGrowth),
-      ('Profit Margin', metrics.profitMargin),
-      ('Checkout Management', metrics.stockManagement),
-      ('Customer Satisfaction', metrics.customerSatisfaction),
-      ('Outstanding Payments', metrics.outstandingPayments),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.fieldBorder, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Score Breakdown',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...items.map((entry) {
-            final label = entry.$1;
-            final score = entry.$2.score;
-            return _ScoreRow(label: label, score: score);
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsightsCard(List<String> insights) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.fieldBorder, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.auto_awesome, color: AppColors.primary, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'AI Insights',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...insights.map(
-            (insight) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                insight,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _ratingColor(String rating) {
-    switch (rating) {
-      case 'Excellent':
-        return const Color(0xFF4EE86A);
-      case 'Good':
-        return const Color(0xFF90EE90);
-      case 'Fair':
-        return const Color(0xFFE8B84E);
-      case 'Needs Improvement':
-        return const Color(0xFFE8920A);
-      default:
-        return const Color(0xFFE85050);
-    }
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    // Uses the shared header: the old one hardcoded a near-black circle for
-    // the back button, which sat as a dark blob on the soft-white light theme,
-    // and carried the profile avatar the client asked to be taken off the
-    // profile screens.
-    return const AppHeader(title: 'Business Health Score');
-  }
+  Widget _endLabel(String text) => Text(
+    text,
+    style: TextStyle(
+      color: AppColors.textSecondary,
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+    ),
+  );
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+class _BreakdownCard extends StatelessWidget {
+  final DashboardMetrics metrics;
 
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _BreakdownCard({required this.metrics});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withValues(alpha: 0.15)
-              : AppColors.fieldBackground,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.fieldBorder,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? AppColors.primary : AppColors.textSecondary,
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
+    final items = [
+      ('Sales Growth', metrics.salesGrowth.score),
+      ('Profit Margin', metrics.profitMargin.score),
+      ('Checkout Management', metrics.stockManagement.score),
+      ('Customer Satisfaction', metrics.customerSatisfaction.score),
+      ('Outstanding Payments', metrics.outstandingPayments.score),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Score Breakdown', 'What each area contributes'),
+          const SizedBox(height: 18),
+          for (var i = 0; i < items.length; i++)
+            _ScoreRow(
+              label: items[i].$1,
+              score: items[i].$2,
+              // Stagger the bars slightly so the card resolves as one motion.
+              delay: Duration(milliseconds: 60 * i),
+            ),
+        ],
       ),
     );
   }
@@ -438,50 +438,92 @@ class _FilterChip extends StatelessWidget {
 class _ScoreRow extends StatelessWidget {
   final String label;
   final int score;
+  final Duration delay;
 
-  const _ScoreRow({required this.label, required this.score});
-
-  Color get _barColor {
-    if (score >= 85) return const Color(0xFF4EE86A);
-    if (score >= 70) return const Color(0xFF90EE90);
-    if (score >= 55) return const Color(0xFFE8B84E);
-    if (score >= 40) return const Color(0xFFE8920A);
-    return const Color(0xFFE85050);
-  }
+  const _ScoreRow({
+    required this.label,
+    required this.score,
+    this.delay = Duration.zero,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
-                '$score/100',
+                '$score',
                 style: TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 13,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                '/100',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: score / 100.0,
-              minHeight: 6,
-              backgroundColor: AppColors.fieldBorder,
-              valueColor: AlwaysStoppedAnimation<Color>(_barColor),
-            ),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppColors.isDark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : Colors.black.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: score / 100),
+                    duration: Duration(
+                      milliseconds: 700 + delay.inMilliseconds,
+                    ),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, progress, _) => Container(
+                      height: 8,
+                      width: constraints.maxWidth * progress.clamp(0.0, 1.0),
+                      decoration: BoxDecoration(
+                        // One hue for every row: the bar's length already says
+                        // how big the score is, so the colour stays on brand
+                        // instead of turning the card into a rainbow.
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.6),
+                            AppColors.primary,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -489,92 +531,74 @@ class _ScoreRow extends StatelessWidget {
   }
 }
 
-class _MetricCard extends StatelessWidget {
+/// A plain figure. The old version drew a rising "trend" line that was the
+/// same straight diagonal whatever the numbers were, i.e. a picture of data
+/// that did not exist, so it is gone.
+class _StatTile extends StatelessWidget {
   final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
   final String label;
   final String value;
-  final String change;
-  final bool changePositive;
-  final Color lineColor;
+  final String caption;
 
-  const _MetricCard({
+  const _StatTile({
     required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
     required this.label,
     required this.value,
-    required this.change,
-    required this.changePositive,
-    required this.lineColor,
+    required this.caption,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.fieldBorder, width: 1),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: iconBgColor,
-                  shape: BoxShape.circle,
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: iconColor, size: 19),
+                child: Icon(icon, color: AppColors.primary, size: 17),
               ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            change,
-            style: TextStyle(
-              color: changePositive
-                  ? AppColors.primary
-                  : const Color(0xFFE85050),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 44,
-            child: CustomPaint(
-              size: const Size(double.infinity, 44),
-              painter: _TrendLinePainter(
-                color: lineColor,
-                positive: changePositive,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
               ),
             ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            caption,
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5),
           ),
         ],
       ),
@@ -582,99 +606,151 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _GaugePainter extends CustomPainter {
-  final double value;
-  const _GaugePainter({required this.value});
+class _InsightsCard extends StatelessWidget {
+  final List<String> insights;
+
+  const _InsightsCard({required this.insights});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height;
-    final center = Offset(cx, cy);
-    final radius = size.width / 2 - 16;
-    const strokeW = 22.0;
-    const startAngle = pi;
-    const sweepAll = pi;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAll,
-      false,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.10)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeW
-        ..strokeCap = StrokeCap.round,
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: AppColors.primary, size: 17),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _sectionTitle(
+                  'AI Insights',
+                  'Generated from this period\'s numbers',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (final insight in insights)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      insight,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
-
-    if (value > 0) {
-      final rect = Rect.fromCircle(center: center, radius: radius);
-      final shader = SweepGradient(
-        startAngle: pi,
-        endAngle: 2 * pi,
-        colors: const [Color(0xFF4EE86A), Color(0xFFACFF7A)],
-      ).createShader(rect);
-
-      canvas.drawArc(
-        rect,
-        startAngle,
-        sweepAll * value,
-        false,
-        Paint()
-          ..shader = shader
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeW
-          ..strokeCap = StrokeCap.round,
-      );
-    }
   }
-
-  @override
-  bool shouldRepaint(covariant _GaugePainter old) => old.value != value;
 }
 
-class _TrendLinePainter extends CustomPainter {
+/// Half-circle gauge: a recessive full-range track with the score drawn over
+/// it. The track used to be white at 10% opacity, which was invisible on the
+/// light theme and left the arc floating with no scale behind it.
+class _GaugePainter extends CustomPainter {
+  final double value;
   final Color color;
-  final bool positive;
-  const _TrendLinePainter({required this.color, required this.positive});
+  final Color trackColor;
+
+  const _GaugePainter({
+    required this.value,
+    required this.color,
+    required this.trackColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
+    const strokeWidth = 18.0;
+    final center = Offset(size.width / 2, size.height - 14);
+    final radius = min(size.width / 2, size.height) - strokeWidth;
+    final rect = Rect.fromCircle(center: center, radius: radius);
 
-    final start = Offset(0, h * 0.88);
-    final end = Offset(w, h * 0.12);
+    // The track is split at the band boundaries (40 / 60 / 80) with a hairline
+    // gap between segments, so the dial shows which zone the score sits in
+    // instead of being one anonymous grey sweep.
+    const bounds = [0.0, 0.4, 0.6, 0.8, 1.0];
+    const gap = 0.012 * pi;
+    for (var i = 0; i < bounds.length - 1; i++) {
+      final start = pi + bounds[i] * pi + (i == 0 ? 0 : gap / 2);
+      final end =
+          pi + bounds[i + 1] * pi - (i == bounds.length - 2 ? 0 : gap / 2);
+      canvas.drawArc(
+        rect,
+        start,
+        end - start,
+        false,
+        Paint()
+          ..color = trackColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = i == 0 || i == bounds.length - 2
+              ? StrokeCap.round
+              : StrokeCap.butt,
+      );
+    }
 
-    final path = Path()
-      ..moveTo(start.dx, start.dy)
-      ..lineTo(end.dx, end.dy)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
+    if (value <= 0) return;
 
-    canvas.drawPath(
-      path,
+    final sweep = pi * value.clamp(0.0, 1.0);
+    final shader = SweepGradient(
+      startAngle: pi,
+      endAngle: 2 * pi,
+      colors: [color.withValues(alpha: 0.72), color],
+    ).createShader(rect);
+
+    canvas.drawArc(
+      rect,
+      pi,
+      sweep,
+      false,
       Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [color.withValues(alpha: 0.30), color.withValues(alpha: 0.0)],
-        ).createShader(Rect.fromLTWH(0, 0, w, h)),
+        ..shader = shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round,
     );
 
-    canvas.drawLine(
-      start,
-      end,
+    // A pip at the tip marks exactly where the score lands on the arc.
+    final tipAngle = pi + sweep;
+    final tip = Offset(
+      center.dx + radius * cos(tipAngle),
+      center.dy + radius * sin(tipAngle),
+    );
+    canvas.drawCircle(tip, 5, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      tip,
+      5,
       Paint()
         ..color = color
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round,
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _TrendLinePainter old) =>
-      old.color != color || old.positive != positive;
+  bool shouldRepaint(covariant _GaugePainter old) =>
+      old.value != value || old.color != color || old.trackColor != trackColor;
 }

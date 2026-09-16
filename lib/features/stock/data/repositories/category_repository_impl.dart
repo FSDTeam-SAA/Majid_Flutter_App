@@ -26,10 +26,18 @@ class CategoryRepositoryImpl implements CategoryRepository {
 
   @override
   Future<List<Category>> getCategoriesWithCount(String shopkeeperId) async {
+    // Deliberately NOT `CategoryEndpoints.withCount`: that endpoint returns
+    // 500 ("unknown top level operator: $eq") because its $lookup sub-pipeline
+    // passes aggregation expressions to $match without wrapping them in $expr.
+    // Every category fetch failed on it, so the grid stayed empty and newly
+    // created categories never showed up even though the POST had succeeded.
+    // The plain list endpoint is shop-scoped the same way and carries
+    // `totalItems`, and StockController recomputes live counts from inventory
+    // anyway. Switch back once the backend aggregation is fixed.
     final res = await _api.get(
-      '${CategoryEndpoints.withCount}?shopkeeperId=$shopkeeperId',
+      '${CategoryEndpoints.all}?shopkeeperId=$shopkeeperId',
     );
-    final data = res.data['data'];
+    final data = res.data is Map ? res.data['data'] : null;
     if (data is! List) return [];
     return data
         .whereType<Map>()
@@ -47,7 +55,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
       CategoryEndpoints.create,
       data: await _payload(name, shopkeeperId, imagePath),
     );
-    return categoryFromJson(Map<String, dynamic>.from(res.data['data']));
+    return _categoryFromResponse(res.data, name);
   }
 
   @override
@@ -61,7 +69,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
       CategoryEndpoints.byId(id),
       data: await _payload(name, shopkeeperId, imagePath),
     );
-    return categoryFromJson(Map<String, dynamic>.from(res.data['data']));
+    return _categoryFromResponse(res.data, name);
   }
 
   @override
@@ -75,6 +83,20 @@ class CategoryRepositoryImpl implements CategoryRepository {
     final data = res.data['data'];
     final resolvedId = data is Map ? data['_id']?.toString().trim() ?? '' : '';
     return resolvedId.isEmpty ? null : resolvedId;
+  }
+
+  /// The write endpoints normally echo the saved category under `data`, but
+  /// some replies wrap it one level deeper or omit it entirely. The HTTP call
+  /// already succeeded by this point, so an unexpected shape must not blow up
+  /// with a cast error — fall back to what we sent and let the list refresh
+  /// fill in the server's version.
+  Category _categoryFromResponse(dynamic body, String name) {
+    final data = body is Map ? body['data'] : null;
+    if (data is! Map) return Category(id: '', name: name);
+
+    final nested = data['category'];
+    final json = nested is Map ? nested : data;
+    return categoryFromJson(Map<String, dynamic>.from(json));
   }
 
   Future<dynamic> _payload(

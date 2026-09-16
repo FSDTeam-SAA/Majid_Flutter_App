@@ -24,6 +24,16 @@ class AmountExpression {
     return AmountExpression._(rounded);
   }
 
+  /// Rebuilds keystrokes previously read off [input], used when the checkout
+  /// draft is restored from storage. Anything that is not a keypad expression
+  /// falls back to [empty] rather than poisoning the calculator.
+  factory AmountExpression.restore(String raw) {
+    final cleaned = raw.trim();
+    if (cleaned.isEmpty) return empty;
+    if (!RegExp(r'^[0-9+\-*/.%]+$').hasMatch(cleaned)) return empty;
+    return AmountExpression._(cleaned);
+  }
+
   static const _operators = {'+', '-', '*', '/'};
   static const _operatorGlyphs = {'+': '+', '-': '−', '*': '×', '/': '÷'};
 
@@ -95,6 +105,53 @@ class AmountExpression {
   }
 
   AmountExpression cleared() => empty;
+
+  /// Drops one additive term, matching the rows listed on the review screen,
+  /// so `450+20*2-10` without its middle line becomes `450-10`.
+  ///
+  /// [index] counts the same terms [lines] produces, i.e. blank terms left by
+  /// a half-typed operator are skipped.
+  AmountExpression removeTermAt(int index) {
+    final terms = _terms();
+    final operators = _termOperators();
+
+    var seen = -1;
+    var target = -1;
+    for (var i = 0; i < terms.length; i++) {
+      if (terms[i].trim().isEmpty) continue;
+      seen++;
+      if (seen == index) {
+        target = i;
+        break;
+      }
+    }
+    if (target < 0) return this;
+
+    terms.removeAt(target);
+    operators.removeAt(target);
+    if (terms.every((term) => term.trim().isEmpty)) return empty;
+
+    final buffer = StringBuffer();
+    for (var i = 0; i < terms.length; i++) {
+      // The leading term carries no operator. A subtracted term promoted to
+      // the front therefore keeps its value rather than its sign, which is
+      // what the review screen already shows and what the keypad can type.
+      if (i > 0) buffer.write(operators[i]);
+      buffer.write(terms[i]);
+    }
+
+    final next = buffer.toString();
+    return next.isEmpty ? empty : AmountExpression._(next);
+  }
+
+  /// Operator preceding each term of [_terms]; the first term has none.
+  List<String> _termOperators() {
+    final operators = <String>[''];
+    for (final char in input.split('')) {
+      if (char == '+' || char == '-') operators.add(char);
+    }
+    return operators;
+  }
 
   /// Result of the expression, or `null` when it cannot be resolved
   /// (currently only division by zero).

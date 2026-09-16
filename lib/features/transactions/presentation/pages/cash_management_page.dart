@@ -9,7 +9,6 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/more_menu_button.dart';
 import '../../../invoice/data/repositories/invoice_repository_impl.dart';
 import '../../../invoice/domain/entities/invoice.dart';
 import '../../../invoice/domain/repositories/invoice_repository.dart';
@@ -697,10 +696,7 @@ class _CashManagementPageState extends State<CashManagementPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(
-            title: 'Cash Management',
-            trailing: const MoreMenuButton(size: 38),
-          ),
+          AppHeader(title: 'Cash Management'),
           Expanded(
             child: _isLoading
                 ? const Center(child: AppLoadingIndicator())

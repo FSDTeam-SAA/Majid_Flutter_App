@@ -13,6 +13,8 @@ import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../supplier/presentation/pages/supplier_page.dart';
 import '../../domain/entities/ready_order.dart';
+import '../controller/checkout_draft_controller.dart';
+import '../controller/stock_basket_controller.dart';
 import '../controller/stock_controller.dart';
 import '../theme/checkout_tokens.dart';
 import '../utils/amount_expression.dart';
@@ -39,22 +41,22 @@ class StockPage extends StatefulWidget {
 }
 
 class _StockPageState extends State<StockPage> {
-
   late final ApiClient _api;
   late final StockController _stockCtrl;
+  late final StockBasketController _basket;
   late final ProfileController _profileCtrl;
   late final AuthController _authCtrl;
 
   final TextEditingController _searchCtrl = TextEditingController();
-
-
   bool _isReadyOrdersSheetOpen = false;
   List<ReadyOrder> _readyOrders = [];
-  AmountExpression _expression = AmountExpression.empty;
 
-  /// Names given to calculated lines, keyed by the term as typed.
-  final Map<String, String> _lineNames = {};
-  String _calculationNote = '';
+  /// Keypad amounts, their names and any pulled-in repairs. Held outside this
+  /// State because the bottom navigation disposes the page on every tab
+  /// change, which used to wipe a half-rung-up sale.
+  late final CheckoutDraftController _draft;
+
+  AmountExpression get _expression => _draft.expression;
 
   @override
   void initState() {
@@ -62,8 +64,10 @@ class _StockPageState extends State<StockPage> {
     final api = ApiClient(baseUrl);
     _api = api;
     _stockCtrl = Get.find<StockController>();
+    _basket = StockBasketController.instance;
     _profileCtrl = Get.find<ProfileController>();
     _authCtrl = Get.find<AuthController>();
+    _draft = CheckoutDraftController.instance;
     _bootstrap();
   }
 
@@ -74,10 +78,7 @@ class _StockPageState extends State<StockPage> {
   }
 
   Future<void> _bootstrap() async {
-    await Future.wait([
-      _stockCtrl.fetchCategories(),
-      _fetchReadyOrders(),
-    ]);
+    await Future.wait([_stockCtrl.fetchCategories(), _fetchReadyOrders()]);
   }
 
   /// Repairs the technicians have finished, ready to be collected and paid
@@ -118,7 +119,7 @@ class _StockPageState extends State<StockPage> {
   }
 
   void _pullOrderIntoCheckout(ReadyOrder order) {
-    _primeAmountWith(order.price);
+    setState(() => _draft.addRepair(order));
     showSuccessSnackbar('${order.deviceModel} pulled into checkout');
   }
 
@@ -135,15 +136,12 @@ class _StockPageState extends State<StockPage> {
   }
 
   Future<void> _refreshPage() async {
-    await Future.wait([
-      _stockCtrl.fetchCategories(),
-      _fetchReadyOrders(),
-    ]);
+    await Future.wait([_stockCtrl.fetchCategories(), _fetchReadyOrders()]);
   }
 
   void _updateExpression(AmountExpression next) {
     HapticFeedback.selectionClick();
-    setState(() => _expression = next);
+    setState(() => _draft.setExpression(next));
   }
 
   void _appendDigit(String digit) =>
@@ -156,12 +154,7 @@ class _StockPageState extends State<StockPage> {
 
   void _backspace() {
     HapticFeedback.lightImpact();
-    setState(() => _expression = _expression.backspace());
-  }
-
-  void _primeAmountWith(double amount) {
-    if (amount <= 0) return;
-    setState(() => _expression = AmountExpression.fromValue(amount));
+    setState(() => _draft.setExpression(_expression.backspace()));
   }
 
   /// Evaluated total, or 0 while the expression cannot be resolved.
@@ -180,30 +173,25 @@ class _StockPageState extends State<StockPage> {
     final result = await Navigator.push<CalculationNoteResult>(
       context,
       MaterialPageRoute(
-        builder: (_) => CalculationNotePage(
-          lines: _namedLines,
-          initialNote: _calculationNote,
-        ),
+        builder: (_) =>
+            CalculationNotePage(lines: _namedLines, initialNote: _draft.note),
       ),
     );
     if (result == null || !mounted) return;
 
     setState(() {
-      _lineNames
-        ..clear()
-        ..addEntries(
-          result.lines
-              .where((line) => line.name.isNotEmpty)
-              .map((line) => MapEntry(line.expression, line.name)),
-        );
-      _calculationNote = result.note;
+      _draft.setLineNames({
+        for (final line in result.lines)
+          if (line.name.isNotEmpty) line.expression: line.name,
+      });
+      _draft.setNote(result.note);
     });
   }
 
-  /// Opens the item-by-item review of everything typed into the calculator.
+  /// Opens one review containing stock, repairs and custom keypad charges.
   Future<void> _openQuantityReview() async {
-    if (_expression.isEmpty) {
-      showErrorSnackbar('Add an amount first');
+    if (_totalQuantity == 0) {
+      showErrorSnackbar('Add an item first');
       return;
     }
     HapticFeedback.selectionClick();
@@ -214,23 +202,64 @@ class _StockPageState extends State<StockPage> {
       context,
       MaterialPageRoute(
         builder: (_) => QuantityReviewPage(
-          lines: _namedLines,
+          lines: _combinedLines,
+          stockItems: [
+            for (final line in _basket.lines)
+              ReviewStockItem(
+                id: line.item.id,
+                name: line.item.itemName,
+                quantity: line.quantity,
+                originalPrice: line.originalPrice,
+                newPrice: line.newPrice,
+              ),
+          ],
           currencySymbol: _profileCtrl.currencySymbol,
           shopkeeperId: shopkeeperId,
+          customerHint: _customerHint,
+          onStockPriceChanged: _basket.updatePrice,
+          onStockRemoved: _basket.remove,
+          onClearAll: _clearCheckout,
+          onLineRemoved: _removeCombinedLine,
         ),
       ),
     );
   }
 
+  /// Empties the whole sale: stock basket, pulled-in repairs and the keypad.
+  void _clearCheckout() {
+    setState(_draft.clear);
+    _basket.clear();
+  }
+
+  /// Mirrors a row removed on the review screen. [index] indexes
+  /// [_combinedLines], so repairs come first and keypad terms follow.
+  void _removeCombinedLine(int index) {
+    setState(() => _draft.removeLineAt(index));
+  }
+
+  /// Customer of the first repair in this sale, if any. Repairs are the only
+  /// part of the checkout that knows who is paying.
+  CustomerHint? get _customerHint {
+    if (_draft.repairs.isEmpty) return null;
+    final order = _draft.repairs.values.first;
+    final hint = CustomerHint(
+      name: order.customerName,
+      phone: order.customerPhone,
+      email: order.customerEmail,
+    );
+    return hint.isEmpty ? null : hint;
+  }
+
   /// Calculator lines with any names the shopkeeper has given them.
-  List<CalculationLine> get _namedLines => [
-    for (final line in _expression.lines)
-      line.copyWith(name: _lineNames[line.expression] ?? ''),
-  ];
+  List<CalculationLine> get _namedLines => _draft.namedLines;
+
+  List<CalculationLine> get _combinedLines => _draft.combinedLines;
+
+  int get _totalQuantity => _basket.totalQuantity + _draft.totalQuantity;
 
   void _clearAll() {
     HapticFeedback.mediumImpact();
-    setState(() => _expression = _expression.cleared());
+    setState(_draft.clear);
   }
 
   static final _groupPattern = RegExp(r'(\d)(?=(\d{3})+(?!\d))');
@@ -254,8 +283,10 @@ class _StockPageState extends State<StockPage> {
   Widget build(BuildContext context) {
     return GradientScaffold(
       child: Obx(() {
-        // Rebuild on both inventory refreshes and palette (light/dark) changes.
+        // Rebuild on inventory refreshes, palette (light/dark) changes and
+        // the checkout draft coming back from storage.
         _stockCtrl.isLoading.value;
+        _draft.revision.value;
         if (Get.isRegistered<ProfileThemeController>()) {
           Get.find<ProfileThemeController>().selectedTheme.value;
         }
@@ -280,14 +311,18 @@ class _StockPageState extends State<StockPage> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Keypad',
-                  style: CheckoutTokens.text(
-                    size: 15,
-                    weight: FontWeight.w800,
-                  ),
+                  style: CheckoutTokens.text(size: 15, weight: FontWeight.w800),
                 ),
               ),
             ),
             Expanded(child: _buildKeypadTab()),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+              child: CheckoutTotalQtyButton(
+                quantity: _totalQuantity,
+                onTap: _openQuantityReview,
+              ),
+            ),
           ],
         );
       }),
@@ -328,7 +363,7 @@ class _StockPageState extends State<StockPage> {
       child: ListView(
         key: const ValueKey('keypad'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 14, bottom: 24),
+        padding: const EdgeInsets.only(top: 14, bottom: 16),
         children: [
           CheckoutAmountCard(
             amountText: _expression.value == null
@@ -347,14 +382,6 @@ class _StockPageState extends State<StockPage> {
             onOperator: _appendOperator,
             onBackspace: _backspace,
             activeOperator: _expression.pendingOperator,
-          ),
-          const SizedBox(height: 26),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: CheckoutTotalQtyButton(
-              quantity: _expression.totalQuantity,
-              onTap: _openQuantityReview,
-            ),
           ),
         ],
       ),
