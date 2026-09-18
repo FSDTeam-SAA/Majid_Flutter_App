@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/widgets/app_header.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
@@ -31,6 +32,10 @@ class ReviewStockItem {
       ? 0
       : ((originalPrice - newPrice) / originalPrice) * 100;
 
+  double get originalTotal => originalPrice * quantity;
+
+  double get total => newPrice * quantity;
+
   ReviewStockItem copyWith({double? newPrice}) => ReviewStockItem(
     id: id,
     name: name,
@@ -40,12 +45,42 @@ class ReviewStockItem {
   );
 }
 
+/// Customer details carried in from a repair order, so the sale opens with
+/// the customer already filled in instead of asking for them again.
+class CustomerHint {
+  final String name;
+  final String phone;
+  final String email;
+
+  const CustomerHint({required this.name, this.phone = '', this.email = ''});
+
+  bool get isEmpty =>
+      name.trim().isEmpty && phone.trim().isEmpty && email.trim().isEmpty;
+}
+
 /// Last stop before payment: every quantity and price in one list, with the
 /// discount worked out from the original stock price.
 class QuantityReviewPage extends StatefulWidget {
   final List<CalculationLine> lines;
   final List<ReviewStockItem> stockItems;
   final String currencySymbol;
+  final void Function(String itemId, double newPrice)? onStockPriceChanged;
+
+  /// Called when a stock row is removed, so the basket behind this screen
+  /// drops the same product.
+  final void Function(String itemId)? onStockRemoved;
+
+  /// Called with the index into [lines] of a removed calculation row, so the
+  /// keypad and pulled-in repairs behind this screen stay in step.
+  final void Function(int index)? onLineRemoved;
+
+  /// Customer from a pulled-in repair order, shown on the Choose Customer row
+  /// and matched against the saved customers once they load.
+  final CustomerHint? customerHint;
+
+  /// Called when every row is cleared at once, so the keypad, the repairs and
+  /// the basket behind this screen are emptied too.
+  final VoidCallback? onClearAll;
 
   /// Shopkeeper id, used to load the customer list. When empty the Choose
   /// Customer row still shows but has nothing to search.
@@ -57,6 +92,11 @@ class QuantityReviewPage extends StatefulWidget {
     required this.currencySymbol,
     this.stockItems = const [],
     this.shopkeeperId = '',
+    this.onStockPriceChanged,
+    this.onStockRemoved,
+    this.onLineRemoved,
+    this.customerHint,
+    this.onClearAll,
   });
 
   @override
@@ -64,10 +104,12 @@ class QuantityReviewPage extends StatefulWidget {
 }
 
 class _QuantityReviewPageState extends State<QuantityReviewPage> {
+  // Local copies: rows can be removed here, and the callbacks mirror each
+  // removal back into the keypad and the basket.
+  late final List<CalculationLine> _lines = [...widget.lines];
   late final List<ReviewStockItem> _stock = [...widget.stockItems];
   late final List<TextEditingController> _priceControllers = [
-    for (final item in _stock)
-      TextEditingController(text: _plain(item.newPrice)),
+    for (final item in _stock) TextEditingController(text: _plain(item.total)),
   ];
 
   Customer? _selectedCustomer;
@@ -88,7 +130,10 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
         ApiClient(baseUrl),
       ).getCustomers(widget.shopkeeperId);
       if (!mounted) return;
-      setState(() => _customers = customers);
+      setState(() {
+        _customers = customers;
+        _selectedCustomer ??= _matchHint(customers);
+      });
     } catch (_) {
       // Choose Customer is optional, so a failed fetch just leaves it empty
       // rather than blocking the review screen.
@@ -96,6 +141,38 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
       if (mounted) setState(() => _isLoadingCustomers = false);
     }
   }
+
+  /// Finds the saved customer a repair order belongs to. Phone and email are
+  /// tried first because a repair records only a first name, which several
+  /// customers can share.
+  Customer? _matchHint(List<Customer> customers) {
+    final hint = widget.customerHint;
+    if (hint == null || hint.isEmpty) return null;
+
+    final phone = _digits(hint.phone);
+    if (phone.length >= 6) {
+      for (final customer in customers) {
+        if (_digits(customer.phone) == phone) return customer;
+      }
+    }
+
+    final email = hint.email.trim().toLowerCase();
+    if (email.isNotEmpty) {
+      for (final customer in customers) {
+        if (customer.email.trim().toLowerCase() == email) return customer;
+      }
+    }
+
+    final name = hint.name.trim().toLowerCase();
+    if (name.isEmpty) return null;
+    for (final customer in customers) {
+      if (customer.fullName.trim().toLowerCase() == name) return customer;
+    }
+    return null;
+  }
+
+  static String _digits(String value) =>
+      value.replaceAll(RegExp(r'[^0-9]'), '');
 
   /// Select-only, on purpose: the spec asks for the Create New Customer
   /// option to be removed from this screen.
@@ -131,24 +208,103 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
   }
 
   int get _totalQuantity {
-    final fromLines = widget.lines.fold<int>(0, (sum, l) => sum + l.quantity);
+    final fromLines = _lines.fold<int>(0, (sum, l) => sum + l.quantity);
     final fromStock = _stock.fold<int>(0, (sum, s) => sum + s.quantity);
     return fromLines + fromStock;
   }
 
   double get _total {
-    final fromLines = widget.lines.fold<double>(0, (sum, l) => sum + l.amount);
-    final fromStock = _stock.fold<double>(
-      0,
-      (sum, s) => sum + s.newPrice * s.quantity,
-    );
+    final fromLines = _lines.fold<double>(0, (sum, l) => sum + l.amount);
+    final fromStock = _stock.fold<double>(0, (sum, s) => sum + s.total);
     return fromLines + fromStock;
   }
 
   void _updatePrice(int index, String raw) {
-    final value = double.tryParse(raw.trim());
-    if (value == null) return;
-    setState(() => _stock[index] = _stock[index].copyWith(newPrice: value));
+    final lineTotal = double.tryParse(raw.trim());
+    if (lineTotal == null) return;
+    final item = _stock[index];
+    final unitPrice = lineTotal / item.quantity;
+    setState(() => _stock[index] = item.copyWith(newPrice: unitPrice));
+    widget.onStockPriceChanged?.call(item.id, unitPrice);
+  }
+
+  void _removeLine(int index) {
+    final line = _lines[index];
+    setState(() => _lines.removeAt(index));
+    widget.onLineRemoved?.call(index);
+    showSuccessSnackbar(
+      '${line.name.isEmpty ? line.expression : line.name} removed',
+    );
+  }
+
+  void _removeStockItem(int index) {
+    final item = _stock[index];
+    setState(() {
+      _stock.removeAt(index);
+      _priceControllers.removeAt(index).dispose();
+    });
+    widget.onStockRemoved?.call(item.id);
+    showSuccessSnackbar('${item.name} removed');
+  }
+
+  Future<void> _confirmClearAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: CheckoutTokens.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'Clear all items?',
+          style: CheckoutTokens.text(size: 16, weight: FontWeight.w800),
+        ),
+        content: Text(
+          'Every row is removed from this sale. Nothing has been paid for, so '
+          'items can be added again.',
+          style: CheckoutTokens.text(
+            size: 13,
+            weight: FontWeight.w500,
+            color: CheckoutTokens.softText,
+            height: 1.35,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'Cancel',
+              style: CheckoutTokens.text(size: 14, weight: FontWeight.w700),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              'Clear all',
+              style: CheckoutTokens.text(
+                size: 14,
+                weight: FontWeight.w800,
+                color: const Color(0xFFE5484D),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    _clearAll();
+  }
+
+  void _clearAll() {
+    setState(() {
+      _lines.clear();
+      _stock.clear();
+      for (final controller in _priceControllers) {
+        controller.dispose();
+      }
+      _priceControllers.clear();
+    });
+    widget.onClearAll?.call();
+    showSuccessSnackbar('All items removed');
   }
 
   @override
@@ -229,6 +385,11 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
   /// "Choose Customer" - optional, select-only, matching the spec.
   Widget _customerCard() {
     final selected = _selectedCustomer;
+    final hint = widget.customerHint;
+    // A repair's customer may not be saved in the customer list, so the name
+    // off the order is still shown when nothing matched it.
+    final name = selected?.fullName ?? hint?.name.trim() ?? '';
+    final hasName = name.isNotEmpty;
 
     return Material(
       color: Colors.transparent,
@@ -247,9 +408,9 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
               Icon(
                 Icons.person_outline_rounded,
                 size: 19,
-                color: selected == null
-                    ? CheckoutTokens.softText
-                    : CheckoutTokens.limeInk,
+                color: hasName
+                    ? CheckoutTokens.limeInk
+                    : CheckoutTokens.softText,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -257,7 +418,9 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Choose customer',
+                      selected == null && hasName
+                          ? 'Customer from repair'
+                          : 'Choose customer',
                       style: CheckoutTokens.text(
                         size: 11,
                         weight: FontWeight.w600,
@@ -266,11 +429,11 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      selected == null
-                          ? (_isLoadingCustomers
+                      hasName
+                          ? name
+                          : (_isLoadingCustomers
                                 ? 'Loading customers…'
-                                : 'Optional - tap to select')
-                          : selected.fullName,
+                                : 'Optional - tap to select'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: CheckoutTokens.text(
@@ -303,6 +466,23 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
       ),
       child: Column(
         children: [
+          if (_lines.isNotEmpty || _stock.isNotEmpty) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Items',
+                    style: CheckoutTokens.text(
+                      size: 14,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                _clearAllButton(),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           Row(
             children: [
               Expanded(child: Text('Item name', style: CheckoutTokens.label)),
@@ -322,17 +502,33 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                   style: CheckoutTokens.label,
                 ),
               ),
+              const SizedBox(width: 32),
             ],
           ),
           const SizedBox(height: 12),
-          for (final line in widget.lines) _lineRow(line),
+          if (_lines.isEmpty && _stock.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'No items left - go back and add something to sell.',
+                textAlign: TextAlign.center,
+                style: CheckoutTokens.text(
+                  size: 12.5,
+                  weight: FontWeight.w500,
+                  color: CheckoutTokens.softText,
+                ),
+              ),
+            ),
+          for (var i = 0; i < _lines.length; i++) _lineRow(i),
           for (var i = 0; i < _stock.length; i++) _stockRow(i),
         ],
       ),
     );
   }
 
-  Widget _lineRow(CalculationLine line) {
+  Widget _lineRow(int index) {
+    final line = _lines[index];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -365,7 +561,77 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
               style: CheckoutTokens.text(size: 14, weight: FontWeight.w700),
             ),
           ),
+          _removeButton(
+            label: line.name.isEmpty ? line.expression : line.name,
+            onTap: () => _removeLine(index),
+          ),
         ],
+      ),
+    );
+  }
+
+  /// Empties the whole sale in one go. Unlike the per-row button this asks
+  /// first, since it can wipe out a long list of scanned items.
+  Widget _clearAllButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _confirmClearAll,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.delete_sweep_outlined,
+                size: 16,
+                color: CheckoutTokens.softText,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                'Clear all',
+                style: CheckoutTokens.text(
+                  size: 12.5,
+                  weight: FontWeight.w700,
+                  color: CheckoutTokens.softText,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Drops one row from the sale. Deliberately immediate: nothing has been
+  /// paid for yet, and the item can be added again from the previous screen.
+  Widget _removeButton({required String label, required VoidCallback onTap}) {
+    return Semantics(
+      button: true,
+      label: 'Remove $label',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(9),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: CheckoutTokens.surfaceMuted,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: CheckoutTokens.softText,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -421,7 +687,7 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${widget.currencySymbol}${_plain(item.originalPrice)}',
+                    '${widget.currencySymbol}${_plain(item.originalTotal)}',
                     style: CheckoutTokens.text(
                       size: 12.5,
                       weight: FontWeight.w600,
@@ -430,9 +696,9 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                   ),
                 ],
               ),
-              const SizedBox(width: 10),
-              SizedBox(width: 96, child: _priceField(index)),
               const SizedBox(width: 8),
+              SizedBox(width: 92, child: _priceField(index)),
+              const SizedBox(width: 6),
               if (discount > 0.05)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -454,6 +720,10 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                     ),
                   ),
                 ),
+              _removeButton(
+                label: item.name,
+                onTap: () => _removeStockItem(index),
+              ),
             ],
           ),
         ],
@@ -556,24 +826,30 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
   }
 
   Widget _payButton() {
+    // Every row can now be removed, so the button has an empty state.
+    final isEmpty = _lines.isEmpty && _stock.isEmpty;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => Navigator.pop(context, _total),
+        onTap: isEmpty ? null : () => Navigator.pop(context, _total),
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           height: 58,
           decoration: BoxDecoration(
-            gradient: CheckoutTokens.limeGradient,
+            gradient: isEmpty ? null : CheckoutTokens.limeGradient,
+            color: isEmpty ? CheckoutTokens.surfaceMuted : null,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Center(
             child: Text(
-              'Pay ${widget.currencySymbol}${_plain(_total)}',
+              isEmpty
+                  ? 'Nothing to pay for'
+                  : 'Pay ${widget.currencySymbol}${_plain(_total)}',
               style: CheckoutTokens.text(
                 size: 17,
                 weight: FontWeight.w700,
-                color: Colors.white,
+                color: isEmpty ? CheckoutTokens.softText : Colors.white,
               ),
             ),
           ),

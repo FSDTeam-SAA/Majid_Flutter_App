@@ -6,7 +6,6 @@ import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/more_menu_button.dart';
 import '../../../invoice/data/repositories/invoice_repository_impl.dart';
 import '../../../invoice/domain/entities/invoice.dart';
 import '../../../invoice/domain/repositories/invoice_repository.dart';
@@ -210,7 +209,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Reports', trailing: const MoreMenuButton(size: 38)),
+          AppHeader(title: 'Reports'),
           Expanded(
             child: _isLoading
                 ? Center(

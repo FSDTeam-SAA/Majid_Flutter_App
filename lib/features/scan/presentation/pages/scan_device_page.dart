@@ -8,7 +8,6 @@ import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../../core/widgets/more_menu_button.dart';
 import '../../data/repositories/imei_repository_impl.dart';
 import '../../domain/repositories/imei_repository.dart';
 import '../controller/scan_data.dart';
@@ -255,11 +254,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(
-            title: 'Scan Device',
-            trailing: MoreMenuButton(),
-            showBackButton: false,
-          ),
+          AppHeader(title: 'Scan Device', showBackButton: false),
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,

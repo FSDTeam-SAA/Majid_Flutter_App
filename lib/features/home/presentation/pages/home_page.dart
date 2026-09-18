@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/utils/colors.dart';
-import '../../../../core/widgets/more_menu_button.dart';
 import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../stock/presentation/pages/add_new_device_page.dart';
@@ -232,8 +231,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        const MoreMenuButton(size: 38),
       ],
     );
   }

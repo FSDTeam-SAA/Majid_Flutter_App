@@ -16,8 +16,6 @@ import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_empty_panel.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
-import 'add_new_device_page.dart';
-import 'stock_checkout_review_page.dart';
 
 /// Stock inside one category (or the whole catalogue when no category is
 /// given), with the per-item quantity stepper and Sell action.
@@ -231,25 +229,6 @@ class _CategoryStockPageState extends State<CategoryStockPage> {
             ),
           ),
           Expanded(child: _buildBody(currency)),
-          Obx(() {
-            if (_basket.lines.isEmpty) return const SizedBox.shrink();
-            return SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                child: _GoToReviewButton(
-                  label:
-                      'Checkout Review · ${_basket.totalQuantity} item${_basket.totalQuantity == 1 ? '' : 's'}',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const StockCheckoutReviewPage(),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
         ],
       ),
     );
@@ -396,10 +375,7 @@ class _StockRow extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   '$currencySymbol${item.price.toStringAsFixed(item.price % 1 == 0 ? 0 : 2)}',
-                  style: CheckoutTokens.text(
-                    size: 16,
-                    weight: FontWeight.w800,
-                  ),
+                  style: CheckoutTokens.text(size: 16, weight: FontWeight.w800),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -493,43 +469,6 @@ class _SellButton extends StatelessWidget {
               size: 13,
               weight: FontWeight.w800,
               color: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoToReviewButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _GoToReviewButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: CheckoutTokens.ctaBackground,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: CheckoutTokens.text(
-                size: 14.5,
-                weight: FontWeight.w800,
-                color: CheckoutTokens.ctaForeground,
-              ),
             ),
           ),
         ),

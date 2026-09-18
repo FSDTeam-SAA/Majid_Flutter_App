@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
-import '../../../../core/widgets/more_menu_button.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../domain/entities/order_ready_item.dart';
 import '../widgets/order_ready_card.dart';
@@ -23,8 +22,6 @@ class OrdersPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
-                const MoreMenuButton(size: 38),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

@@ -16,8 +16,7 @@ Future<Category?> showAddCategorySheet(
 }) async {
   final controller = TextEditingController(text: existingName);
   String? pickedImagePath;
-  String? currentImageUrl = existingImageUrl;
-  bool isImageRemoved = false;
+  var isSubmitting = false;
   final isEdit = existingId != null;
 
   return showDialog<Category?>(
@@ -42,38 +41,73 @@ Future<Category?> showAddCategorySheet(
                   blurRadius: 28,
                   offset: const Offset(0, 12),
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              SizedBox(height: 18),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.fieldBackground,
+                  borderRadius: BorderRadius.circular(50),
+                  border: Border.all(color: AppColors.primary, width: 1.2),
+                ),
+                child: TextField(
+                  controller: controller,
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Enter category name',
+                    hintStyle: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 15,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              SizedBox(height: 14),
+              GestureDetector(
+                onTap: () async {
+                  if (isSubmitting) return;
+                  final picker = ImagePicker();
+                  final picked = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (picked != null) {
+                    setDialogState(() => pickedImagePath = picked.path);
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: AppColors.fieldBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.5),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: _buildImageContent(pickedImagePath, existingImageUrl),
+                ),
+              ),
+              SizedBox(height: 18),
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isEdit ? 'Edit Category' : 'Create Category',
-                            style: CheckoutTokens.text(
-                              size: 20,
-                              weight: FontWeight.w800,
-                              letterSpacing: -0.4,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Categories organize inventory before products are shown.',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: isSubmitting
+                          ? null
+                          : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: BorderSide(color: AppColors.primary, width: 1.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 14),
                       ),
                       GestureDetector(
                         onTap: () => Navigator.pop(dialogContext, null),
@@ -142,127 +176,86 @@ Future<Category?> showAddCategorySheet(
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final name = controller.text.trim();
+                              if (name.isEmpty) {
+                                showErrorSnackbar(
+                                  'Please enter a category name',
+                                );
+                                return;
+                              }
 
-                  // Image label
-                  Text(
-                    'CATEGORY IMAGE',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                              final stockCtrl = Get.find<StockController>();
+                              // The save can take several seconds (the API
+                              // host cold-starts), so the button has to show
+                              // it is working — otherwise the tap looks
+                              // ignored and repeated taps fire duplicate
+                              // create requests.
+                              setDialogState(() => isSubmitting = true);
 
-                  // Image container
-                  Container(
-                    width: double.infinity,
-                    height: 170,
-                    decoration: BoxDecoration(
-                      color: AppColors.fieldBackground,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.fieldBorder,
-                        width: 1.2,
+                              bool success;
+                              if (isEdit) {
+                                success = await stockCtrl.updateCategory(
+                                  id: existingId,
+                                  name: name,
+                                  imagePath: pickedImagePath,
+                                );
+                              } else {
+                                success = await stockCtrl.createCategory(
+                                  name: name,
+                                  imagePath: pickedImagePath,
+                                );
+                              }
+
+                              if (!context.mounted) return;
+                              setDialogState(() => isSubmitting = false);
+
+                              if (success) {
+                                Navigator.pop(context);
+                                showSuccessSnackbar(
+                                  isEdit
+                                      ? 'Category updated'
+                                      : 'Category created',
+                                );
+                              } else {
+                                final error = stockCtrl.errorMessage.value;
+                                showErrorSnackbar(
+                                  error.isEmpty
+                                      ? 'Could not save the category'
+                                      : error,
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
                       ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: _buildImagePreview(
-                              pickedPath: pickedImagePath,
-                              existingUrl: isImageRemoved ? null : currentImageUrl,
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : Text(
+                              isEdit ? 'Save Changes' : 'Create Category',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          Positioned(
-                            bottom: 12,
-                            left: 12,
-                            right: 12,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final picker = ImagePicker();
-                                    final picked = await picker.pickImage(
-                                      source: ImageSource.gallery,
-                                      imageQuality: 85,
-                                    );
-                                    if (picked != null) {
-                                      setDialogState(() {
-                                        pickedImagePath = picked.path;
-                                        isImageRemoved = false;
-                                      });
-                                    }
-                                  },
-                                  icon: const Icon(Icons.photo_library_outlined, size: 16),
-                                  label: Text(
-                                    (pickedImagePath != null || (!isImageRemoved && currentImageUrl != null))
-                                        ? 'Change'
-                                        : 'Upload Photo',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: CheckoutTokens.accent,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                ),
-                                if (pickedImagePath != null ||
-                                    (!isImageRemoved &&
-                                        currentImageUrl != null &&
-                                        currentImageUrl.isNotEmpty)) ...[
-                                  const SizedBox(width: 8),
-                                  OutlinedButton.icon(
-                                    onPressed: () {
-                                      setDialogState(() {
-                                        pickedImagePath = null;
-                                        isImageRemoved = true;
-                                      });
-                                    },
-                                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                                    label: const Text(
-                                      'Remove',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppColors.dangerColor,
-                                      side: BorderSide(
-                                        color: AppColors.dangerColor.withValues(alpha: 0.5),
-                                      ),
-                                      backgroundColor: AppColors.cardBackground.withValues(alpha: 0.9),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 10,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                   const SizedBox(height: 24),

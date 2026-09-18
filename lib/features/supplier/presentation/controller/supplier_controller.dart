@@ -41,7 +41,6 @@ class SupplierController extends GetxController {
       case SupplierStatusFilter.all:
         return null;
     }
-    return null;
   }
 
   Future<void> fetchSuppliers() async {
