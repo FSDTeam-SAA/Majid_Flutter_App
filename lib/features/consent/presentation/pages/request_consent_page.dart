@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -13,11 +14,8 @@ import 'verify_customer_page.dart';
 
 /// Step 1 of the trade-in consent flow: ask the customer for consent.
 ///
-/// The client's requirement is that permission is taken **before** anything is
-/// captured: the customer gets a secure link and a 6-digit code, agrees to the
-/// terms, and only then may the shopkeeper photograph their ID or scan the
-/// handset. This screen starts that sequence. It pops the approved
-/// [TradeInConsent], or null if it was not completed.
+/// Send consent request (email with secure link + 6-digit code, or copy message
+/// to send from shopkeeper's own phone/WhatsApp).
 class RequestConsentPage extends StatefulWidget {
   final String customerName;
   final String customerEmail;
@@ -44,17 +42,19 @@ class RequestConsentPage extends StatefulWidget {
 
 class _RequestConsentPageState extends State<RequestConsentPage> {
   late final ConsentController _consent;
-  ConsentChannel _channel = ConsentChannel.sms;
+  ConsentChannel _channel = ConsentChannel.email;
   bool _agreedToNotice = false;
   bool _isSending = false;
+  bool _isCopying = false;
 
   @override
   void initState() {
     super.initState();
     _consent = ConsentController.instance;
-    // SMS only makes sense when we actually hold a number.
-    if (widget.customerPhone.trim().isEmpty) {
+    if (widget.customerEmail.trim().isNotEmpty) {
       _channel = ConsentChannel.email;
+    } else if (widget.customerPhone.trim().isNotEmpty) {
+      _channel = ConsentChannel.sms;
     }
   }
 
@@ -65,7 +65,7 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
         : widget.customerEmail.trim().isNotEmpty;
   }
 
-  Future<void> _send() async {
+  Future<void> _sendEmail() async {
     if (!_canSend) return;
     setState(() => _isSending = true);
 
@@ -79,7 +79,7 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
       channel: _channel,
     );
 
-    final dispatch = await _consent.sendLinkAndCode();
+    final dispatch = await _consent.sendLinkAndCode(sendEmailNow: true);
     if (!mounted) return;
     setState(() => _isSending = false);
 
@@ -88,13 +88,49 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
       return;
     }
 
+    showSuccessSnackbar('Consent email dispatched to ${dispatch.maskedDestination}');
+
     if (dispatch.debugCode != null && !kReleaseMode) {
-      // No SMS/email gateway in the app yet; debug builds surface the code so
-      // the flow can be walked end to end on device.
       showSuccessSnackbar('Test code: ${dispatch.debugCode}');
     }
 
-    // The same link carries both steps: verify the code, then read and agree.
+    _proceedToVerification();
+  }
+
+  Future<void> _copyMessage() async {
+    if (!_agreedToNotice || _isCopying) return;
+    setState(() => _isCopying = true);
+
+    _consent.start(
+      customerName: widget.customerName,
+      customerEmail: widget.customerEmail,
+      customerPhone: widget.customerPhone,
+      itemName: widget.itemName,
+      agreedValue: widget.agreedValue,
+      paymentMethod: widget.paymentMethod,
+      channel: _channel,
+    );
+
+    final dispatch = await _consent.sendLinkAndCode(sendEmailNow: false);
+    if (!mounted) return;
+    setState(() => _isCopying = false);
+
+    if (!dispatch.sent) {
+      showErrorSnackbar('Could not generate consent link');
+      return;
+    }
+
+    final copyText = dispatch.copyMessage ??
+        'Hi ${widget.customerName}, please review your sale or trade-in with us.\n\nOpen: ${dispatch.secureLink}\nYour code: ${dispatch.debugCode}\n\nEnter the code, read the terms and confirm if you agree.';
+
+    await Clipboard.setData(ClipboardData(text: copyText));
+    if (!mounted) return;
+    showSuccessSnackbar('Message with secure link and code copied to clipboard!');
+
+    _proceedToVerification();
+  }
+
+  Future<void> _proceedToVerification() async {
     final verified = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const VerifyCustomerPage()),
@@ -140,7 +176,7 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    'Customer Consent',
+                    'Send Consent Request',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 21,
@@ -148,43 +184,33 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'We will collect the customer\'s ID image, contact details '
-                  'and device IMEI for this transaction.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13.5,
-                    height: 1.5,
+                const SizedBox(height: 6),
+                Center(
+                  child: Text(
+                    'Create a secure link and code for your customer.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'The original ID image will be deleted automatically after '
-                  '28 days.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
+
                 _SummaryCard(
                   itemName: widget.itemName,
                   value:
                       '${widget.currencySymbol}${widget.agreedValue.toStringAsFixed(2)}',
                   paymentMethod: widget.paymentMethod,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
                 _AgreeRow(
                   value: _agreedToNotice,
                   onChanged: (value) =>
                       setState(() => _agreedToNotice = value ?? false),
                 ),
                 const SizedBox(height: 20),
+
                 Text(
                   'SEND SECURE LINK AND 6-DIGIT CODE BY',
                   style: TextStyle(
@@ -199,17 +225,6 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
                   children: [
                     Expanded(
                       child: _ChannelChip(
-                        icon: Icons.sms_outlined,
-                        label: 'SMS',
-                        selected: _channel == ConsentChannel.sms,
-                        enabled: widget.customerPhone.trim().isNotEmpty,
-                        onTap: () =>
-                            setState(() => _channel = ConsentChannel.sms),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ChannelChip(
                         icon: Icons.mail_outline_rounded,
                         label: 'Email',
                         selected: _channel == ConsentChannel.email,
@@ -218,15 +233,122 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
                             setState(() => _channel = ConsentChannel.email),
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ChannelChip(
+                        icon: Icons.sms_outlined,
+                        label: 'SMS / Text',
+                        selected: _channel == ConsentChannel.sms,
+                        enabled: widget.customerPhone.trim().isNotEmpty,
+                        onTap: () =>
+                            setState(() => _channel = ConsentChannel.sms),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
+
+                // Button 1: Send email (styled same as developer design)
                 AppButton(
-                  label: 'Send Link & Code',
+                  label: 'Send email',
                   isLoading: _isSending,
-                  onPressed: _canSend ? _send : null,
+                  onPressed: _canSend ? _sendEmail : null,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
+                Center(
+                  child: Text(
+                    'Email includes secure link + 6-digit code.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Button 2: Copy message (matches developer handoff requirement #2)
+                OutlinedButton.icon(
+                  onPressed: _agreedToNotice && !_isCopying ? _copyMessage : null,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(
+                      color: _agreedToNotice
+                          ? AppColors.primary
+                          : AppColors.fieldBorder,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: _isCopying
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.copy_rounded, size: 18),
+                  label: const Text(
+                    'Copy message',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Center(
+                  child: Text(
+                    'Copy link + code. Send to the customer from your own number/chat.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                // Example message preview box (as in Developer handoff 01)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.fieldBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Customer message • example',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Hi ${widget.customerName.isNotEmpty ? widget.customerName : "[Customer]"}, please review your sale or trade-in.\n\nOpen: [Secure link]\nYour code: [6-digit code]\n\nEnter the code, read the terms and confirm if you agree.',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
                 Center(
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),

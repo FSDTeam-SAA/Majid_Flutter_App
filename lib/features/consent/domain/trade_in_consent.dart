@@ -64,6 +64,12 @@ class TradeInConsent {
   /// 28 days from capture, and the shop may delete it sooner.
   final DateTime? idImageDeleteAfter;
 
+  /// Backend ID and secure verification URL
+  final String? consentId;
+  final String? secureToken;
+  final String? secureLink;
+  final String? copyMessage;
+
   const TradeInConsent({
     required this.reference,
     required this.customerName,
@@ -79,6 +85,10 @@ class TradeInConsent {
     this.termsVersion = '2026-09-07',
     this.deviceMetadata = '',
     this.idImageDeleteAfter,
+    this.consentId,
+    this.secureToken,
+    this.secureLink,
+    this.copyMessage,
   });
 
   /// Only an approved consent unlocks the ID capture and IMEI scan.
@@ -107,14 +117,19 @@ class TradeInConsent {
   }
 
   TradeInConsent copyWith({
+    String? reference,
     ConsentStatus? status,
     ConsentChannel? channel,
     DateTime? verifiedAt,
     DateTime? approvedAt,
     String? deviceMetadata,
     DateTime? idImageDeleteAfter,
+    String? consentId,
+    String? secureToken,
+    String? secureLink,
+    String? copyMessage,
   }) => TradeInConsent(
-    reference: reference,
+    reference: reference ?? this.reference,
     customerName: customerName,
     customerEmail: customerEmail,
     customerPhone: customerPhone,
@@ -128,6 +143,10 @@ class TradeInConsent {
     termsVersion: termsVersion,
     deviceMetadata: deviceMetadata ?? this.deviceMetadata,
     idImageDeleteAfter: idImageDeleteAfter ?? this.idImageDeleteAfter,
+    consentId: consentId ?? this.consentId,
+    secureToken: secureToken ?? this.secureToken,
+    secureLink: secureLink ?? this.secureLink,
+    copyMessage: copyMessage ?? this.copyMessage,
   );
 
   Map<String, dynamic> toJson() => {
@@ -145,6 +164,10 @@ class TradeInConsent {
     'termsVersion': termsVersion,
     'deviceMetadata': deviceMetadata,
     'idImageDeleteAfter': idImageDeleteAfter?.toIso8601String(),
+    'consentId': consentId,
+    'secureToken': secureToken,
+    'secureLink': secureLink,
+    'copyMessage': copyMessage,
   };
 
   factory TradeInConsent.fromJson(Map<String, dynamic> json) => TradeInConsent(
@@ -170,5 +193,9 @@ class TradeInConsent {
     idImageDeleteAfter: DateTime.tryParse(
       json['idImageDeleteAfter']?.toString() ?? '',
     ),
+    consentId: json['consentId']?.toString() ?? json['id']?.toString() ?? json['_id']?.toString(),
+    secureToken: json['secureToken']?.toString(),
+    secureLink: json['secureLink']?.toString(),
+    copyMessage: json['copyMessage']?.toString(),
   );
 }

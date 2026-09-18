@@ -221,10 +221,10 @@ class StockController extends GetxController {
         imagePath: imagePath,
       );
       await fetchCategories();
-      return true;
+      return created;
     } catch (e) {
       errorMessage.value = _apiErrorMessage(e, 'Failed to create category');
-      return false;
+      return null;
     } finally {
       isSaving.value = false;
     }

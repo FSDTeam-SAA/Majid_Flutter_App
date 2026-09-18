@@ -66,6 +66,49 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
     );
   }
 
+  Future<void> _confirmDeleteCategory(Category category) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Delete Category',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${category.name}"? This action cannot be undone.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFFF4444), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await _stockCtrl.deleteCategory(category.id);
+      if (mounted) {
+        if (success) {
+          showSuccessSnackbar('Category deleted successfully');
+        } else {
+          showErrorSnackbar(
+            _stockCtrl.errorMessage.value.isNotEmpty
+                ? _stockCtrl.errorMessage.value
+                : 'Failed to delete category',
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
@@ -320,14 +363,8 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                             ),
                         itemBuilder: (context, index) {
                           final category = categories[index];
-                          return CheckoutShortcutCard(
-                            title: category.name,
-                            subtitle: 'View stock',
-                            imageUrl: category.imageUrl,
-                            // No artwork yet -> a picture icon, so the tile
-                            // says "this category has no image" instead of
-                            // looking identical to every other card.
-                            icon: Icons.image_outlined,
+                          return _WebsiteCategoryCard(
+                            category: category,
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(

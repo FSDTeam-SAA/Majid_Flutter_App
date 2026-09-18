@@ -10,11 +10,8 @@ import '../../domain/trade_in_consent.dart';
 import '../controller/consent_controller.dart';
 import 'consent_approved_page.dart';
 
-/// Step 3: "Review & Agree" — the customer reads the declaration and agrees
-/// to the Terms & Conditions and the Privacy Notice.
-///
-/// Which version of the terms they saw is recorded with the consent, so an
-/// approval can always be tied back to the wording that was on screen.
+/// Step 3: "Review & Agree" — the customer reviews the details, reads terms,
+/// confirms age 18+, ownership, voluntary sale, and Terms & Conditions.
 class ReviewAndAgreePage extends StatefulWidget {
   final String currencySymbol;
 
@@ -26,11 +23,18 @@ class ReviewAndAgreePage extends StatefulWidget {
 
 class _ReviewAndAgreePageState extends State<ReviewAndAgreePage> {
   final ConsentController _consent = ConsentController.instance;
-  bool _agreed = false;
+
+  // 3 explicit checkboxes as specified in Developer Handoff 03
+  bool _confirmAge18 = false;
+  bool _confirmOwnership = false;
+  bool _confirmTermsAgreed = false;
+
   bool _isSaving = false;
 
+  bool get _allChecked => _confirmAge18 && _confirmOwnership && _confirmTermsAgreed;
+
   Future<void> _approve() async {
-    if (!_agreed || _isSaving) return;
+    if (!_allChecked || _isSaving) return;
     setState(() => _isSaving = true);
 
     final approved = await _consent.approve();
@@ -112,103 +116,161 @@ class _ReviewAndAgreePageState extends State<ReviewAndAgreePage> {
                       consent: consent,
                       currencySymbol: widget.currencySymbol,
                     ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Your declaration',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'By approving, I confirm that I am aged 18 or over, I '
-                    'lawfully own this item, I have the right to sell or trade '
-                    'it, and I am acting voluntarily. I consent to sharing my '
-                    'ID and transaction details for verification, fraud '
-                    'prevention and record-keeping.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                      height: 1.6,
-                    ),
-                  ),
                   const SizedBox(height: 18),
+
+                  // Quick Terms / Full Terms Buttons
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Checkbox(
-                        value: _agreed,
-                        onChanged: (value) =>
-                            setState(() => _agreed = value ?? false),
-                        activeColor: AppColors.primary,
-                      ),
                       Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _agreed = !_agreed),
-                            child: Text(
-                              'I have read and agree to the Terms & Conditions '
-                              'and Privacy Notice.',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 13.5,
-                                height: 1.45,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalDocumentPage(
+                                document: LegalDocuments.terms,
                               ),
                             ),
                           ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(color: AppColors.fieldBorder),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.article_outlined,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                          label: const Text(
+                            'Quick Terms',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalDocumentPage(
+                                document: LegalDocuments.terms,
+                              ),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(color: AppColors.fieldBorder),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.menu_book_outlined,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                          label: const Text(
+                            'Full Terms',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LegalDocumentPage(
-                              document: LegalDocuments.terms,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Terms overview',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LegalDocumentPage(
-                              document: LegalDocuments.privacyPolicy,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Privacy Notice',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 20),
+
+                  // Checkbox 1: Age 18 or over
+                  _CheckboxRow(
+                    value: _confirmAge18,
+                    onChanged: (val) => setState(() => _confirmAge18 = val ?? false),
+                    label: 'I confirm I am aged 18 or over.',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Checkbox 2: Ownership & voluntary
+                  _CheckboxRow(
+                    value: _confirmOwnership,
+                    onChanged: (val) => setState(() => _confirmOwnership = val ?? false),
+                    label: 'I own this device, have the right to sell it and am selling or trading it in voluntarily.',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Checkbox 3: Agreement to details & Terms
+                  _CheckboxRow(
+                    value: _confirmTermsAgreed,
+                    onChanged: (val) => setState(() => _confirmTermsAgreed = val ?? false),
+                    label: 'I agree to the transaction details above and the Terms & Conditions.',
                   ),
                   const SizedBox(height: 18),
+
+                  // Privacy Notice card
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Privacy Notice',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'We collect your ID image, contact details and device details for this transaction. Your original ID image is deleted automatically within 28 days.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11.5,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalDocumentPage(
+                                document: LegalDocuments.privacyPolicy,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            'Read full Privacy Notice',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
                   AppButton(
-                    label: 'Agree & Approve',
+                    label: 'Agree & confirm',
                     isLoading: _isSaving,
-                    onPressed: _agreed ? _approve : null,
+                    onPressed: _allChecked ? _approve : null,
                   ),
                   const SizedBox(height: 10),
                   Center(
@@ -233,6 +295,51 @@ class _ReviewAndAgreePageState extends State<ReviewAndAgreePage> {
   }
 }
 
+class _CheckboxRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  final String label;
+
+  const _CheckboxRow({
+    required this.value,
+    required this.onChanged,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _AgreementCard extends StatelessWidget {
   final TradeInConsent consent;
   final String currencySymbol;
@@ -249,34 +356,49 @@ class _AgreementCard extends StatelessWidget {
         border: Border.all(color: AppColors.fieldBorder),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            consent.itemName.isEmpty ? 'Trade-in item' : consent.itemName,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
+          _row(Icons.phone_iphone_rounded, 'Item', consent.itemName),
+          const SizedBox(height: 10),
+          _row(
+            Icons.sell_outlined,
+            'Agreed value',
+            '$currencySymbol${consent.agreedValue.toStringAsFixed(2)}',
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Agreed value: $currencySymbol${consent.agreedValue.toStringAsFixed(2)}',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Payment: ${consent.paymentMethod.isEmpty ? 'Not set' : consent.paymentMethod}',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-            ),
+          const SizedBox(height: 10),
+          _row(
+            Icons.account_balance_outlined,
+            'Payment',
+            consent.paymentMethod,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _row(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 17, color: AppColors.textSecondary),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+        ),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            value.isEmpty ? '—' : value,
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

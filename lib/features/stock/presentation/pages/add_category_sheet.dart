@@ -16,7 +16,6 @@ Future<Category?> showAddCategorySheet(
 }) async {
   final controller = TextEditingController(text: existingName);
   String? pickedImagePath;
-  var isSubmitting = false;
   final isEdit = existingId != null;
 
   return showDialog<Category?>(
@@ -41,73 +40,25 @@ Future<Category?> showAddCategorySheet(
                   blurRadius: 28,
                   offset: const Offset(0, 12),
                 ),
-              ),
-              SizedBox(height: 18),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.fieldBackground,
-                  borderRadius: BorderRadius.circular(50),
-                  border: Border.all(color: AppColors.primary, width: 1.2),
-                ),
-                child: TextField(
-                  controller: controller,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: 'Enter category name',
-                    hintStyle: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 15,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              SizedBox(height: 14),
-              GestureDetector(
-                onTap: () async {
-                  if (isSubmitting) return;
-                  final picker = ImagePicker();
-                  final picked = await picker.pickImage(
-                    source: ImageSource.gallery,
-                  );
-                  if (picked != null) {
-                    setDialogState(() => pickedImagePath = picked.path);
-                  }
-                },
-                child: Container(
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: AppColors.fieldBackground,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: _buildImageContent(pickedImagePath, existingImageUrl),
-                ),
-              ),
-              SizedBox(height: 18),
-              Row(
+              ],
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: isSubmitting
-                          ? null
-                          : () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
-                        side: BorderSide(color: AppColors.primary, width: 1.2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
+                  // Title and Close button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isEdit ? 'Edit Category' : 'Add Category',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
-                        padding: EdgeInsets.symmetric(vertical: 14),
                       ),
                       GestureDetector(
                         onTap: () => Navigator.pop(dialogContext, null),
@@ -176,86 +127,46 @@ Future<Category?> showAddCategorySheet(
                       ),
                     ),
                   ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: isSubmitting
-                          ? null
-                          : () async {
-                              final name = controller.text.trim();
-                              if (name.isEmpty) {
-                                showErrorSnackbar(
-                                  'Please enter a category name',
-                                );
-                                return;
-                              }
+                  const SizedBox(height: 18),
 
-                              final stockCtrl = Get.find<StockController>();
-                              // The save can take several seconds (the API
-                              // host cold-starts), so the button has to show
-                              // it is working — otherwise the tap looks
-                              // ignored and repeated taps fire duplicate
-                              // create requests.
-                              setDialogState(() => isSubmitting = true);
-
-                              bool success;
-                              if (isEdit) {
-                                success = await stockCtrl.updateCategory(
-                                  id: existingId,
-                                  name: name,
-                                  imagePath: pickedImagePath,
-                                );
-                              } else {
-                                success = await stockCtrl.createCategory(
-                                  name: name,
-                                  imagePath: pickedImagePath,
-                                );
-                              }
-
-                              if (!context.mounted) return;
-                              setDialogState(() => isSubmitting = false);
-
-                              if (success) {
-                                Navigator.pop(context);
-                                showSuccessSnackbar(
-                                  isEdit
-                                      ? 'Category updated'
-                                      : 'Category created',
-                                );
-                              } else {
-                                final error = stockCtrl.errorMessage.value;
-                                showErrorSnackbar(
-                                  error.isEmpty
-                                      ? 'Could not save the category'
-                                      : error,
-                                );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
+                  // Image label
+                  Text(
+                    'IMAGE (OPTIONAL)',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      if (stockCtrl.isSaving.value) return;
+                      final picker = ImagePicker();
+                      final picked = await picker.pickImage(
+                        source: ImageSource.gallery,
+                      );
+                      if (picked != null) {
+                        setDialogState(() => pickedImagePath = picked.path);
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: AppColors.fieldBackground,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.5),
+                          width: 1.2,
                         ),
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
                       ),
-                      child: isSubmitting
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.black,
-                              ),
-                            )
-                          : Text(
-                              isEdit ? 'Save Changes' : 'Create Category',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _buildImagePreview(
+                        pickedPath: pickedImagePath,
+                        existingUrl: existingImageUrl,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -310,7 +221,7 @@ Future<Category?> showAddCategorySheet(
                                         resultCategory = Category(
                                           id: existingId,
                                           name: name,
-                                          imageUrl: pickedImagePath ?? currentImageUrl,
+                                          imageUrl: pickedImagePath ?? existingImageUrl,
                                         );
                                       }
                                     } else {
@@ -403,7 +314,6 @@ class _UploadPromptPlaceholder extends StatelessWidget {
     return Container(
       color: Colors.black.withValues(alpha: 0.15),
       alignment: Alignment.center,
-      padding: const EdgeInsets.only(bottom: 40),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

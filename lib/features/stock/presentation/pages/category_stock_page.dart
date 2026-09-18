@@ -16,6 +16,7 @@ import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_empty_panel.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
+import 'add_new_device_page.dart';
 
 /// Stock inside one category (or the whole catalogue when no category is
 /// given), with the per-item quantity stepper and Sell action.

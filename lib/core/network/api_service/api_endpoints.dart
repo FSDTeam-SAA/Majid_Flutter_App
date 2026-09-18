@@ -218,3 +218,14 @@ class LowStockAlertEndpoints {
   static String update(String id) => "$baseApiUrl/low-stock-alert/update/$id";
   static String delete(String id) => "$baseApiUrl/low-stock-alert/delete/$id";
 }
+
+class ConsentEndpoints {
+  static String request = "$baseApiUrl/consent/request";
+  static String myRequests = "$baseApiUrl/consent/my-requests";
+  static String status(String id) => "$baseApiUrl/consent/status/$id";
+  static String verify(String identifier) => "$baseApiUrl/consent/verify/$identifier";
+  static String approve(String identifier) => "$baseApiUrl/consent/approve/$identifier";
+  static String decline(String identifier) => "$baseApiUrl/consent/decline/$identifier";
+  static String resend(String identifier) => "$baseApiUrl/consent/resend/$identifier";
+  static String publicConsent(String token) => "$baseApiUrl/consent/public/$token";
+}

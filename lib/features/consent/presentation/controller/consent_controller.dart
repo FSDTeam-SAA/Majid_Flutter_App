@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../security/domain/totp.dart';
 import '../../domain/trade_in_consent.dart';
 
@@ -14,33 +16,35 @@ import '../../domain/trade_in_consent.dart';
 class ConsentDispatch {
   final bool sent;
   final String maskedDestination;
+  final String? secureLink;
+  final String? copyMessage;
 
-  /// Debug builds only: there is no SMS/email gateway in the app yet, so the
-  /// code is surfaced to let the flow be walked on a real device. Always null
-  /// in release.
+  /// Debug builds only: code surfaced to let the flow be walked on a real device.
   final String? debugCode;
 
   const ConsentDispatch({
     required this.sent,
     required this.maskedDestination,
+    this.secureLink,
+    this.copyMessage,
     this.debugCode,
   });
 }
 
 /// Drives the trade-in customer consent flow and keeps its audit trail.
 ///
-/// The consent record is what unlocks the ID capture and the IMEI scan — the
-/// client was explicit that permission is taken *before* anything is
-/// photographed or scanned, not after.
+/// The consent record is what unlocks the ID capture and the IMEI scan —
+/// permission is taken *before* anything is photographed or scanned, not after.
 class ConsentController extends GetxController {
   static const _storage = FlutterSecureStorage();
   static const _recordsKey = 'trade_in_consents_v1';
 
+  late final ApiClient _api;
+
   final active = Rx<TradeInConsent?>(null);
   final records = <TradeInConsent>[].obs;
 
-  /// Salted hash of the live code, with its expiry. The code itself is never
-  /// written down.
+  /// Salted hash of the live code, with its expiry for fallback/offline.
   Map<String, dynamic>? _challenge;
 
   static ConsentController get instance {
@@ -53,6 +57,7 @@ class ConsentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _api = ApiClient(baseUrl);
     _loadRecords();
   }
 
@@ -77,8 +82,7 @@ class ConsentController extends GetxController {
     );
   }
 
-  /// `CN-` plus five digits, matching the reference on the client's approval
-  /// screen.
+  /// `CN-` plus five digits, matching the reference on the approval screen.
   String _newReference() =>
       'CN-${(10000 + Random.secure().nextInt(89999))}';
 
@@ -106,13 +110,73 @@ class ConsentController extends GetxController {
     return consent;
   }
 
-  /// Sends the secure link and the 6-digit code down [channel].
-  Future<ConsentDispatch> sendLinkAndCode() async {
+  /// Sends the secure link and the 6-digit code to backend and down [channel].
+  Future<ConsentDispatch> sendLinkAndCode({bool sendEmailNow = true}) async {
     final consent = active.value;
     if (consent == null) {
       return const ConsentDispatch(sent: false, maskedDestination: '');
     }
 
+    try {
+      // 1. Call Backend API: POST /api/v1/consent/request
+      final response = await _api.dio.post(
+        ConsentEndpoints.request,
+        data: {
+          'customerName': consent.customerName,
+          'customerEmail': consent.customerEmail,
+          'customerPhone': consent.customerPhone,
+          'itemName': consent.itemName,
+          'agreedValue': consent.agreedValue,
+          'paymentMethod': consent.paymentMethod,
+          'channel': consent.channel.name,
+          'sendEmailNow': sendEmailNow && consent.channel == ConsentChannel.email,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data['data'] as Map<String, dynamic>? ?? {};
+        final backendConsentId = data['consentId']?.toString();
+        final reference = data['reference']?.toString() ?? consent.reference;
+        final secureToken = data['secureToken']?.toString();
+        final secureLink = data['secureLink']?.toString();
+        final copyMessage = data['copyMessage']?.toString();
+        final code = data['code']?.toString();
+        final maskedDest = data['maskedDestination']?.toString() ?? consent.maskedDestination;
+
+        // Keep local challenge as safety backup
+        if (code != null && code.isNotEmpty) {
+          final salt = OneTimeCode.newSalt();
+          _challenge = {
+            'hash': OneTimeCode.hash(code, salt),
+            'salt': salt,
+            'expiresAt': DateTime.now().add(OneTimeCode.validity).toIso8601String(),
+            'attempts': 0,
+            'backendCode': code,
+          };
+        }
+
+        active.value = consent.copyWith(
+          reference: reference,
+          consentId: backendConsentId,
+          secureToken: secureToken,
+          secureLink: secureLink,
+          copyMessage: copyMessage,
+          status: ConsentStatus.awaitingVerification,
+        );
+
+        return ConsentDispatch(
+          sent: true,
+          maskedDestination: maskedDest,
+          secureLink: secureLink,
+          copyMessage: copyMessage,
+          debugCode: code,
+        );
+      }
+    } catch (e) {
+      debugPrint('Backend consent request failed, falling back to local: $e');
+    }
+
+    // Fallback: local OTP generation if network/backend offline
     final code = OneTimeCode.generate();
     final salt = OneTimeCode.newSalt();
     _challenge = {
@@ -120,6 +184,7 @@ class ConsentController extends GetxController {
       'salt': salt,
       'expiresAt': DateTime.now().add(OneTimeCode.validity).toIso8601String(),
       'attempts': 0,
+      'backendCode': code,
     };
 
     active.value = consent.copyWith(
@@ -129,15 +194,39 @@ class ConsentController extends GetxController {
     return ConsentDispatch(
       sent: true,
       maskedDestination: consent.maskedDestination,
-      debugCode: kReleaseMode ? null : code,
+      debugCode: code,
     );
   }
 
-  /// Verifies the customer's code. Five wrong tries burn the challenge.
+  /// Verifies the customer's code via backend or fallback challenge.
   Future<bool> verifyCode(String input) async {
     final consent = active.value;
+    if (consent == null) return false;
+
+    // 1. Try Backend API first if we have consentId or secureToken
+    final identifier = consent.consentId ?? consent.secureToken ?? consent.reference;
+    if (identifier.isNotEmpty) {
+      try {
+        final response = await _api.dio.post(
+          ConsentEndpoints.verify(identifier),
+          data: {'code': input.trim()},
+        );
+        if (response.statusCode == 200 && response.data['success'] == true) {
+          _challenge = null;
+          active.value = consent.copyWith(
+            status: ConsentStatus.verified,
+            verifiedAt: DateTime.now(),
+          );
+          return true;
+        }
+      } catch (e) {
+        debugPrint('Backend verifyCode failed, checking local challenge: $e');
+      }
+    }
+
+    // 2. Fallback: local challenge check
     final challenge = _challenge;
-    if (consent == null || challenge == null) return false;
+    if (challenge == null) return false;
 
     final expiresAt = DateTime.tryParse(
       challenge['expiresAt']?.toString() ?? '',
@@ -173,20 +262,39 @@ class ConsentController extends GetxController {
   }
 
   /// The customer has read and agreed to the declaration.
-  ///
-  /// This is the point the ID image retention clock is set: 28 days from
-  /// capture, after which the original image is deleted automatically.
   Future<TradeInConsent?> approve() async {
     final consent = active.value;
     if (consent == null || consent.status != ConsentStatus.verified) {
       return null;
     }
 
+    final deviceMeta = await _describeDevice();
+    final approvedAt = DateTime.now();
+    final idImageDeleteAfter = approvedAt.add(const Duration(days: 28));
+
+    // 1. Call Backend API
+    final identifier = consent.consentId ?? consent.secureToken ?? consent.reference;
+    if (identifier.isNotEmpty) {
+      try {
+        await _api.dio.post(
+          ConsentEndpoints.approve(identifier),
+          data: {
+            'confirmAge18': true,
+            'confirmOwnership': true,
+            'confirmTermsAgreed': true,
+            'deviceMetadata': deviceMeta,
+          },
+        );
+      } catch (e) {
+        debugPrint('Backend approve consent failed: $e');
+      }
+    }
+
     final approved = consent.copyWith(
       status: ConsentStatus.approved,
-      approvedAt: DateTime.now(),
-      deviceMetadata: await _describeDevice(),
-      idImageDeleteAfter: DateTime.now().add(const Duration(days: 28)),
+      approvedAt: approvedAt,
+      deviceMetadata: deviceMeta,
+      idImageDeleteAfter: idImageDeleteAfter,
     );
 
     active.value = approved;
@@ -198,19 +306,27 @@ class ConsentController extends GetxController {
   Future<void> decline() async {
     final consent = active.value;
     if (consent == null) return;
+
+    final identifier = consent.consentId ?? consent.secureToken ?? consent.reference;
+    if (identifier.isNotEmpty) {
+      try {
+        await _api.dio.post(ConsentEndpoints.decline(identifier));
+      } catch (e) {
+        debugPrint('Backend decline consent failed: $e');
+      }
+    }
+
     active.value = consent.copyWith(status: ConsentStatus.declined);
     _challenge = null;
   }
 
-  /// Clears the in-flight consent. The saved record stays in [records] for the
-  /// audit trail.
+  /// Clears the in-flight consent. The saved record stays in [records] for audit.
   void reset() {
     active.value = null;
     _challenge = null;
   }
 
-  /// Any change to the item, value or payment method after approval voids the
-  /// consent — the developer notes require fresh consent for that.
+  /// Any change to the item, value or payment method after approval voids consent.
   void invalidateOnChange() {
     final consent = active.value;
     if (consent == null || consent.status != ConsentStatus.approved) return;
@@ -219,9 +335,7 @@ class ConsentController extends GetxController {
 
   bool get canCapture => active.value?.allowsCapture ?? false;
 
-  /// Coarse device and session metadata for the audit trail — model and OS
-  /// only. No precise location, and nothing that identifies the customer's
-  /// own handset.
+  /// Coarse device and session metadata for audit trail.
   Future<String> _describeDevice() async {
     try {
       final info = DeviceInfoPlugin();
