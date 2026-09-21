@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -46,12 +45,12 @@ class _VerifyCustomerPageState extends State<VerifyCustomerPage> {
   }
 
   Future<void> _resend() async {
-    final dispatch = await _consent.sendLinkAndCode();
+    final dispatch = await _consent.resendCode();
     if (!mounted) return;
-    if (dispatch.debugCode != null && !kReleaseMode) {
-      showSuccessSnackbar('Test code: ${dispatch.debugCode}');
+    if (dispatch.sent) {
+      showSuccessSnackbar('Verification code re-sent to ${dispatch.maskedDestination}');
     } else {
-      showSuccessSnackbar('Code re-sent');
+      showErrorSnackbar('Could not resend code. Please try again.');
     }
   }
 

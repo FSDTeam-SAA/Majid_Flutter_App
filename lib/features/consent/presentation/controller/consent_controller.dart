@@ -18,6 +18,8 @@ class ConsentDispatch {
   final String maskedDestination;
   final String? secureLink;
   final String? copyMessage;
+  final bool emailSent;
+  final String? emailError;
 
   /// Debug builds only: code surfaced to let the flow be walked on a real device.
   final String? debugCode;
@@ -28,6 +30,8 @@ class ConsentDispatch {
     this.secureLink,
     this.copyMessage,
     this.debugCode,
+    this.emailSent = false,
+    this.emailError,
   });
 }
 
@@ -95,6 +99,7 @@ class ConsentController extends GetxController {
     required double agreedValue,
     required String paymentMethod,
     required ConsentChannel channel,
+    String currencySymbol = '',
   }) {
     final consent = TradeInConsent(
       reference: _newReference(),
@@ -105,6 +110,7 @@ class ConsentController extends GetxController {
       agreedValue: agreedValue,
       paymentMethod: paymentMethod,
       channel: channel,
+      currencySymbol: currencySymbol,
     );
     active.value = consent;
     return consent;
@@ -127,6 +133,7 @@ class ConsentController extends GetxController {
           'customerPhone': consent.customerPhone,
           'itemName': consent.itemName,
           'agreedValue': consent.agreedValue,
+          'currency': consent.currencySymbol.isNotEmpty ? consent.currencySymbol : 'GBP',
           'paymentMethod': consent.paymentMethod,
           'channel': consent.channel.name,
           'sendEmailNow': sendEmailNow && consent.channel == ConsentChannel.email,
@@ -142,6 +149,8 @@ class ConsentController extends GetxController {
         final copyMessage = data['copyMessage']?.toString();
         final code = data['code']?.toString();
         final maskedDest = data['maskedDestination']?.toString() ?? consent.maskedDestination;
+        final emailSent = data['emailSent'] as bool? ?? false;
+        final emailError = data['emailError']?.toString();
 
         // Keep local challenge as safety backup
         if (code != null && code.isNotEmpty) {
@@ -170,6 +179,8 @@ class ConsentController extends GetxController {
           secureLink: secureLink,
           copyMessage: copyMessage,
           debugCode: code,
+          emailSent: emailSent,
+          emailError: emailError,
         );
       }
     } catch (e) {
@@ -195,7 +206,53 @@ class ConsentController extends GetxController {
       sent: true,
       maskedDestination: consent.maskedDestination,
       debugCode: code,
+      emailSent: false,
     );
+  }
+
+  /// Resends a new verification code via backend endpoint or regenerates locally.
+  Future<ConsentDispatch> resendCode() async {
+    final consent = active.value;
+    if (consent == null) {
+      return const ConsentDispatch(sent: false, maskedDestination: '');
+    }
+
+    final identifier = consent.consentId ?? consent.secureToken ?? consent.reference;
+    if (identifier.isNotEmpty) {
+      try {
+        final response = await _api.dio.post(ConsentEndpoints.resend(identifier));
+        if (response.statusCode == 200) {
+          final data = response.data['data'] as Map<String, dynamic>? ?? {};
+          final code = data['code']?.toString();
+          final secureLink = data['secureLink']?.toString();
+          final maskedDest = data['maskedDestination']?.toString() ?? consent.maskedDestination;
+          final emailSent = data['emailSent'] as bool? ?? false;
+
+          if (code != null && code.isNotEmpty) {
+            final salt = OneTimeCode.newSalt();
+            _challenge = {
+              'hash': OneTimeCode.hash(code, salt),
+              'salt': salt,
+              'expiresAt': DateTime.now().add(OneTimeCode.validity).toIso8601String(),
+              'attempts': 0,
+              'backendCode': code,
+            };
+          }
+
+          return ConsentDispatch(
+            sent: true,
+            maskedDestination: maskedDest,
+            secureLink: secureLink,
+            debugCode: code,
+            emailSent: emailSent,
+          );
+        }
+      } catch (e) {
+        debugPrint('Backend resendCode failed: $e');
+      }
+    }
+
+    return await sendLinkAndCode(sendEmailNow: consent.channel == ConsentChannel.email);
   }
 
   /// Verifies the customer's code via backend or fallback challenge.

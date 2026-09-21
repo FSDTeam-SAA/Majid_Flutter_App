@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -65,7 +64,7 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
         : widget.customerEmail.trim().isNotEmpty;
   }
 
-  Future<void> _sendEmail() async {
+  Future<void> _sendConsent() async {
     if (!_canSend) return;
     setState(() => _isSending = true);
 
@@ -77,9 +76,11 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
       agreedValue: widget.agreedValue,
       paymentMethod: widget.paymentMethod,
       channel: _channel,
+      currencySymbol: widget.currencySymbol,
     );
 
-    final dispatch = await _consent.sendLinkAndCode(sendEmailNow: true);
+    final isEmail = _channel == ConsentChannel.email;
+    final dispatch = await _consent.sendLinkAndCode(sendEmailNow: isEmail);
     if (!mounted) return;
     setState(() => _isSending = false);
 
@@ -88,11 +89,8 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
       return;
     }
 
-    showSuccessSnackbar('Consent email dispatched to ${dispatch.maskedDestination}');
-
-    if (dispatch.debugCode != null && !kReleaseMode) {
-      showSuccessSnackbar('Test code: ${dispatch.debugCode}');
-    }
+    final channelLabel = isEmail ? 'email' : 'SMS';
+    showSuccessSnackbar('Consent $channelLabel dispatched to ${dispatch.maskedDestination}');
 
     _proceedToVerification();
   }
@@ -109,6 +107,7 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
       agreedValue: widget.agreedValue,
       paymentMethod: widget.paymentMethod,
       channel: _channel,
+      currencySymbol: widget.currencySymbol,
     );
 
     final dispatch = await _consent.sendLinkAndCode(sendEmailNow: false);
@@ -120,8 +119,10 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
       return;
     }
 
+    final secureLink = dispatch.secureLink ?? 'https://imoscan.com';
+    final code = dispatch.debugCode ?? '';
     final copyText = dispatch.copyMessage ??
-        'Hi ${widget.customerName}, please review your sale or trade-in with us.\n\nOpen: ${dispatch.secureLink}\nYour code: ${dispatch.debugCode}\n\nEnter the code, read the terms and confirm if you agree.';
+        'Hi ${widget.customerName.isNotEmpty ? widget.customerName : "Customer"}, please review your sale or trade-in with us.\n\nOpen: $secureLink\nYour code: $code\n\nEnter the code, read the terms and confirm if you agree.';
 
     await Clipboard.setData(ClipboardData(text: copyText));
     if (!mounted) return;
@@ -248,16 +249,18 @@ class _RequestConsentPageState extends State<RequestConsentPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // Button 1: Send email (styled same as developer design)
+                // Button 1: Send email / Send SMS (styled same as developer design)
                 AppButton(
-                  label: 'Send email',
+                  label: _channel == ConsentChannel.sms ? 'Send SMS' : 'Send email',
                   isLoading: _isSending,
-                  onPressed: _canSend ? _sendEmail : null,
+                  onPressed: _canSend ? _sendConsent : null,
                 ),
                 const SizedBox(height: 6),
                 Center(
                   child: Text(
-                    'Email includes secure link + 6-digit code.',
+                    _channel == ConsentChannel.sms
+                        ? 'SMS includes secure link + 6-digit code.'
+                        : 'Email includes secure link + 6-digit code.',
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 11.5,

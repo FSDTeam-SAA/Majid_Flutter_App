@@ -64,6 +64,9 @@ class TradeInConsent {
   /// 28 days from capture, and the shop may delete it sooner.
   final DateTime? idImageDeleteAfter;
 
+  /// Currency symbol or code for the agreed value display
+  final String currencySymbol;
+
   /// Backend ID and secure verification URL
   final String? consentId;
   final String? secureToken;
@@ -79,6 +82,7 @@ class TradeInConsent {
     required this.agreedValue,
     required this.paymentMethod,
     required this.channel,
+    this.currencySymbol = '',
     this.status = ConsentStatus.notRequested,
     this.verifiedAt,
     this.approvedAt,
@@ -120,6 +124,7 @@ class TradeInConsent {
     String? reference,
     ConsentStatus? status,
     ConsentChannel? channel,
+    String? currencySymbol,
     DateTime? verifiedAt,
     DateTime? approvedAt,
     String? deviceMetadata,
@@ -137,6 +142,7 @@ class TradeInConsent {
     agreedValue: agreedValue,
     paymentMethod: paymentMethod,
     channel: channel ?? this.channel,
+    currencySymbol: currencySymbol ?? this.currencySymbol,
     status: status ?? this.status,
     verifiedAt: verifiedAt ?? this.verifiedAt,
     approvedAt: approvedAt ?? this.approvedAt,
@@ -158,6 +164,7 @@ class TradeInConsent {
     'agreedValue': agreedValue,
     'paymentMethod': paymentMethod,
     'channel': channel.name,
+    'currencySymbol': currencySymbol,
     'status': status.name,
     'verifiedAt': verifiedAt?.toIso8601String(),
     'approvedAt': approvedAt?.toIso8601String(),
@@ -178,6 +185,7 @@ class TradeInConsent {
     itemName: json['itemName']?.toString() ?? '',
     agreedValue: (json['agreedValue'] as num?)?.toDouble() ?? 0,
     paymentMethod: json['paymentMethod']?.toString() ?? '',
+    currencySymbol: json['currencySymbol']?.toString() ?? json['currency']?.toString() ?? '',
     channel: ConsentChannel.values.firstWhere(
       (value) => value.name == json['channel'],
       orElse: () => ConsentChannel.sms,

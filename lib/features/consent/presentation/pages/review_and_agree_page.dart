@@ -43,7 +43,7 @@ class _ReviewAndAgreePageState extends State<ReviewAndAgreePage> {
 
     if (approved == null) return;
 
-    await Navigator.pushReplacement(
+    final result = await Navigator.push<TradeInConsent>(
       context,
       MaterialPageRoute(
         builder: (_) => ConsentApprovedPage(
@@ -53,7 +53,7 @@ class _ReviewAndAgreePageState extends State<ReviewAndAgreePage> {
       ),
     );
     if (!mounted) return;
-    Navigator.pop(context, approved);
+    Navigator.pop(context, result ?? approved);
   }
 
   @override
