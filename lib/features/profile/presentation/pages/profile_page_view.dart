@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/network/api_service/token_meneger.dart';
-import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
@@ -77,13 +76,7 @@ class _ProfilePageViewState extends State<ProfilePageView>
         gradient: palette.gradient,
         child: Column(
           children: [
-            AppHeader(
-              title: 'Profile',
-              buttonBackgroundColor: palette.surfaceColor,
-              buttonBorderColor: palette.surfaceBorderColor,
-              iconColor: palette.textPrimary,
-              textColor: palette.textPrimary,
-            ),
+            _buildProfileHeader(profileCtrl, palette),
             Expanded(
               child: Obx(() {
                 if (profileCtrl.isLoading.value) {
@@ -363,6 +356,86 @@ class _ProfilePageViewState extends State<ProfilePageView>
     });
   }
 
+  Widget _buildProfileHeader(
+    ProfileController ctrl,
+    ProfileThemePalette palette,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SizedBox(
+        height: 40,
+        child: LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            alignment: Alignment.center,
+            children: [
+              Text(
+                'Profile',
+                style: TextStyle(
+                  color: palette.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: () => Navigator.maybePop(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: palette.surfaceColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: palette.surfaceBorderColor),
+                    ),
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      color: palette.textPrimary,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+              if (!ctrl.hasNoProfile)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth / 2 - 38,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: palette.primaryColor.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: palette.primaryColor.withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Credit \$${ctrl.balance.toStringAsFixed(2).replaceFirst(RegExp(r'\.00$'), '')}',
+                        style: TextStyle(
+                          color: palette.brightness == Brightness.light
+                              ? const Color(0xFF17853B)
+                              : palette.primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildThemeButton(
     ProfileThemeController themeCtrl,
     ProfileThemePalette palette,
@@ -535,21 +608,19 @@ class _ProfilePageViewState extends State<ProfilePageView>
   /// Both are read from the account record — nothing here is hard-coded — and
   /// the space the removed avatar and email used to take is collapsed rather
   /// than left as a gap.
-  Widget _buildIdentity(
-    ProfileController ctrl,
-    ProfileThemePalette palette,
-  ) {
+  Widget _buildIdentity(ProfileController ctrl, ProfileThemePalette palette) {
     return Obx(() {
       final ownerName = ctrl.fullName.isNotEmpty ? ctrl.fullName : 'Owner';
       final brandName = ctrl.shopName;
 
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: double.infinity,
             child: Text(
               ownerName,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: palette.textPrimary,
                 fontSize: 22,
@@ -560,12 +631,16 @@ class _ProfilePageViewState extends State<ProfilePageView>
           ),
           if (brandName.isNotEmpty) ...[
             SizedBox(height: 2),
-            Text(
-              brandName,
-              style: TextStyle(
-                color: palette.primaryColor,
-                fontSize: 14.5,
-                fontWeight: FontWeight.w700,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                brandName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: palette.primaryColor,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -40,6 +42,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _selectedFilter = 'All';
   final List<TransactionEntry> _transactions = [];
+  Timer? _midnightTimer;
 
   // Kept alongside the trimmed _transactions list so the End of Day Report
   // can total every invoice from today, not just the 8 most recent rows.
@@ -53,6 +56,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
   @override
   void dispose() {
+    _midnightTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -64,6 +68,17 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
     _invoiceRepo = InvoiceRepositoryImpl(ApiClient(baseUrl));
     _profileCtrl = Get.find<ProfileController>();
     _loadLiveData();
+    _scheduleMidnightRefresh();
+  }
+
+  void _scheduleMidnightRefresh() {
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    _midnightTimer = Timer(nextMidnight.difference(now), () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleMidnightRefresh();
+    });
   }
 
   Future<void> _loadLiveData() async {
@@ -373,27 +388,27 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
       ..sort((a, b) => _invoiceDate(b).compareTo(_invoiceDate(a)));
 
     return sorted
-        .where((invoice) => _invoiceAmount(invoice) > 0)
+        .where((invoice) => _invoiceAmount(invoice).abs() > 0)
         .take(8)
         .map(
           (invoice) => TransactionEntry(
             title: _transactionTitle(invoice),
             subtitle: _transactionSubtitle(invoice),
-            time: _formatRelativeTime(_invoiceDate(invoice)),
-            amount: _isExpenseInvoice(invoice)
-                ? -_invoiceAmount(invoice)
-                : _invoiceAmount(invoice),
+            time: _formatClock(_invoiceDate(invoice)),
+            amount: _isExpenseInvoice(invoice) || _isRefundInvoice(invoice)
+                ? -_invoiceAmount(invoice).abs()
+                : _invoiceAmount(invoice).abs(),
             kind: _transactionKind(invoice),
             method: (invoice.paymentMethod ?? '').trim(),
             invoiceId: invoice.id,
-            invoiceRef: invoice.id.isEmpty
-                ? ''
-                : 'INV-${invoice.id.substring(invoice.id.length > 6 ? invoice.id.length - 6 : 0)}'
-                      .toUpperCase(),
+            invoiceRef: invoice.reference,
             date: _invoiceDate(invoice),
             customerName: invoice.customerName.trim().toUpperCase() == 'N/A'
                 ? ''
                 : invoice.customerName.trim(),
+            customerId: invoice.customerId ?? '',
+            customerEmail: invoice.customerEmail ?? '',
+            customerPhone: invoice.customerPhone ?? '',
             pdfUrl: invoice.pdfUrl,
             isPaid: (invoice.paymentStatus ?? '').trim().toLowerCase() != 'due',
           ),
@@ -403,12 +418,14 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
   TransactionKind _transactionKind(Invoice invoice) {
     if (_isExpenseInvoice(invoice)) return TransactionKind.expense;
+    if (_isRefundInvoice(invoice)) return TransactionKind.refund;
     if (_isCardLike(invoice)) return TransactionKind.cardReceived;
     return TransactionKind.cashReceived;
   }
 
   String _transactionTitle(Invoice invoice) {
     if (_isExpenseInvoice(invoice)) return 'Inventory Purchase';
+    if (_isRefundInvoice(invoice)) return 'Refund Issued';
     if (_isCardLike(invoice)) return 'Card Payment Received';
     return 'Cash Received';
   }
@@ -426,15 +443,21 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
   }
 
   DateTime _invoiceDate(Invoice invoice) {
-    return DateTime.tryParse(invoice.createdAt ?? '') ?? DateTime(1970);
+    return DateTime.tryParse(invoice.createdAt ?? '')?.toLocal() ??
+        DateTime(1970);
   }
 
   bool _isIncomingInvoice(Invoice invoice) {
-    return !_isExpenseInvoice(invoice);
+    return !_isExpenseInvoice(invoice) && !_isRefundInvoice(invoice);
   }
 
   bool _isExpenseInvoice(Invoice invoice) {
-    return invoice.type.trim().toLowerCase() == 'purchase';
+    return invoice.type.trim().toLowerCase().contains('purchase');
+  }
+
+  bool _isRefundInvoice(Invoice invoice) {
+    return invoice.type.toLowerCase().contains('refund') ||
+        (invoice.paymentStatus ?? '').toLowerCase().contains('refund');
   }
 
   bool _isCardLike(Invoice invoice) {
@@ -494,19 +517,60 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  String _formatRelativeTime(DateTime value) {
+  String _dateHeading(DateTime value, DateTime now) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final fullDate = '${value.day} ${months[value.month - 1]} ${value.year}';
+    if (_isSameDay(value, now)) {
+      return 'Today, ${value.day} ${months[value.month - 1]}';
+    }
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    if (_isSameDay(value, yesterday)) {
+      return 'Yesterday, ${value.day} ${months[value.month - 1]}';
+    }
+    return fullDate;
+  }
+
+  List<Widget> _groupedTransactionTiles(List<TransactionEntry> entries) {
     final now = DateTime.now();
-    final diff = now.difference(value);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inHours < 1) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24 && _isSameDay(value, now)) {
-      return 'Today, ${_formatClock(value)}';
+    DateTime? previousDay;
+    final widgets = <Widget>[];
+    for (final entry in entries) {
+      final day = entry.date?.toLocal() ?? DateTime(1970);
+      if (previousDay == null || !_isSameDay(previousDay, day)) {
+        if (previousDay != null) widgets.add(const SizedBox(height: 8));
+        widgets.add(
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            color: TransactionColors.greenBright.withValues(alpha: 0.10),
+            child: Text(
+              _dateHeading(day, now),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+        previousDay = day;
+      }
+      widgets.add(TransactionTile(entry: entry));
     }
-    if (diff.inHours < 48 &&
-        _isSameDay(value.add(const Duration(days: 1)), now)) {
-      return 'Yesterday, ${_formatClock(value)}';
-    }
-    return '${value.day}/${value.month}/${value.year}';
+    return widgets;
   }
 
   String _formatClock(DateTime value) {
@@ -530,6 +594,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final visibleTransactions = _visibleTransactions;
     return GradientScaffold(
       child: SafeArea(
         child: SingleChildScrollView(
@@ -738,7 +803,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
               const SizedBox(height: 10),
               _filterBar(context),
               const SizedBox(height: 12),
-              if (_visibleTransactions.isEmpty)
+              if (visibleTransactions.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   child: Text(
@@ -751,9 +816,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                   ),
                 )
               else
-                ..._visibleTransactions.map(
-                  (entry) => TransactionTile(entry: entry),
-                ),
+                ..._groupedTransactionTiles(visibleTransactions),
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {

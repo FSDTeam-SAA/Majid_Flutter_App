@@ -77,6 +77,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final pdfUrl = invoiceFile is Map ? invoiceFile['url']?.toString() : null;
     return Invoice(
       id: item['_id']?.toString() ?? '',
+      invoiceNumber: item['invoiceNumber']?.toString(),
       type: item['type']?.toString() ?? 'invoice',
       totalAmount: (item['totalAmount'] as num?)?.toDouble(),
       amountPaid:
@@ -86,6 +87,12 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
               : null),
       createdAt: item['createdAt']?.toString(),
       customerName: _invoiceCustomerName(item),
+      customerId: item['customerInfo'] is Map
+          ? item['customerInfo']['_id']?.toString()
+          : item['customerInfo']?.toString(),
+      customerEmail: item['customerInfo'] is Map
+          ? item['customerInfo']['email']?.toString()
+          : null,
       customerPhone: _invoiceCustomerPhone(item),
       pdfUrl: pdfUrl,
       paymentMethod: item['paymentMethod']?.toString(),

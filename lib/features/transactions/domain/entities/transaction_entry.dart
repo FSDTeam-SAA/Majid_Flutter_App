@@ -19,6 +19,9 @@ class TransactionEntry {
   final String invoiceRef;
   final DateTime? date;
   final String customerName;
+  final String customerId;
+  final String customerEmail;
+  final String customerPhone;
   final String? pdfUrl;
   final bool isPaid;
 
@@ -33,6 +36,9 @@ class TransactionEntry {
     this.invoiceRef = '',
     this.date,
     this.customerName = '',
+    this.customerId = '',
+    this.customerEmail = '',
+    this.customerPhone = '',
     this.pdfUrl,
     this.isPaid = true,
   });

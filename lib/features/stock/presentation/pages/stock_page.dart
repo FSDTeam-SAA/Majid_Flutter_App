@@ -10,6 +10,7 @@ import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
+import '../../../invoice/presentation/pages/invoice_page.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../supplier/presentation/pages/supplier_page.dart';
 import '../../domain/entities/ready_order.dart';
@@ -344,13 +345,52 @@ class _StockPageState extends State<StockPage> {
               ),
             ),
           ),
-          // Only the separate scanner/QR shortcut came out of this header.
-          // The three-line menu stays: it opens Quick Stock Access.
+          _buildBuyInShortcut(context),
+          const SizedBox(width: 8),
           CheckoutIconButton(
             icon: Icons.menu_rounded,
             onTap: () => _showCategoryMenu(context),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBuyInShortcut(BuildContext context) {
+    return Tooltip(
+      message: 'Buy-in',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const InvoicePage(initialTabIndex: 1),
+            ),
+          ),
+          borderRadius: BorderRadius.circular(18),
+          child: Ink(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: CheckoutTokens.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: CheckoutTokens.border),
+              boxShadow: CheckoutTokens.shadow(blur: 14, y: 6),
+            ),
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/icons/11.png',
+                  width: 39,
+                  height: 39,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

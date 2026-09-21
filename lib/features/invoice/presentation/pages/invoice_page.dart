@@ -30,6 +30,7 @@ import '../utils/invoice_pdf_builder.dart';
 import '../utils/purchase_receipt_pdf.dart';
 import '../utils/verified_invoice_pdf.dart';
 import '../widgets/invoice_customer_picker.dart';
+import '../widgets/invoice_delivery_actions.dart';
 import '../widgets/new_item_name_dialog.dart';
 import '../widgets/invoice_input_field.dart';
 import '../widgets/shop_info_card.dart';
@@ -4114,6 +4115,57 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                 ),
               ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _registryActionButton(
+                  label: 'Print',
+                  icon: Icons.print_outlined,
+                  onTap: pdfUrl == null
+                      ? null
+                      : () => shareOriginalInvoicePdf(
+                          context,
+                          pdfUrl: pdfUrl,
+                          invoiceRef: inv.reference,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _registryActionButton(
+                  label: 'Email',
+                  icon: Icons.mail_outline_rounded,
+                  onTap: pdfUrl == null
+                      ? null
+                      : () => showInvoiceEmailSheet(
+                          context,
+                          invoiceRef: inv.reference,
+                          pdfUrl: pdfUrl,
+                          amountLabel:
+                              '${_profileCtrl.currencySymbol}${(amount ?? 0).toStringAsFixed(2)}',
+                          customerId: inv.customerId ?? '',
+                          customerEmail: inv.customerEmail ?? '',
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _registryActionButton(
+                  label: 'Message',
+                  icon: Icons.sms_outlined,
+                  onTap: pdfUrl == null
+                      ? null
+                      : () => sendInvoiceMessage(
+                          context,
+                          pdfUrl: pdfUrl,
+                          invoiceRef: inv.reference,
+                          customerPhone: inv.customerPhone ?? '',
+                        ),
+                ),
+              ),
             ],
           ),
         ],
