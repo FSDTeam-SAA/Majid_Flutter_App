@@ -20,9 +20,23 @@ class ImeiRepositoryImpl implements ImeiRepository {
       throw const ImeiScanException('Invalid services response');
     }
 
+    final groups = List<Map<String, dynamic>>.from(
+      data.whereType<Map>().map((m) => Map<String, dynamic>.from(m)),
+    );
+
+    // Reorder categories: put "fevourite" first, matching website behavior
+    groups.sort((a, b) {
+      final aCat = (a['category']?.toString() ?? '').toLowerCase();
+      final bCat = (b['category']?.toString() ?? '').toLowerCase();
+      final aIsFav = aCat.contains('fevourite') || aCat.contains('favourite');
+      final bIsFav = bCat.contains('fevourite') || bCat.contains('favourite');
+      if (aIsFav && !bIsFav) return -1;
+      if (!aIsFav && bIsFav) return 1;
+      return aCat.compareTo(bCat);
+    });
+
     final services = <ScanDropdownOption>[];
-    for (final group in data) {
-      if (group is! Map) continue;
+    for (final group in groups) {
       final groupServices = group['services'];
       if (groupServices is! List) continue;
       for (final service in groupServices) {

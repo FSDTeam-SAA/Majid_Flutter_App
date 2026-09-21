@@ -644,23 +644,11 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     for (final key in ['parsedProviderData', 'providerResults']) {
       final parsed = data[key];
       if (parsed is Map && parsed.isNotEmpty) {
-        final allValues = parsed.values.join(' ').toLowerCase();
-        if (allValues.contains('not found') || allValues.contains('error')) {
-          return false;
-        }
-
-        for (final nameKey in [
-          'model',
-          'model_name',
-          'description',
-          'device_description',
-          'device_name',
-          'full_name',
-        ]) {
-          final value = parsed[nameKey]?.toString();
-          if (value != null && value.isNotEmpty) return true;
-        }
+        return true;
       }
+    }
+    if (data['aiInsight'] != null || data['riskMeter'] != null) {
+      return true;
     }
     return false;
   }
@@ -684,11 +672,15 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
 
     String? name;
     for (final key in [
-      'model_name',
       'marketing_name',
+      'model',
+      'model_name',
+      'model_description',
       'full_name',
       'device_description',
       'description',
+      'device_name',
+      'name',
       'manufacturer',
     ]) {
       final value = parsed[key]?.toString();
@@ -698,7 +690,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       }
     }
 
-    if (name == null || name.isEmpty) return null;
+    name ??= 'Device ($imei)';
 
     final rawStatus = response['data'] is Map
         ? response['data']['deviceStatus']?.toString()
