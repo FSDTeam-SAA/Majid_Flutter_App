@@ -171,7 +171,6 @@ class _TransactionDetailsSheet extends StatelessWidget {
                     child: _actionChip(
                       icon: Icons.print_outlined,
                       label: 'Print duplicate',
-                      badgeNumber: 1,
                       onTap: () => _printDuplicate(context),
                     ),
                   ),
@@ -180,7 +179,6 @@ class _TransactionDetailsSheet extends StatelessWidget {
                     child: _actionChip(
                       icon: Icons.mail_outline_rounded,
                       label: 'Send email',
-                      badgeNumber: 2,
                       onTap: () => _sendEmail(context),
                     ),
                   ),

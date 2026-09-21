@@ -121,6 +121,7 @@ class RepairRequestEndpoints {
 
 class InvoiceEndpoints {
   static String create = "$baseApiUrl/invoices/create";
+  static String sendEmail = "$baseApiUrl/invoices/send-email";
   static String all = "$baseApiUrl/invoices/all";
   static String byShopkeeper(String shopkeeperId) =>
       "$baseApiUrl/invoices/shopkeeper/$shopkeeperId";

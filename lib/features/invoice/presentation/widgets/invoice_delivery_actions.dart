@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart'
-    show baseUrl, baseApiUrl, CustomerEndpoints;
+    show baseUrl, CustomerEndpoints, InvoiceEndpoints;
 import '../../../../core/utils/colors.dart';
 import '../../../transactions/presentation/widgets/transaction_colors.dart';
 
@@ -240,57 +240,40 @@ class _InvoiceEmailSheetState extends State<_InvoiceEmailSheet> {
       _handoffMessage = null;
     });
     try {
+      final api = ApiClient(baseUrl);
       final sameSavedEmail =
           recipient.toLowerCase() == _savedEmail.toLowerCase();
-      if (widget.customerId.isNotEmpty && (_saveEmail || sameSavedEmail)) {
-        final api = ApiClient(baseUrl);
-        if (_saveEmail && !sameSavedEmail) {
+
+      if (widget.customerId.isNotEmpty && _saveEmail && !sameSavedEmail) {
+        try {
           await api.put(
             CustomerEndpoints.update(widget.customerId),
             data: {'email': recipient},
           );
           _savedEmail = recipient;
-        }
-        final response = await api.post(
-          '$baseApiUrl/customer/send-email',
-          data: {
-            'customerId': widget.customerId,
-            'subject': 'Invoice ${widget.invoiceRef}',
-            'description':
-                'Your original invoice ${widget.invoiceRef} '
-                '(${widget.amountLabel}) is available here:\n${widget.pdfUrl}',
-          },
-        );
-        final data = response.data['data'];
-        if (data is! Map ||
-            data['sentCount'] != 1 ||
-            data['failedCount'] != 0) {
-          throw StateError('The email service did not confirm delivery');
-        }
-        await _recordAttempt(recipient, 'sent');
-        if (mounted) setState(() => _sent = true);
-      } else {
-        final file = await _originalPdf(widget.pdfUrl!, widget.invoiceRef);
-        if (!mounted) return;
-        final result = await Share.shareXFiles(
-          [file],
-          subject: 'Invoice ${widget.invoiceRef}',
-          text: 'Send this original invoice PDF to $recipient',
-          sharePositionOrigin: _shareOrigin(context),
-        );
-        if (result.status == ShareResultStatus.dismissed) {
-          await _recordAttempt(recipient, 'cancelled');
-          if (mounted) setState(() => _error = 'Sharing was cancelled.');
-        } else {
-          await _recordAttempt(recipient, 'email_app_handoff');
-        }
-        if (mounted && result.status != ShareResultStatus.dismissed) {
-          setState(
-            () => _handoffMessage =
-                'PDF handed to the sharing app. Confirm the recipient and send there.',
-          );
+        } catch (_) {
+          // Non-blocking: continue sending email even if updating customer profile fails
         }
       }
+
+      final response = await api.post(
+        InvoiceEndpoints.sendEmail,
+        data: {
+          'email': recipient,
+          'invoiceRef': widget.invoiceRef,
+          'pdfUrl': widget.pdfUrl,
+          'amountLabel': widget.amountLabel,
+          if (widget.customerId.isNotEmpty) 'customerId': widget.customerId,
+        },
+      );
+
+      final success = response.data['success'] == true;
+      if (!success) {
+        throw StateError('The email service failed to send the invoice');
+      }
+
+      await _recordAttempt(recipient, 'sent');
+      if (mounted) setState(() => _sent = true);
     } catch (_) {
       await _recordAttempt(recipient, 'failed');
       if (mounted) {
@@ -304,11 +287,6 @@ class _InvoiceEmailSheetState extends State<_InvoiceEmailSheet> {
   @override
   Widget build(BuildContext context) {
     final canSave = widget.customerId.isNotEmpty;
-    final enteredEmail = _emailController.text.trim();
-    final usesEmailService =
-        canSave &&
-        enteredEmail.isNotEmpty &&
-        (_saveEmail || enteredEmail.toLowerCase() == _savedEmail.toLowerCase());
     return SafeArea(
       top: false,
       child: Padding(
@@ -425,9 +403,7 @@ class _InvoiceEmailSheetState extends State<_InvoiceEmailSheet> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Text(
-                  usesEmailService
-                      ? 'Email includes a link to the original PDF. Tap the PDF above to share it as an attachment.'
-                      : 'The original PDF opens in the system share sheet. Confirm the recipient in your email app.',
+                  'Email includes the invoice details and direct PDF download link. Tap the PDF above to share it via another app.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
