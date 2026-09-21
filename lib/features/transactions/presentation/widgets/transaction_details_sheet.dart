@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../invoice/presentation/widgets/invoice_delivery_actions.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/transaction_entry.dart';
 import 'payment_method_icon.dart';
@@ -11,8 +10,8 @@ import 'transaction_colors.dart';
 
 /// The mockup's Transaction Details sheet. Everything the backend already
 /// gives us (invoice ref, date, amount, customer, payment method, PDF) is
-/// live; the rows the backend does not yet return (phone, email, item,
-/// authorisation, served by) show as "Not recorded yet" rather than being
+/// live; the rows the backend does not yet return (item, authorisation,
+/// served by) show as "Not recorded yet" rather than being
 /// hidden, so the layout matches the spec today and just fills in once those
 /// fields exist.
 Future<void> showTransactionDetailsSheet(
@@ -95,10 +94,11 @@ class _TransactionDetailsSheet extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: (entry.isPaid
-                          ? TransactionColors.greenBright
-                          : TransactionColors.coral)
-                      .withValues(alpha: 0.16),
+                  color:
+                      (entry.isPaid
+                              ? TransactionColors.greenBright
+                              : TransactionColors.coral)
+                          .withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -145,8 +145,8 @@ class _TransactionDetailsSheet extends StatelessWidget {
                           _row('Invoice', _orDash(entry.invoiceRef)),
                           _row('Date & time', _dateLabel()),
                           _row('Customer', _orNotRecorded(entry.customerName)),
-                          _row('Phone', _notRecorded()),
-                          _row('Email', _notRecorded()),
+                          _row('Phone', _orNotRecorded(entry.customerPhone)),
+                          _row('Email', _orNotRecorded(entry.customerEmail)),
                         ]),
                       ),
                       const SizedBox(width: 16),
@@ -171,6 +171,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
                     child: _actionChip(
                       icon: Icons.print_outlined,
                       label: 'Print duplicate',
+                      badgeNumber: 1,
                       onTap: () => _printDuplicate(context),
                     ),
                   ),
@@ -179,6 +180,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
                     child: _actionChip(
                       icon: Icons.mail_outline_rounded,
                       label: 'Send email',
+                      badgeNumber: 2,
                       onTap: () => _sendEmail(context),
                     ),
                   ),
@@ -280,9 +282,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
     final digits = method.replaceAll(RegExp(r'\D'), '');
     if (digits.length < 4) return _notRecorded();
 
-    final brand = method
-        .replaceAll(RegExp(r'[\d\*•\-\s]+'), ' ')
-        .trim();
+    final brand = method.replaceAll(RegExp(r'[\d\*•\-\s]+'), ' ').trim();
     final last4 = digits.substring(digits.length - 4);
     return '${brand.isEmpty ? 'Card' : brand} •••• $last4';
   }
@@ -364,31 +364,68 @@ class _TransactionDetailsSheet extends StatelessWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    int? badgeNumber,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.fieldBackground,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.fieldBorder),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 18, color: AppColors.textPrimary),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: badgeNumber == null
+                  ? AppColors.fieldBackground
+                  : TransactionColors.greenBright.withValues(
+                      alpha: AppColors.isDark ? 0.20 : 0.08,
+                    ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: badgeNumber == null
+                    ? AppColors.fieldBorder
+                    : TransactionColors.greenBright.withValues(alpha: 0.25),
               ),
             ),
-          ],
-        ),
+            child: Column(
+              children: [
+                Icon(icon, size: 18, color: AppColors.textPrimary),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (badgeNumber != null)
+            Positioned(
+              top: -7,
+              left: -6,
+              child: Container(
+                width: 20,
+                height: 20,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: TransactionColors.greenBright,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$badgeNumber',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -438,35 +475,34 @@ class _TransactionDetailsSheet extends StatelessWidget {
   String _notRecorded() => 'Not recorded yet';
 
   Future<void> _openReceipt(BuildContext context) async {
-    final url = entry.pdfUrl;
-    if (url == null || url.trim().isEmpty) return;
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await openOriginalInvoicePdf(context, pdfUrl: entry.pdfUrl);
   }
 
   Future<void> _printDuplicate(BuildContext context) async {
-    final url = entry.pdfUrl;
-    if (url == null || url.trim().isEmpty) {
-      _showSnack(context, 'No receipt file for this transaction yet');
-      return;
-    }
-    // No printer SDK wired in yet, so this opens the system share sheet,
-    // which lets the shopkeeper print via AirPrint/any share target today.
-    await Share.share(url, subject: 'Receipt ${entry.invoiceRef}');
+    await shareOriginalInvoicePdf(
+      context,
+      pdfUrl: entry.pdfUrl,
+      invoiceRef: entry.invoiceRef,
+    );
   }
 
   Future<void> _sendEmail(BuildContext context) async {
-    _showSnack(
+    await showInvoiceEmailSheet(
       context,
-      'Add the customer\'s email to this invoice to send a receipt',
+      invoiceRef: entry.invoiceRef,
+      pdfUrl: entry.pdfUrl,
+      amountLabel: '$_currencySymbol${entry.amount.abs().toStringAsFixed(2)}',
+      customerId: entry.customerId,
+      customerEmail: entry.customerEmail,
     );
   }
 
   Future<void> _sendMessage(BuildContext context) async {
-    _showSnack(
+    await sendInvoiceMessage(
       context,
-      'Add the customer\'s phone number to this invoice to send a receipt',
+      pdfUrl: entry.pdfUrl,
+      invoiceRef: entry.invoiceRef,
+      customerPhone: entry.customerPhone,
     );
   }
 
@@ -479,6 +515,8 @@ class _TransactionDetailsSheet extends StatelessWidget {
   }
 
   void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }

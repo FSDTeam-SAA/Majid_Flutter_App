@@ -3,11 +3,14 @@
 /// the raw JSON map returned by the invoices list endpoint.
 class Invoice {
   final String id;
+  final String? invoiceNumber;
   final String type;
   final double? totalAmount;
   final double? amountPaid;
   final String? createdAt;
   final String customerName;
+  final String? customerId;
+  final String? customerEmail;
   final String? customerPhone;
   final String? pdfUrl;
   final String? paymentMethod;
@@ -15,20 +18,25 @@ class Invoice {
 
   const Invoice({
     required this.id,
+    this.invoiceNumber,
     required this.type,
     this.totalAmount,
     this.amountPaid,
     this.createdAt,
     required this.customerName,
+    this.customerId,
+    this.customerEmail,
     this.customerPhone,
     this.pdfUrl,
     this.paymentMethod,
     this.paymentStatus,
   });
 
-  /// Short reference shown in the invoice list, e.g. `#INV-9884BD5A` - the
-  /// last 8 characters of the Mongo id, matching the website's registry.
+  /// The original invoice number when recorded, or an ID-based fallback.
   String get reference {
+    if (invoiceNumber?.trim().isNotEmpty ?? false) {
+      return invoiceNumber!.trim();
+    }
     final tail = id.length >= 8 ? id.substring(id.length - 8) : id;
     return '#INV-${tail.toUpperCase()}';
   }
