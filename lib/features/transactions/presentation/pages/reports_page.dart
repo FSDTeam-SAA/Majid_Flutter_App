@@ -152,11 +152,9 @@ class _ReportsPageState extends State<ReportsPage> {
     });
   }
 
-  bool _isIncomingInvoice(Invoice invoice) =>
-      invoice.type.trim().toLowerCase() != 'purchase';
+  bool _isIncomingInvoice(Invoice invoice) => !invoice.isPurchase;
 
-  bool _isExpenseInvoice(Invoice invoice) =>
-      invoice.type.trim().toLowerCase() == 'purchase';
+  bool _isExpenseInvoice(Invoice invoice) => invoice.isPurchase;
 
   bool _isCardLike(Invoice invoice) {
     final method = (invoice.paymentMethod ?? '').trim().toLowerCase();

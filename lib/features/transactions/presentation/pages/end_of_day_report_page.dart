@@ -40,7 +40,7 @@ class EndOfDayReportPage extends StatelessWidget {
     });
   }
 
-  bool _isExpense(Invoice i) => i.type.trim().toLowerCase() == 'purchase';
+  bool _isExpense(Invoice i) => i.isPurchase;
 
   bool _isCard(Invoice i) {
     final m = (i.paymentMethod ?? '').trim().toLowerCase();

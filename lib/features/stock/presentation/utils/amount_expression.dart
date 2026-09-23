@@ -249,7 +249,6 @@ class AmountExpression {
       if (trimmed.isEmpty) continue;
 
       final factors = trimmed.split('*');
-      final first = double.tryParse(factors.first.replaceAll('%', '')) ?? 0;
       final value = _reduce([
         for (final f in factors) double.tryParse(f.replaceAll('%', '')) ?? 0,
       ], List.filled(factors.length - 1, '*'));
@@ -257,7 +256,7 @@ class AmountExpression {
       result.add(
         CalculationLine(
           expression: trimmed.replaceAll('*', ' × '),
-          quantity: factors.length > 1 ? first.round() : 1,
+          quantity: _quantityForFactors(factors),
           amount: value ?? 0,
         ),
       );
@@ -265,18 +264,29 @@ class AmountExpression {
     return result;
   }
 
-  /// Quantity the shopkeeper is really counting: a term like `20 x 2` counts
-  /// as 20 units, a bare `90` counts as one line of one.
+  /// Quantity the shopkeeper is really counting: a term like `980 x 5` means
+  /// five units priced at 980 each, while a bare `980` is one line of one.
   int get totalQuantity {
     if (isEmpty) return 0;
     var total = 0;
     for (final term in _terms()) {
       if (term.isEmpty) continue;
       final factors = term.split('*');
-      final first = double.tryParse(factors.first.replaceAll('%', '')) ?? 0;
-      total += factors.length > 1 ? first.round() : 1;
+      total += _quantityForFactors(factors);
     }
     return total;
+  }
+
+  /// Checkout multiplication follows `unit price x quantity`. Only a positive
+  /// whole-number second factor can represent item quantity; other calculator
+  /// expressions still represent one custom line item.
+  static int _quantityForFactors(List<String> factors) {
+    if (factors.length != 2 || factors.last.endsWith('%')) return 1;
+    final quantity = double.tryParse(factors.last);
+    if (quantity == null || quantity <= 0 || quantity != quantity.round()) {
+      return 1;
+    }
+    return quantity.round();
   }
 
   /// Splits on + and - only, so multiplication stays inside a term.

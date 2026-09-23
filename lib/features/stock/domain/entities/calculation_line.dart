@@ -1,9 +1,10 @@
-/// One line of a hand-keyed calculation, e.g. `20 x 2` meaning 20 units at 90.
+/// One line of a hand-keyed calculation, e.g. `980 x 5` meaning five units at
+/// 980 each.
 class CalculationLine {
   /// The keyed term, shown as the shopkeeper typed it.
   final String expression;
 
-  /// Units this line represents: `20 x 2` is 20, a bare `90` is 1.
+  /// Units this line represents: `980 x 5` is 5, a bare `980` is 1.
   final int quantity;
 
   /// What the line adds to the total.

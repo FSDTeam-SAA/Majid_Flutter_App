@@ -13,6 +13,7 @@ import '../../../invoice/data/repositories/invoice_repository_impl.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
 import '../utils/device_certificate_pdf.dart';
+import '../utils/provider_field_privacy.dart';
 import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
 import '../widgets/smart_invoice_sheet.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
@@ -465,7 +466,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         for (final entry in value.entries) {
           final k = entry.key?.toString() ?? '';
           final v = entry.value;
-          if (k.isEmpty || k == 'image' || k == 'result') continue;
+          if (!isCustomerSafeProviderField(k)) continue;
           if (v is Map || v is List) continue;
           final str = v?.toString().trim() ?? '';
           if (str.isNotEmpty) result[k] = str;

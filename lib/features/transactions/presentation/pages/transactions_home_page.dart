@@ -431,11 +431,10 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
   }
 
   String _transactionSubtitle(Invoice invoice) {
-    final type = invoice.type.trim().isEmpty ? 'invoice' : invoice.type.trim();
     final rawCustomer = invoice.customerName.trim();
     final isMissing = rawCustomer.isEmpty || rawCustomer.toUpperCase() == 'N/A';
     final customer = isMissing ? 'Walk-in customer' : rawCustomer;
-    return '$customer • ${_titleCase(type)}';
+    return '$customer • ${invoice.classification}';
   }
 
   double _invoiceAmount(Invoice invoice) {
@@ -452,7 +451,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
   }
 
   bool _isExpenseInvoice(Invoice invoice) {
-    return invoice.type.trim().toLowerCase().contains('purchase');
+    return invoice.isPurchase;
   }
 
   bool _isRefundInvoice(Invoice invoice) {
@@ -578,18 +577,6 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
     final minute = value.minute.toString().padLeft(2, '0');
     final suffix = value.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $suffix';
-  }
-
-  String _titleCase(String value) {
-    final words = value
-        .split(RegExp(r'[\s_-]+'))
-        .where((part) => part.isNotEmpty);
-    return words
-        .map(
-          (word) =>
-              '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
-        )
-        .join(' ');
   }
 
   @override

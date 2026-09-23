@@ -41,6 +41,12 @@ class Invoice {
     return '#INV-${tail.toUpperCase()}';
   }
 
+  /// Purchase paperwork is always money leaving the business. Keep this
+  /// normalization on the entity so transaction lists and reports cannot
+  /// disagree when the API returns either `purchase`, `Purchase Invoice`, or
+  /// another purchase-labelled legacy value.
+  bool get isPurchase => type.trim().toLowerCase().contains('purchase');
+
   /// Human label for [type], matching the website's classification badges.
   ///
   /// Matched with `contains` rather than an exact switch: the app sends short
@@ -51,7 +57,7 @@ class Invoice {
   /// Invoice" instead.
   String get classification {
     final value = type.toLowerCase();
-    if (value.contains('purchase')) return 'Purchase Invoice';
+    if (isPurchase) return 'Purchase Invoice';
     if (value.contains('delivery')) return 'Delivery Note';
     return 'Custom Invoice';
   }

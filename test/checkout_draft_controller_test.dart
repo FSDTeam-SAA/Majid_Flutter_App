@@ -53,7 +53,7 @@ void main() {
     expect(restored.namedLines.first.name, 'item 1');
     expect(restored.repairs['r1']?.customerName, 'Zihadul Islam');
     expect(restored.repairs['r1']?.customerPhone, '+8801711000000');
-    expect(restored.totalQuantity, 22); // 20 units + 90 + one repair
+    expect(restored.totalQuantity, 4); // 2 units + one bare item + one repair
   });
 
   test('combined lines list repairs before keypad terms', () {
