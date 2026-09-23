@@ -64,17 +64,27 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
 
     final data = res.data['data'];
     final nidNumber = data is Map ? data['nidNumber']?.toString() : null;
-    if (nidNumber == null || nidNumber.isEmpty) {
-      throw const InvoiceException(
-        'No valid NID number found in the selected image.',
-      );
-    }
-    return nidNumber;
+    return nidNumber?.trim() ?? '';
   }
 
   Invoice _invoiceFromJson(Map<String, dynamic> item) {
     final invoiceFile = item['invoice'];
     final pdfUrl = invoiceFile is Map ? invoiceFile['url']?.toString() : null;
+    final idImages = item['idImages'];
+    final idFrontImageUrl = idImages is Map && idImages['front'] is Map
+        ? idImages['front']['url']?.toString()
+        : null;
+    final idBackImageUrl = idImages is Map && idImages['back'] is Map
+        ? idImages['back']['url']?.toString()
+        : null;
+    final isIdImageDeleted = idImages is Map
+        ? (idImages['isDeleted'] == true)
+        : false;
+    final deleteAfterStr = item['idImageDeleteAfter']?.toString() ??
+        (idImages is Map ? idImages['deleteAfter']?.toString() : null);
+    final idImageDeleteAfter =
+        deleteAfterStr != null ? DateTime.tryParse(deleteAfterStr) : null;
+
     return Invoice(
       id: item['_id']?.toString() ?? '',
       invoiceNumber: item['invoiceNumber']?.toString(),
@@ -97,6 +107,10 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       pdfUrl: pdfUrl,
       paymentMethod: item['paymentMethod']?.toString(),
       paymentStatus: item['paymentStatus']?.toString(),
+      idFrontImageUrl: idFrontImageUrl,
+      idBackImageUrl: idBackImageUrl,
+      idImageDeleteAfter: idImageDeleteAfter,
+      isIdImageDeleted: isIdImageDeleted,
     );
   }
 

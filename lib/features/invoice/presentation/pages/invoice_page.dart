@@ -2722,10 +2722,15 @@ class _InvoicePageState extends State<InvoicePage> {
                         color: AppColors.primary,
                       ),
                     )
-                  : Text('Capture NID'),
+                  : Text(
+                      (_nidFrontImage != null || _nidBackImage != null)
+                          ? 'Retake NID'
+                          : 'Capture NID',
+                    ),
             ),
           ],
         ),
+        _buildCapturedIdPreviewCard(),
         SizedBox(height: 14),
         ShopInfoCard(),
         SizedBox(height: 24),
@@ -3328,7 +3333,7 @@ class _InvoicePageState extends State<InvoicePage> {
                     ),
                     const SizedBox(height: 20),
                     AppButton(
-                      label: 'Extract NID',
+                      label: 'Save & Extract ID',
                       onPressed: frontImage == null && backImage == null
                           ? null
                           : () => Navigator.pop(sheetCtx, true),
@@ -3427,23 +3432,353 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Future<File?> _pickNidImage() async {
-    final allowed = await AppPermissionsController.instance.ensure(
-      AppPermission.photos,
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Add ID Image',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                ),
+                title: Text(
+                  'Take Photo',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  'Capture ID card using camera',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                ),
+                title: Text(
+                  'Choose from Gallery',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  'Select existing photo from device',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+
+    if (source == null) return null;
+
+    final permission = source == ImageSource.camera
+        ? AppPermission.camera
+        : AppPermission.photos;
+
+    final allowed = await AppPermissionsController.instance.ensure(permission);
     if (!allowed) {
-      showErrorSnackbar('Photo access is needed to attach an ID image');
+      showErrorSnackbar(
+        source == ImageSource.camera
+            ? 'Camera access is needed to take an ID photo'
+            : 'Photo access is needed to attach an ID image',
+      );
       return null;
     }
 
-    // The system picker is used deliberately: only the image the shopkeeper
-    // selects reaches the app, never the whole library.
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 85,
     );
     if (picked == null) return null;
     return File(picked.path);
+  }
+
+  Widget _buildCapturedIdPreviewCard() {
+    if (_nidFrontImage == null && _nidBackImage == null) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.primary,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'ID Image Attached',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _showCaptureNidSheet,
+                icon: const Icon(Icons.edit_outlined, size: 14),
+                label: const Text('Change', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _nidFrontImage = null;
+                    _nidBackImage = null;
+                  });
+                },
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: AppColors.dangerColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (_nidFrontImage != null)
+                Expanded(
+                  child: _buildIdThumbnail(
+                    imageFile: _nidFrontImage!,
+                    label: 'Front Side',
+                  ),
+                ),
+              if (_nidFrontImage != null && _nidBackImage != null)
+                const SizedBox(width: 10),
+              if (_nidBackImage != null)
+                Expanded(
+                  child: _buildIdThumbnail(
+                    imageFile: _nidBackImage!,
+                    label: 'Back Side',
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                Icons.auto_delete_outlined,
+                size: 13,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  'ID image will be deleted automatically after 28 days from invoice & imoscan system.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdThumbnail({
+    required File imageFile,
+    required String label,
+  }) {
+    return GestureDetector(
+      onTap: () => _showFullImagePreview(
+        file: imageFile,
+        title: label,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.fieldBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 10,
+              child: Image.file(
+                imageFile,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+              color: Colors.black.withValues(alpha: 0.65),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.zoom_in_rounded,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullImagePreview({
+    File? file,
+    String? url,
+    required String title,
+    DateTime? deleteAfter,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
+                child: Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: InteractiveViewer(
+                  maxScale: 4.0,
+                  child: file != null
+                      ? Image.file(file, fit: BoxFit.contain)
+                      : Image.network(
+                          url ?? '',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, error, stack) => Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              'Failed to load image or image expired',
+                              style: TextStyle(color: AppColors.dangerColor),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+              if (deleteAfter != null)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    'Retained under privacy policy. Auto-deletes on ${deleteAfter.day}/${deleteAfter.month}/${deleteAfter.year}',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _extractNid() async {
@@ -3455,12 +3790,16 @@ class _InvoicePageState extends State<InvoicePage> {
         frontImage: _nidFrontImage,
         backImage: _nidBackImage,
       );
-      _pIdNumberCtrl.text = nidNumber;
-      showSuccessSnackbar('NID number extracted successfully.');
+      if (nidNumber.isNotEmpty) {
+        _pIdNumberCtrl.text = nidNumber;
+        showSuccessSnackbar('ID number extracted successfully.');
+      } else {
+        showSuccessSnackbar('ID image attached. Enter ID number manually if unread.');
+      }
     } on InvoiceException catch (e) {
-      showErrorSnackbar(e.message);
+      showInfoSnackbar(e.message);
     } catch (_) {
-      showErrorSnackbar('Failed to extract NID from image.');
+      showInfoSnackbar('ID image attached. Please enter the ID number manually.');
     } finally {
       if (mounted) setState(() => _isExtractingNid = false);
     }
@@ -3557,6 +3896,29 @@ class _InvoicePageState extends State<InvoicePage> {
           ),
         ),
       );
+
+      if (_nidFrontImage != null && await _nidFrontImage!.exists()) {
+        payload.files.add(
+          MapEntry(
+            'nid_front',
+            await MultipartFile.fromFile(
+              _nidFrontImage!.path,
+              filename: _nidFrontImage!.uri.pathSegments.last,
+            ),
+          ),
+        );
+      }
+      if (_nidBackImage != null && await _nidBackImage!.exists()) {
+        payload.files.add(
+          MapEntry(
+            'nid_back',
+            await MultipartFile.fromFile(
+              _nidBackImage!.path,
+              filename: _nidBackImage!.uri.pathSegments.last,
+            ),
+          ),
+        );
+      }
 
       await _invoiceRepo.createInvoice(payload);
       final saved = await _saveInvoiceCopy(pdfFile, 'purchase_receipt');
@@ -4071,6 +4433,79 @@ class _InvoicePageState extends State<InvoicePage> {
               ],
             ],
           ),
+          if (inv.hasIdImage) ...[
+            const SizedBox(height: 10),
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _showFullImagePreview(
+                url: inv.idFrontImageUrl ?? inv.idBackImageUrl,
+                title: 'Customer ID (${inv.customerName})',
+                deleteAfter: inv.idImageDeleteAfter,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.badge_outlined, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        inv.idImageDeleteAfter != null
+                            ? 'Customer ID Attached • Auto-deletes ${inv.idImageDeleteAfter!.day}/${inv.idImageDeleteAfter!.month}/${inv.idImageDeleteAfter!.year}'
+                            : 'Customer ID Attached (28-day retention)',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'View ID',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ] else if (inv.isIdImageDeleted || (inv.idImageDeleteAfter != null && inv.isIdImageExpired)) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.fieldBorder),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_delete_outlined, size: 15, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Customer ID deleted automatically after 28 days (Privacy Policy)',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Container(height: 1, color: AppColors.fieldBorder),
           const SizedBox(height: 10),

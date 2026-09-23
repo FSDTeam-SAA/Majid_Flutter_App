@@ -15,6 +15,10 @@ class Invoice {
   final String? pdfUrl;
   final String? paymentMethod;
   final String? paymentStatus;
+  final String? idFrontImageUrl;
+  final String? idBackImageUrl;
+  final DateTime? idImageDeleteAfter;
+  final bool isIdImageDeleted;
 
   const Invoice({
     required this.id,
@@ -30,7 +34,24 @@ class Invoice {
     this.pdfUrl,
     this.paymentMethod,
     this.paymentStatus,
+    this.idFrontImageUrl,
+    this.idBackImageUrl,
+    this.idImageDeleteAfter,
+    this.isIdImageDeleted = false,
   });
+
+  bool get hasIdImage =>
+      !isIdImageExpired &&
+      ((idFrontImageUrl != null && idFrontImageUrl!.isNotEmpty) ||
+          (idBackImageUrl != null && idBackImageUrl!.isNotEmpty));
+
+  bool get isIdImageExpired {
+    if (isIdImageDeleted) return true;
+    if (idImageDeleteAfter != null) {
+      return DateTime.now().isAfter(idImageDeleteAfter!);
+    }
+    return false;
+  }
 
   /// The original invoice number when recorded, or an ID-based fallback.
   String get reference {

@@ -26,6 +26,18 @@ void showSuccessSnackbar(String message) {
   );
 }
 
+void showInfoSnackbar(String message) {
+  _showAppSnackbar(
+    title: 'Notice',
+    message: message,
+    accentColor: const Color(0xFF0284C7),
+    backgroundColor: AppColors.cardBackground,
+    borderColor: const Color(0xFF0284C7).withValues(alpha: 0.3),
+    icon: Icons.info_outline_rounded,
+    duration: const Duration(seconds: 3),
+  );
+}
+
 void _showAppSnackbar({
   required String title,
   required String message,
