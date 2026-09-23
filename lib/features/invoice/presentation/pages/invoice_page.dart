@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -715,26 +716,350 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  /// Reads an IMEI or serial straight into [controller] with the camera, so
-  /// the numbers no longer have to be typed by hand.
-  Future<void> _scanIntoField(TextEditingController controller) async {
-    // Requested in context: the camera prompt appears here, when the scanner
-    // is opened, rather than at app launch.
+  Future<void> _scanMultipleImeis({
+    required List<TextEditingController> controllers,
+    required TextEditingController quantityCtrl,
+    int? targetIndex,
+  }) async {
     final allowed = await AppPermissionsController.instance.ensure(
       AppPermission.camera,
     );
     if (!allowed) {
-      showErrorSnackbar('Camera access is needed to scan a barcode or IMEI');
+      showErrorSnackbar('Camera access is needed to scan barcodes or IMEIs');
       return;
     }
     if (!mounted) return;
 
-    final code = await Navigator.push<String>(
+    final existing = controllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    final result = await Navigator.push<List<String>>(
       context,
-      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+      MaterialPageRoute(
+        builder: (_) => BarcodeScannerPage(
+          multiScan: true,
+          initialCodes: existing,
+          title: 'Scan IMEIs & Barcodes',
+        ),
+      ),
     );
-    if (code == null || code.trim().isEmpty || !mounted) return;
-    setState(() => controller.text = code.trim());
+    if (result == null || result.isEmpty || !mounted) return;
+
+    setState(() {
+      final allUnique = <String>[];
+      for (final code in result) {
+        final t = code.trim();
+        if (t.isNotEmpty && !allUnique.contains(t)) {
+          allUnique.add(t);
+        }
+      }
+
+      if (allUnique.isEmpty) return;
+
+      while (controllers.length < allUnique.length) {
+        controllers.add(TextEditingController());
+      }
+      for (int i = 0; i < allUnique.length; i++) {
+        controllers[i].text = allUnique[i];
+      }
+      final currentQty = int.tryParse(quantityCtrl.text.trim()) ?? 0;
+      if (allUnique.length > currentQty) {
+        quantityCtrl.text = allUnique.length.toString();
+      }
+    });
+
+    showSuccessSnackbar('${result.length} IMEI/serial(s) recorded');
+  }
+
+  void _showScannedImeisSheet({
+    required List<TextEditingController> controllers,
+    required TextEditingController quantityCtrl,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            final activeSerials = controllers
+                .map((c) => c.text.trim())
+                .where((t) => t.isNotEmpty)
+                .toList();
+
+            return SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(sheetCtx).height * 0.75,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.fieldBorder,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.remove_red_eye_outlined,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Scanned Identifiers',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${activeSerials.length} Saved',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Review, copy, or remove scanned IMEIs and serial numbers.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (activeSerials.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.qr_code_scanner_rounded,
+                                  size: 42,
+                                  color: AppColors.textSecondary.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'No IMEIs or serials added yet',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Tap "Scan IMEIs" below to scan multiple codes continuously.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: controllers.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, idx) {
+                              final text = controllers[idx].text.trim();
+                              if (text.isEmpty && controllers.length > 1) {
+                                return const SizedBox.shrink();
+                              }
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.fieldBackground,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.fieldBorder,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '#${idx + 1}',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        text.isEmpty ? '(Empty)' : text,
+                                        style: TextStyle(
+                                          color: text.isEmpty
+                                              ? AppColors.textSecondary
+                                              : AppColors.textPrimary,
+                                          fontSize: 13.5,
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    if (text.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.copy_rounded,
+                                          size: 16,
+                                        ),
+                                        color: AppColors.textSecondary,
+                                        tooltip: 'Copy',
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(text: text),
+                                          );
+                                          showSuccessSnackbar('Copied $text');
+                                        },
+                                      ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 18,
+                                        color: Colors.redAccent,
+                                      ),
+                                      tooltip: 'Remove',
+                                      onPressed: () {
+                                        setState(() {
+                                          if (controllers.length > 1) {
+                                            controllers[idx].dispose();
+                                            controllers.removeAt(idx);
+                                          } else {
+                                            controllers[0].clear();
+                                          }
+                                        });
+                                        setSheetState(() {});
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(sheetCtx);
+                                _scanMultipleImeis(
+                                  controllers: controllers,
+                                  quantityCtrl: quantityCtrl,
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: BorderSide(color: AppColors.primary),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Scan More',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.pop(sheetCtx),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Done',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   /// True once the customer has verified their code and agreed to the
@@ -1585,18 +1910,107 @@ class _InvoicePageState extends State<InvoicePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'IMEI / Serial Numbers',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'IMEI / Serial Numbers',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (item.imeiControllers.any((c) => c.text.trim().isNotEmpty)) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${item.imeiControllers.where((c) => c.text.trim().isNotEmpty).length}',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              _buildAddImeiButton(
-                () => setState(
-                  () => item.imeiControllers.add(TextEditingController()),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showScannedImeisSheet(
+                        controllers: item.imeiControllers,
+                        quantityCtrl: item.quantityCtrl,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Ink(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppColors.fieldBackground,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.remove_red_eye_outlined,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _scanMultipleImeis(
+                        controllers: item.imeiControllers,
+                        quantityCtrl: item.quantityCtrl,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Ink(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Scan',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  _buildAddImeiButton(
+                    () => setState(
+                      () => item.imeiControllers.add(TextEditingController()),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1614,8 +2028,11 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () =>
-                        _scanIntoField(item.imeiControllers[imeiIndex]),
+                    onTap: () => _scanMultipleImeis(
+                      controllers: item.imeiControllers,
+                      quantityCtrl: item.quantityCtrl,
+                      targetIndex: imeiIndex,
+                    ),
                     child: Container(
                       width: 40,
                       height: 40,
@@ -3134,18 +3551,107 @@ class _InvoicePageState extends State<InvoicePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'IMEI / Serial Numbers',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'IMEI / Serial Numbers',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (item.imeiControllers.any((c) => c.text.trim().isNotEmpty)) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${item.imeiControllers.where((c) => c.text.trim().isNotEmpty).length}',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              _buildAddImeiButton(
-                () => setState(
-                  () => item.imeiControllers.add(TextEditingController()),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showScannedImeisSheet(
+                        controllers: item.imeiControllers,
+                        quantityCtrl: item.quantityCtrl,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Ink(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppColors.fieldBackground,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.remove_red_eye_outlined,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _scanMultipleImeis(
+                        controllers: item.imeiControllers,
+                        quantityCtrl: item.quantityCtrl,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Ink(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Scan',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  _buildAddImeiButton(
+                    () => setState(
+                      () => item.imeiControllers.add(TextEditingController()),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -3199,7 +3705,11 @@ class _InvoicePageState extends State<InvoicePage> {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      _scanIntoField(item.imeiControllers[imeiIndex]);
+                      _scanMultipleImeis(
+                        controllers: item.imeiControllers,
+                        quantityCtrl: item.quantityCtrl,
+                        targetIndex: imeiIndex,
+                      );
                     },
                     child: Container(
                       width: 40,
