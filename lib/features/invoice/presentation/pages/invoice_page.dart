@@ -135,6 +135,12 @@ class _InvoicePageState extends State<InvoicePage> {
   List<Customer> _customers = [];
   bool _isSendingInvoice = false;
 
+  // Scroll controllers to preserve scroll offset independently on each tab
+  final ScrollController _createScrollCtrl = ScrollController();
+  final ScrollController _purchaseScrollCtrl = ScrollController();
+  final ScrollController _deliveryScrollCtrl = ScrollController();
+  final ScrollController _viewScrollCtrl = ScrollController();
+
   // Purchase Invoice
   final _pFirstNameCtrl = TextEditingController();
   final _pLastNameCtrl = TextEditingController();
@@ -297,6 +303,10 @@ class _InvoicePageState extends State<InvoicePage> {
 
   @override
   void dispose() {
+    _createScrollCtrl.dispose();
+    _purchaseScrollCtrl.dispose();
+    _deliveryScrollCtrl.dispose();
+    _viewScrollCtrl.dispose();
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _emailCtrl.dispose();
@@ -1136,51 +1146,65 @@ class _InvoicePageState extends State<InvoicePage> {
             child: _buildTabBar(),
           ),
           Expanded(
-            child: _tabIndex == 3
-                ? RefreshIndicator(
-                    color: AppColors.primary,
-                    onRefresh: _fetchViewInvoices,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [_buildViewInvoicesTab()],
-                      ),
-                    ),
-                  )
-                : SingleChildScrollView(
+            child: IndexedStack(
+              index: _tabIndex,
+              children: [
+                SingleChildScrollView(
+                  key: const PageStorageKey('create_invoice_tab_scroll'),
+                  controller: _createScrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_isLoading)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 48),
+                            child: SizedBox(
+                              width: _pageLoaderSize,
+                              height: _pageLoaderSize,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.6,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (_errorMessage.isNotEmpty)
+                        _buildLoadError()
+                      else
+                        _buildCreateInvoiceTab(),
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  key: const PageStorageKey('purchase_invoice_tab_scroll'),
+                  controller: _purchaseScrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 100),
+                  child: _buildPurchaseInvoiceTab(),
+                ),
+                SingleChildScrollView(
+                  key: const PageStorageKey('delivery_invoice_tab_scroll'),
+                  controller: _deliveryScrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 100),
+                  child: _buildDeliveryInvoiceTab(),
+                ),
+                RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: _fetchViewInvoices,
+                  child: SingleChildScrollView(
+                    key: const PageStorageKey('view_invoices_tab_scroll'),
+                    controller: _viewScrollCtrl,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_tabIndex == 0 && _isLoading)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 48),
-                              child: SizedBox(
-                                width: _pageLoaderSize,
-                                height: _pageLoaderSize,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.6,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (_tabIndex == 0 && _errorMessage.isNotEmpty)
-                          _buildLoadError()
-                        else if (_tabIndex == 0)
-                          _buildCreateInvoiceTab(),
-                        if (_tabIndex == 1) _buildPurchaseInvoiceTab(),
-                        if (_tabIndex == 2) _buildDeliveryInvoiceTab(),
-                        if (_tabIndex == 0 &&
-                            !_isLoading &&
-                            _errorMessage.isEmpty)
-                          SizedBox(height: 100),
-                      ],
+                      children: [_buildViewInvoicesTab()],
                     ),
                   ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1406,6 +1430,7 @@ class _InvoicePageState extends State<InvoicePage> {
 
     final isDark = AppColors.isDark;
     return Container(
+      key: ObjectKey(item),
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1765,6 +1790,7 @@ class _InvoicePageState extends State<InvoicePage> {
     }
 
     return Container(
+      key: ValueKey(controller),
       decoration: BoxDecoration(
         color: AppColors.fieldBackground,
         borderRadius: BorderRadius.circular(50),
@@ -1779,6 +1805,7 @@ class _InvoicePageState extends State<InvoicePage> {
         children: [
           Expanded(
             child: TextField(
+              key: ValueKey('tf_${controller.hashCode}'),
               controller: controller,
               onChanged: (_) => setState(() {}),
               keyboardType: const TextInputType.numberWithOptions(
@@ -2237,6 +2264,7 @@ class _InvoicePageState extends State<InvoicePage> {
     required String? selected,
     required void Function(String) onSelect,
   }) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final searchCtrl = TextEditingController(text: selected ?? '');
     final searchFocus = FocusNode();
 
@@ -2418,6 +2446,7 @@ class _InvoicePageState extends State<InvoicePage> {
     });
 
     if (choice != null) {
+      FocusManager.instance.primaryFocus?.unfocus();
       onSelect(choice);
     }
   }
@@ -2429,6 +2458,7 @@ class _InvoicePageState extends State<InvoicePage> {
     required List<String> items,
     required void Function(String) onSelect,
   }) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final choice = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -2542,6 +2572,7 @@ class _InvoicePageState extends State<InvoicePage> {
     );
 
     if (choice != null) {
+      FocusManager.instance.primaryFocus?.unfocus();
       onSelect(choice);
     }
   }
@@ -2977,6 +3008,7 @@ class _InvoicePageState extends State<InvoicePage> {
 
     final isDark = AppColors.isDark;
     return Container(
+      key: ObjectKey(item),
       margin: EdgeInsets.only(bottom: 14),
       padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
