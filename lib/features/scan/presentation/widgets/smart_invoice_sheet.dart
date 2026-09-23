@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../customer/domain/entities/customer.dart';
+import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
 import '../utils/country_list.dart';
 import 'searchable_picker_sheet.dart';
@@ -47,12 +49,17 @@ class _SmartInvoiceSheet extends StatefulWidget {
 
 class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
   static const _currencies = <String, (String, String)>{
-    'USD': ('US Dollar', '\$'),
     'GBP': ('British Pound', '£'),
+    'USD': ('US Dollar', '\$'),
     'EUR': ('Euro', '€'),
     'BDT': ('Bangladeshi Taka', '৳'),
     'INR': ('Indian Rupee', '₹'),
+    'PKR': ('Pakistani Rupee', '₨'),
     'AED': ('UAE Dirham', 'د.إ'),
+    'SAR': ('Saudi Riyal', '﷼'),
+    'AUD': ('Australian Dollar', 'A\$'),
+    'CAD': ('Canadian Dollar', 'C\$'),
+    'NONE': ('No symbol', ''),
   };
 
   final _nameCtrl = TextEditingController();
@@ -65,9 +72,20 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
   final _customerIdCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
 
-  late String _currency = _currencies.containsKey(widget.suggestedCurrency)
-      ? widget.suggestedCurrency
-      : 'USD';
+  late String _currency = _resolveInitialCurrency();
+
+  String _resolveInitialCurrency() {
+    final suggested = widget.suggestedCurrency.trim().toUpperCase();
+    if (suggested.isNotEmpty && _currencies.containsKey(suggested)) {
+      return suggested;
+    }
+    if (Get.isRegistered<ProfileController>()) {
+      final code = Get.find<ProfileController>().currencyCode.toUpperCase();
+      if (_currencies.containsKey(code)) return code;
+    }
+    return 'GBP';
+  }
+
   String _paymentMethod = 'Cash';
   bool _isPaid = true;
   Customer? _selectedCustomer;
@@ -189,7 +207,7 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
         customerId: _customerIdCtrl.text.trim(),
         existingCustomerId: _selectedCustomer?.id,
         currencyCode: _currency,
-        currencySymbol: _currencies[_currency]!.$2,
+        currencySymbol: _currencies[_currency]?.$2 ?? '',
         amount: _amount,
         paymentMethod: _paymentMethod,
         isPaid: _isPaid,
@@ -276,7 +294,9 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
                       _amountCtrl,
                       'Amount',
                       null,
-                      prefixText: '${_currencies[_currency]!.$2} ',
+                      prefixText: (_currencies[_currency]?.$2.isNotEmpty ?? false)
+                          ? '${_currencies[_currency]!.$2} '
+                          : null,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),

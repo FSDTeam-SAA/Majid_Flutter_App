@@ -269,11 +269,11 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     }
     if (!mounted) return;
 
+    final chosenCurrency = profileCtrlForList.currencyCode.trim().toUpperCase();
     final customer = await showSmartInvoiceSheet(
       context: context,
       suggestedAmount: suggestedAmount,
-      suggestedCurrency:
-          marketValue?['currency']?.toString().trim().toUpperCase() ?? 'USD',
+      suggestedCurrency: chosenCurrency.isNotEmpty ? chosenCurrency : 'GBP',
       existingCustomers: savedCustomers,
     );
     if (customer == null || !mounted) return;
