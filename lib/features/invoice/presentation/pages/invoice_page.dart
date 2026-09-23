@@ -775,17 +775,6 @@ class _InvoicePageState extends State<InvoicePage> {
   /// Sends the secure link and 6-digit code, then walks the customer through
   /// verification and the declaration.
   Future<void> _requestCustomerConsent() async {
-    if (_pEmailCtrl.text.trim().isEmpty && _pPhoneCtrl.text.trim().isEmpty) {
-      showErrorSnackbar(
-        'Add the customer\'s email or phone number before requesting consent',
-      );
-      return;
-    }
-    if (_tradeInItemName.isEmpty) {
-      showErrorSnackbar('Add the item before requesting consent');
-      return;
-    }
-
     final approved = await Navigator.push<TradeInConsent>(
       context,
       MaterialPageRoute(
@@ -793,7 +782,7 @@ class _InvoicePageState extends State<InvoicePage> {
           customerName: _tradeInCustomerName,
           customerEmail: _pEmailCtrl.text.trim(),
           customerPhone: _pPhoneCtrl.text.trim(),
-          itemName: _tradeInItemName,
+          itemName: _tradeInItemName.isNotEmpty ? _tradeInItemName : 'Device',
           agreedValue: _tradeInAgreedValue,
           paymentMethod: _recordedPaymentMethod ?? 'Cash',
           currencySymbol: _profileCtrl.currencySymbol,
@@ -927,15 +916,6 @@ class _InvoicePageState extends State<InvoicePage> {
         ],
       ),
     );
-  }
-
-  /// Gate in front of anything that captures the customer's data.
-  bool _blockedWithoutConsent() {
-    if (_hasTradeInConsent) return false;
-    showErrorSnackbar(
-      'Request customer consent before scanning or photographing their details',
-    );
-    return true;
   }
 
   Future<void> _createInvoice() async {
@@ -3187,9 +3167,6 @@ class _InvoicePageState extends State<InvoicePage> {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      // Scanning the customer's handset is one of the actions
-                      // the client requires consent for first.
-                      if (requiresConsent && _blockedWithoutConsent()) return;
                       _scanIntoField(item.imeiControllers[imeiIndex]);
                     },
                     child: Container(
@@ -3263,8 +3240,6 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   Future<void> _showCaptureNidSheet() async {
-    // Consent first, then the photo library prompt — in that order.
-    if (_blockedWithoutConsent()) return;
     File? frontImage = _nidFrontImage;
     File? backImage = _nidBackImage;
 
