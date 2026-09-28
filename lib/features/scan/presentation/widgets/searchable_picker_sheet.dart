@@ -25,6 +25,8 @@ Future<T?> showSearchablePicker<T>({
   required String searchHint,
   required List<PickerOption<T>> options,
   String? emptyMessage,
+  VoidCallback? onAddNew,
+  String? addNewLabel,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -38,6 +40,8 @@ Future<T?> showSearchablePicker<T>({
       searchHint: searchHint,
       options: options,
       emptyMessage: emptyMessage ?? 'Nothing found',
+      onAddNew: onAddNew,
+      addNewLabel: addNewLabel,
     ),
   );
 }
@@ -47,12 +51,16 @@ class _SearchablePicker<T> extends StatefulWidget {
   final String searchHint;
   final List<PickerOption<T>> options;
   final String emptyMessage;
+  final VoidCallback? onAddNew;
+  final String? addNewLabel;
 
   const _SearchablePicker({
     required this.title,
     required this.searchHint,
     required this.options,
     required this.emptyMessage,
+    this.onAddNew,
+    this.addNewLabel,
   });
 
   @override
@@ -101,6 +109,36 @@ class _SearchablePickerState<T> extends State<_SearchablePicker<T>> {
                     ),
                   ),
                 ),
+                if (widget.onAddNew != null) ...[
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      widget.onAddNew!();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: Icon(
+                      Icons.person_add_alt_1_rounded,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                    label: Text(
+                      widget.addNewLabel ?? 'Add New',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Icon(
@@ -143,12 +181,50 @@ class _SearchablePickerState<T> extends State<_SearchablePicker<T>> {
                   ? Padding(
                       padding: const EdgeInsets.symmetric(vertical: 30),
                       child: Center(
-                        child: Text(
-                          widget.emptyMessage,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.emptyMessage,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                            if (widget.onAddNew != null) ...[
+                              const SizedBox(height: 14),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  widget.onAddNew!();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.person_add_alt_1_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  widget.addNewLabel ?? 'Add New Customer',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     )
@@ -209,6 +285,52 @@ class _SearchablePickerState<T> extends State<_SearchablePicker<T>> {
                       },
                     ),
             ),
+            if (widget.onAddNew != null && results.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onAddNew!();
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Ink(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_add_alt_1_rounded,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.addNewLabel ?? 'Add New Customer',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

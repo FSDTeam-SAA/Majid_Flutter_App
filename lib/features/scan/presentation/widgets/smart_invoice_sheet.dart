@@ -7,6 +7,8 @@ import '../../../../core/widgets/app_snackbar.dart';
 import '../../../consent/domain/trade_in_consent.dart';
 import '../../../consent/presentation/pages/request_consent_page.dart';
 import '../../../customer/domain/entities/customer.dart';
+import '../../../customer/presentation/controller/customer_controller.dart';
+import '../../../customer/presentation/widgets/add_customer_sheet.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
 import '../utils/country_list.dart';
@@ -97,6 +99,8 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
   bool _isPaid = true;
   Customer? _selectedCustomer;
   TradeInConsent? _tradeInConsent;
+  late bool _isNewCustomer;
+  late List<Customer> _customers;
 
   bool get _hasTradeInConsent =>
       (_tradeInConsent?.allowsCapture ?? false) && !_consentDetailsChanged;
@@ -155,6 +159,8 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
   @override
   void initState() {
     super.initState();
+    _customers = List<Customer>.from(widget.existingCustomers);
+    _isNewCustomer = _customers.isEmpty;
     final amount = widget.suggestedAmount;
     if (amount != null && amount > 0) {
       _amountCtrl.text = amount % 1 == 0
@@ -183,41 +189,41 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
 
   double get _amount => double.tryParse(_amountCtrl.text.trim()) ?? 0;
 
-  /// Picking a saved customer fills the form; the fields stay editable so a
-  /// new customer can still be typed in.
-  Future<void> _pickExistingCustomer() async {
-    final picked = await showSearchablePicker<Customer>(
-      context: context,
-      title: 'Select customer',
-      searchHint: 'Search name, phone or email',
-      emptyMessage: 'No saved customers match',
-      options: [
-        for (final customer in widget.existingCustomers)
-          PickerOption(
-            value: customer,
-            title: customer.fullName.isEmpty ? 'Customer' : customer.fullName,
-            subtitle: [
-              customer.phone,
-              customer.email,
-            ].where((v) => v.trim().isNotEmpty).join(' • '),
-          ),
-      ],
-    );
-    if (picked == null || !mounted) return;
+  Future<void> _openAddCustomerSheet() async {
+    final customerCtrl = Get.isRegistered<CustomerController>()
+        ? Get.find<CustomerController>()
+        : Get.put(CustomerController());
+
+    final saved = await showAddCustomerSheet(context, customerCtrl);
+    if (saved != true || !mounted) return;
+
+    await customerCtrl.fetchCustomers();
+    if (!mounted) return;
 
     setState(() {
-      _selectedCustomer = picked;
-      _nameCtrl.text = picked.fullName;
-      _emailCtrl.text = picked.email;
-      _phoneCtrl.text = picked.phone;
-      if (picked.address.trim().isNotEmpty) {
-        _streetCtrl.text = picked.address.trim();
+      _customers = List<Customer>.from(customerCtrl.customers);
+      if (_customers.isNotEmpty) {
+        _selectCustomer(_customers.first);
       }
     });
   }
 
-  void _clearSelectedCustomer() {
+  void _selectCustomer(Customer customer) {
     setState(() {
+      _isNewCustomer = false;
+      _selectedCustomer = customer;
+      _nameCtrl.text = customer.fullName;
+      _emailCtrl.text = customer.email;
+      _phoneCtrl.text = customer.phone;
+      if (customer.address.trim().isNotEmpty) {
+        _streetCtrl.text = customer.address.trim();
+      }
+    });
+  }
+
+  void _switchToNewCustomer() {
+    setState(() {
+      _isNewCustomer = true;
       _selectedCustomer = null;
       for (final c in [
         _nameCtrl,
@@ -231,6 +237,37 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
         c.clear();
       }
     });
+  }
+
+  /// Picking a saved customer fills the form; the fields stay editable so a
+  /// new customer can still be typed in.
+  Future<void> _pickExistingCustomer() async {
+    final picked = await showSearchablePicker<Customer>(
+      context: context,
+      title: 'Select customer',
+      searchHint: 'Search name, phone or email',
+      emptyMessage: 'No saved customers match',
+      onAddNew: _openAddCustomerSheet,
+      addNewLabel: 'Add New Customer',
+      options: [
+        for (final customer in _customers)
+          PickerOption(
+            value: customer,
+            title: customer.fullName.isEmpty ? 'Customer' : customer.fullName,
+            subtitle: [
+              customer.phone,
+              customer.email,
+            ].where((v) => v.trim().isNotEmpty).join(' • '),
+          ),
+      ],
+    );
+    if (picked == null || !mounted) return;
+
+    _selectCustomer(picked);
+  }
+
+  void _clearSelectedCustomer() {
+    _switchToNewCustomer();
   }
 
   Future<void> _pickCountry() async {
@@ -267,7 +304,7 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
         postCode: _postCodeCtrl.text.trim(),
         country: _countryCtrl.text.trim(),
         customerId: _customerIdCtrl.text.trim(),
-        existingCustomerId: _selectedCustomer?.id,
+        existingCustomerId: _isNewCustomer ? null : _selectedCustomer?.id,
         currencyCode: _currency,
         currencySymbol: _currencies[_currency]?.$2 ?? '',
         amount: _amount,
@@ -301,9 +338,15 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionLabel('CUSTOMER INFORMATION'),
-                    if (widget.existingCustomers.isNotEmpty) ...[
+                    _customerSectionHeader(),
+                    const SizedBox(height: 10),
+                    _customerTypeToggle(),
+                    const SizedBox(height: 10),
+                    if (!_isNewCustomer) ...[
                       _customerSelector(),
+                      const SizedBox(height: 12),
+                    ] else ...[
+                      _newCustomerBanner(),
                       const SizedBox(height: 12),
                     ],
                     _field(_nameCtrl, 'Full Name *', Icons.person_outline),
@@ -419,6 +462,250 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
     );
   }
 
+  Widget _customerSectionHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'CUSTOMER INFORMATION',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.9,
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openAddCustomerSheet,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_add_alt_1_rounded,
+                      size: 13,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Add New Customer',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _customerTypeToggle() {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: AppColors.fieldBorder),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          Expanded(
+            child: _toggleTab(
+              label: 'Existing Customer',
+              icon: Icons.people_outline_rounded,
+              isSelected: !_isNewCustomer,
+              onTap: () {
+                if (_isNewCustomer) {
+                  setState(() => _isNewCustomer = false);
+                  if (_selectedCustomer == null && _customers.isNotEmpty) {
+                    _pickExistingCustomer();
+                  }
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 3),
+          Expanded(
+            child: _toggleTab(
+              label: 'New Customer',
+              icon: Icons.person_add_alt_1_outlined,
+              isSelected: _isNewCustomer,
+              onTap: () {
+                if (!_isNewCustomer) {
+                  _switchToNewCustomer();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleTab({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.28),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: isSelected
+                  ? AppColors.surfaceForeground
+                  : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? AppColors.surfaceForeground
+                    : AppColors.textSecondary,
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _newCustomerBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.22),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.person_add_alt_1_rounded,
+              size: 16,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'New Customer Mode',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'Fill details below or use customer form',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openAddCustomerSheet,
+              borderRadius: BorderRadius.circular(10),
+              child: Ink(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_rounded,
+                      size: 14,
+                      color: AppColors.surfaceForeground,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Form',
+                      style: TextStyle(
+                        color: AppColors.surfaceForeground,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _customerSelector() {
     final selected = _selectedCustomer;
 
@@ -443,8 +730,10 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
           child: Row(
             children: [
               Icon(
-                Icons.people_alt_outlined,
-                size: 19,
+                selected == null
+                    ? Icons.people_alt_outlined
+                    : Icons.person_pin_rounded,
+                size: 20,
                 color: selected == null
                     ? AppColors.textSecondary
                     : AppColors.primary,
@@ -471,8 +760,11 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
                     const SizedBox(height: 2),
                     Text(
                       selected == null
-                          ? '${widget.existingCustomers.length} saved - or type a new one below'
-                          : 'Tap to change - fields stay editable',
+                          ? '${_customers.length} saved • Tap to choose from list'
+                          : [
+                              selected.phone,
+                              selected.email,
+                            ].where((v) => v.trim().isNotEmpty).join(' • '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -488,10 +780,17 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
                   onTap: _clearSelectedCustomer,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: AppColors.textSecondary,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.textSecondary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 15,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 )
