@@ -1082,21 +1082,24 @@ class _InvoicePageState extends State<InvoicePage> {
         consent.paymentMethod != (_recordedPaymentMethod ?? 'Cash');
   }
 
-  /// The customer's agreed value, taken from the first priced purchase line.
+  /// The customer's agreed value, calculated as the total of all purchase items.
   double get _tradeInAgreedValue {
+    double total = 0;
     for (final item in _purchaseItems) {
       final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
-      if (price > 0) return price;
+      final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 1;
+      total += price * (qty > 0 ? qty : 1);
     }
-    return _purchaseGrandTotal;
+    return total > 0 ? total : _purchaseGrandTotal;
   }
 
   String get _tradeInItemName {
-    for (final item in _purchaseItems) {
-      final name = item.nameCtrl.text.trim();
-      if (name.isNotEmpty) return name;
-    }
-    return '';
+    final names = _purchaseItems
+        .map((item) => item.nameCtrl.text.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+    if (names.isEmpty) return '';
+    return names.join(', ');
   }
 
   String get _tradeInCustomerName {
