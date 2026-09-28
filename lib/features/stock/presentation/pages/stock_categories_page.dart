@@ -11,7 +11,6 @@ import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
 import 'add_category_sheet.dart';
-import 'add_new_device_page.dart';
 import 'category_stock_page.dart';
 
 /// Entry point of the Stock section: displays categories same as website,
@@ -160,95 +159,6 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
             ),
           ),
 
-          // Action Buttons Bar (same as website: Add Item, Add Category)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => AddNewDevicePage()),
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      child: Ink(
-                        padding: const EdgeInsets.symmetric(vertical: 11),
-                        decoration: BoxDecoration(
-                          color: CheckoutTokens.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: CheckoutTokens.border),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_rounded,
-                              size: 18,
-                              color: AppColors.textPrimary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Add Device',
-                              style: CheckoutTokens.text(
-                                size: 13,
-                                weight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => showAddCategorySheet(context),
-                      borderRadius: BorderRadius.circular(14),
-                      child: Ink(
-                        padding: const EdgeInsets.symmetric(vertical: 11),
-                        decoration: BoxDecoration(
-                          color: CheckoutTokens.accent,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: CheckoutTokens.accent.withValues(alpha: 0.25),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_rounded,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Add Category',
-                              style: CheckoutTokens.text(
-                                size: 13,
-                                weight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
 
           // Search Field
           Padding(
@@ -320,30 +230,6 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                               style: CheckoutTokens.text(
                                 size: 13,
                                 color: CheckoutTokens.softText,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () => showAddCategorySheet(context),
-                              icon: const Icon(Icons.add_rounded, size: 18),
-                              label: const Text(
-                                'Add Category',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: CheckoutTokens.accent,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
                               ),
                             ),
                           ],
