@@ -922,6 +922,27 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     return 'our repair shop';
   }
 
+  String get _currencySymbol {
+    try {
+      if (Get.isRegistered<ProfileController>()) {
+        final profileCtrl = Get.find<ProfileController>();
+        final symbol = profileCtrl.currencySymbol.trim();
+        if (symbol.isNotEmpty) return symbol;
+      }
+    } catch (_) {}
+
+    final repairCurrency = _repair['currency']?.toString().trim() ?? '';
+    if (repairCurrency.isNotEmpty) {
+      const symbols = ProfileController.currencyOptions;
+      if (symbols.containsKey(repairCurrency.toUpperCase())) {
+        return symbols[repairCurrency.toUpperCase()]!;
+      }
+      return repairCurrency;
+    }
+
+    return '£';
+  }
+
   String get _requestShortCode {
     final id = _repair['_id']?.toString() ?? '';
     if (id.isEmpty) return 'N/A';
@@ -943,7 +964,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     final feedback = _repair['technicianFeedback']?.toString().trim() ?? '';
     final price = (_repair['price'] as num?)?.toDouble() ?? 0;
     final priceText = price > 0
-        ? '\nTotal bill: \$${price.toStringAsFixed(2)}.'
+        ? '\nTotal bill: $_currencySymbol${price.toStringAsFixed(2)}.'
         : '';
     final feedbackText = feedback.isNotEmpty
         ? '\nTechnician note: $feedback'

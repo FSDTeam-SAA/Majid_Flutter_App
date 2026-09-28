@@ -140,7 +140,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return notes.whereType<Map>().map((n) {
       return {
         'part': n['partName']?.toString() ?? '-',
-        'cost': '\$${(n['cost'] as num?)?.toStringAsFixed(2) ?? '0.00'}',
+        'cost': '${_profileCtrl.currencySymbol}${(n['cost'] as num?)?.toStringAsFixed(2) ?? '0.00'}',
         'time': '${n['time']?.toString() ?? '-'}h',
       };
     }).toList();
