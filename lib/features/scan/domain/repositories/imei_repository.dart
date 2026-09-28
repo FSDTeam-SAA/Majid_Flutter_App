@@ -13,6 +13,21 @@ class ImeiScanException implements Exception {
   String toString() => message;
 }
 
+/// Result wrapper containing scan items and pagination metadata from the server.
+class ScanHistoryResult {
+  final List<ScanItem> items;
+  final int total;
+  final int page;
+  final int totalPage;
+
+  const ScanHistoryResult({
+    required this.items,
+    required this.total,
+    this.page = 1,
+    this.totalPage = 1,
+  });
+}
+
 /// Covers the full set of IMEI-scan related calls used by the `scan`
 /// feature: browsing/selecting a verification service, running an IMEI
 /// check, viewing scan history, extracting an IMEI from a photo (OCR), and
@@ -32,6 +47,9 @@ abstract class ImeiRepository {
     required String imei,
     required int serviceId,
   });
+
+  /// Fetches scan history with pagination metadata (including total count).
+  Future<ScanHistoryResult> getHistoryResult({int? page, int? limit});
 
   /// Fetches recent scan history, most-recent semantics left to the caller
   /// (server ordering is not guaranteed). [limit] caps the number of

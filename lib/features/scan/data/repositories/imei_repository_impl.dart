@@ -90,19 +90,44 @@ class ImeiRepositoryImpl implements ImeiRepository {
   }
 
   @override
-  Future<List<ScanItem>> getHistory({int? limit}) async {
-    final url = limit != null
-        ? '${ImeiEndpoints.history}?limit=$limit'
+  Future<ScanHistoryResult> getHistoryResult({int? page, int? limit}) async {
+    final params = <String, dynamic>{};
+    if (page != null && page > 0) params['page'] = page;
+    if (limit != null && limit > 0) params['limit'] = limit;
+
+    final queryString = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final url = queryString.isNotEmpty
+        ? '${ImeiEndpoints.history}?$queryString'
         : ImeiEndpoints.history;
+
     final res = await _api.get(url);
     final data = res.data['data'];
     if (data is! List) {
       throw const ImeiScanException('Invalid scan history response');
     }
-    return data
+
+    final items = data
         .whereType<Map>()
         .map((item) => scanItemFromJson(Map<String, dynamic>.from(item)))
         .toList();
+
+    final meta = res.data['meta'];
+    final total = meta is Map ? (meta['total'] as num?)?.toInt() ?? items.length : items.length;
+    final resPage = meta is Map ? (meta['page'] as num?)?.toInt() ?? 1 : 1;
+    final totalPage = meta is Map ? (meta['totalPage'] as num?)?.toInt() ?? 1 : 1;
+
+    return ScanHistoryResult(
+      items: items,
+      total: total,
+      page: resPage,
+      totalPage: totalPage,
+    );
+  }
+
+  @override
+  Future<List<ScanItem>> getHistory({int? limit}) async {
+    final result = await getHistoryResult(limit: limit);
+    return result.items;
   }
 
   @override

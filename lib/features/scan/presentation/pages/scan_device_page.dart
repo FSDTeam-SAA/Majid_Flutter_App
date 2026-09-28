@@ -35,6 +35,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   bool _isScanning = false;
   bool _isExtractingImei = false;
   String _errorMessage = '';
+  int _totalScansCount = 0;
   List<ScanItem> _recentScans = [];
   List<ScanDropdownOption> _services = [];
   ScanDropdownOption? _selectedService;
@@ -78,7 +79,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   }
 
   Future<void> _fetchRecentScans() async {
-    final scans = await _imeiRepository.getHistory();
+    final result = await _imeiRepository.getHistoryResult(page: 1, limit: 10);
+    final scans = result.items;
 
     scans.sort((a, b) {
       final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -101,6 +103,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return bDate.compareTo(aDate);
     });
+
+    _totalScansCount = result.total + extraSessionScans.length;
   }
 
   Future<void> _scanNow() async {
@@ -137,11 +141,16 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       }
       final newScan = _buildScanItemFromResponse(scanResult, imei);
       if (newScan != null) {
+        final existed = sessionScans.any((s) => s.imei == imei) ||
+            _recentScans.any((s) => s.imei == imei);
         sessionScans.removeWhere((s) => s.imei == imei);
         sessionScans.insert(0, newScan);
         setState(() {
           _recentScans.removeWhere((s) => s.imei == imei);
           _recentScans.insert(0, newScan);
+          if (!existed) {
+            _totalScansCount++;
+          }
         });
       }
       if (!mounted) return;
@@ -307,14 +316,17 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AllScanHistoryPage(),
-                            ),
-                          ),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AllScanHistoryPage(),
+                              ),
+                            );
+                            if (mounted) _loadScanData();
+                          },
                           child: Text(
-                            'See All (${_recentScans.length})',
+                            'See All ($_totalScansCount)',
                             style: TextStyle(
                               color: AppColors.primary,
                               fontSize: 13,

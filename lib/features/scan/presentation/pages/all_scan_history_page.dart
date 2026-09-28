@@ -26,6 +26,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
   late final ImeiRepository _imeiRepository;
   bool _isLoading = true;
   String _errorMessage = '';
+  int _totalCount = 0;
   List<ScanItem> _scans = [];
 
   @override
@@ -42,7 +43,8 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
     });
 
     try {
-      final scans = await _imeiRepository.getHistory(limit: 50);
+      final result = await _imeiRepository.getHistoryResult(page: 1, limit: 50);
+      final scans = result.items;
 
       scans.sort((a, b) {
         final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -66,7 +68,10 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
         return bDate.compareTo(aDate);
       });
 
-      setState(() => _scans = merged);
+      setState(() {
+        _scans = merged;
+        _totalCount = result.total + extraSessionScans.length;
+      });
     } on DioException catch (e) {
       setState(() {
         _errorMessage =
@@ -197,7 +202,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
         children: [
           Text(
-            '${_scans.length} Records',
+            '$_totalCount Records',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ).entrance(enableScale: false),
           const SizedBox(height: 14),
