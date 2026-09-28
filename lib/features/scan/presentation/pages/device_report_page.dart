@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_snackbar.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
 import '../../../invoice/data/repositories/invoice_repository_impl.dart';
+import '../../../consent/presentation/controller/consent_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
 import '../utils/device_certificate_pdf.dart';
@@ -270,11 +271,13 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     if (!mounted) return;
 
     final chosenCurrency = profileCtrlForList.currencyCode.trim().toUpperCase();
+    final device = _smartInvoiceDevice;
     final customer = await showSmartInvoiceSheet(
       context: context,
       suggestedAmount: suggestedAmount,
       suggestedCurrency: chosenCurrency.isNotEmpty ? chosenCurrency : 'GBP',
       existingCustomers: savedCustomers,
+      deviceName: device.itemName,
     );
     if (customer == null || !mounted) return;
 
@@ -335,6 +338,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
           riskScore: device.riskScore,
           aiSummary: device.aiSummary,
         ),
+        consentReference: customer.consent?.reference,
       );
 
       var customerId = customer.existingCustomerId ?? '';
@@ -366,6 +370,10 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         MapEntry('currency', customer.currencyCode),
         if (customer.isPaid) MapEntry('amountPaid', customer.amount.toString()),
         if (!customer.isPaid) MapEntry('dueAmount', customer.amount.toString()),
+        if (customer.consent?.consentId != null)
+          MapEntry('tradeInConsentId', customer.consent!.consentId!),
+        if (customer.consent?.reference != null)
+          MapEntry('consentReference', customer.consent!.reference),
       ]);
       payload.files.add(
         MapEntry(
@@ -378,6 +386,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       );
 
       await InvoiceRepositoryImpl(ApiClient(baseUrl)).createInvoice(payload);
+      ConsentController.instance.reset();
 
       SavedDocument? saved;
       try {

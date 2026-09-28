@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../../../consent/domain/trade_in_consent.dart';
+import '../../../consent/presentation/pages/request_consent_page.dart';
 import '../../../customer/domain/entities/customer.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
@@ -16,6 +19,7 @@ Future<SmartInvoiceCustomer?> showSmartInvoiceSheet({
   required double? suggestedAmount,
   required String suggestedCurrency,
   List<Customer> existingCustomers = const [],
+  String deviceName = 'Device',
 }) {
   return showModalBottomSheet<SmartInvoiceCustomer>(
     context: context,
@@ -28,6 +32,7 @@ Future<SmartInvoiceCustomer?> showSmartInvoiceSheet({
       suggestedAmount: suggestedAmount,
       suggestedCurrency: suggestedCurrency,
       existingCustomers: existingCustomers,
+      deviceName: deviceName,
     ),
   );
 }
@@ -36,11 +41,13 @@ class _SmartInvoiceSheet extends StatefulWidget {
   final double? suggestedAmount;
   final String suggestedCurrency;
   final List<Customer> existingCustomers;
+  final String deviceName;
 
   const _SmartInvoiceSheet({
     required this.suggestedAmount,
     required this.suggestedCurrency,
     required this.existingCustomers,
+    this.deviceName = 'Device',
   });
 
   @override
@@ -89,6 +96,61 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
   String _paymentMethod = 'Cash';
   bool _isPaid = true;
   Customer? _selectedCustomer;
+  TradeInConsent? _tradeInConsent;
+
+  bool get _hasTradeInConsent =>
+      (_tradeInConsent?.allowsCapture ?? false) && !_consentDetailsChanged;
+
+  bool get _consentDetailsChanged {
+    final consent = _tradeInConsent;
+    if (consent == null || !consent.allowsCapture) return false;
+
+    final valueChanged = (consent.agreedValue - _amount).abs() > 0.005;
+    final currentItem = widget.deviceName.trim().isNotEmpty
+        ? widget.deviceName.trim()
+        : 'Device';
+    return consent.itemName != currentItem ||
+        valueChanged ||
+        consent.paymentMethod != _paymentMethod;
+  }
+
+  Future<void> _requestCustomerConsent() async {
+    final name = _nameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    if (name.isEmpty) {
+      showErrorSnackbar('Please enter customer name first');
+      return;
+    }
+    if (email.isEmpty && phone.isEmpty) {
+      showErrorSnackbar('Please enter customer email or phone number first');
+      return;
+    }
+
+    final approved = await Navigator.push<TradeInConsent>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RequestConsentPage(
+          customerName: name,
+          customerEmail: email,
+          customerPhone: phone,
+          itemName: widget.deviceName.trim().isNotEmpty
+              ? widget.deviceName.trim()
+              : 'Device',
+          agreedValue: _amount,
+          paymentMethod: _paymentMethod,
+          currencySymbol: (_currencies[_currency]?.$2.isNotEmpty ?? false)
+              ? _currencies[_currency]!.$2
+              : '£',
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (approved != null) {
+      setState(() => _tradeInConsent = approved);
+    }
+  }
 
   @override
   void initState() {
@@ -211,6 +273,7 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
         amount: _amount,
         paymentMethod: _paymentMethod,
         isPaid: _isPaid,
+        consent: _tradeInConsent,
       ),
     );
   }
@@ -285,6 +348,8 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
                       'Customer ID (Optional)',
                       Icons.badge_outlined,
                     ),
+                    const SizedBox(height: 14),
+                    _buildCustomerConsentCard(),
                     const SizedBox(height: 18),
                     _sectionLabel('PRICE DETAILS'),
                     _smallLabel('Currency'),
@@ -692,6 +757,124 @@ class _SmartInvoiceSheetState extends State<_SmartInvoiceSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCustomerConsentCard() {
+    final consent = _tradeInConsent;
+    final approved = _hasTradeInConsent;
+    final needsFreshConsent = _consentDetailsChanged;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: approved
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : AppColors.fieldBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: approved
+              ? AppColors.primary.withValues(alpha: 0.34)
+              : AppColors.fieldBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                approved
+                    ? Icons.verified_user_rounded
+                    : Icons.privacy_tip_outlined,
+                size: 19,
+                color: approved ? AppColors.primary : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  approved
+                      ? 'Consent approved'
+                      : needsFreshConsent
+                      ? 'Details changed — fresh consent needed'
+                      : 'Customer consent required',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            approved
+                ? 'Verified by the customer. Transaction consent is recorded.'
+                : needsFreshConsent
+                ? 'The item, value or payment method has changed since the '
+                      'customer approved. Ask them to consent again before '
+                      'continuing.'
+                : 'Send the customer a secure link and 6-digit code. They agree '
+                      'to the terms first before the invoice is finalized.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12.5,
+              height: 1.5,
+            ),
+          ),
+          if (approved && consent != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Reference ${consent.reference} • delivered by '
+              '${consent.channel.label} • terms ${consent.termsVersion}',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (consent.idImageDeleteAfter != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'ID image deleted automatically by '
+                '${consent.idImageDeleteAfter!.day}/'
+                '${consent.idImageDeleteAfter!.month}/'
+                '${consent.idImageDeleteAfter!.year}',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _requestCustomerConsent,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: Icon(
+                approved ? Icons.refresh_rounded : Icons.send_rounded,
+                size: 17,
+              ),
+              label: Text(
+                approved
+                    ? 'Request consent again'
+                    : 'Request Customer Consent',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

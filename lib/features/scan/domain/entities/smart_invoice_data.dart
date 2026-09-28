@@ -1,3 +1,5 @@
+import '../../../consent/domain/trade_in_consent.dart';
+
 /// Everything the Smart Invoice needs about the scanned device.
 ///
 /// Filled straight from the device report, so the shopkeeper never retypes the
@@ -64,6 +66,7 @@ class SmartInvoiceCustomer {
   final double amount;
   final String paymentMethod;
   final bool isPaid;
+  final TradeInConsent? consent;
 
   const SmartInvoiceCustomer({
     required this.fullName,
@@ -80,6 +83,7 @@ class SmartInvoiceCustomer {
     this.country = '',
     this.customerId = '',
     this.existingCustomerId,
+    this.consent,
   });
 
   /// `UNIT22 Havering, RM7 8BE, United Kingdom`

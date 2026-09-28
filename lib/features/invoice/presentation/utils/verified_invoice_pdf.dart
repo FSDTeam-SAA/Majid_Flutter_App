@@ -85,6 +85,7 @@ abstract final class VerifiedInvoicePdf {
     required List<VerifiedInvoiceItem> items,
     String subtitle = 'VERIFIED DEVICE SALE',
     VerifiedInvoiceApiSummary? apiSummary,
+    String? consentReference,
   }) async {
     final pdf = pw.Document();
     final subtotal = items.fold<double>(0, (sum, item) => sum + item.lineTotal);
@@ -118,6 +119,38 @@ abstract final class VerifiedInvoicePdf {
           ],
           pw.SizedBox(height: 16),
           _noteAndTotals(apiSummary, money, isPaid),
+          if (consentReference != null && consentReference.isNotEmpty) ...[
+            pw.SizedBox(height: 10),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: pw.BoxDecoration(
+                color: _panelTint,
+                borderRadius: pw.BorderRadius.circular(6),
+                border: pw.Border.all(color: _line),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Customer Consent Reference:',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                      color: _ink,
+                    ),
+                  ),
+                  pw.Text(
+                    consentReference,
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      color: _greenDark,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           pw.SizedBox(height: 28),
           _signatures(),
           pw.SizedBox(height: 14),
