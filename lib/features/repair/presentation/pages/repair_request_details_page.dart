@@ -174,7 +174,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Send the parts update through WhatsApp, SMS, or email.',
+                'Send the parts update through WhatsApp or SMS.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -191,14 +191,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     label: 'Message',
                     icon: Icons.sms_outlined,
                     onTap: () => _sendBySms(message),
-                  ),
-                  _contactActionChip(
-                    label: 'Email',
-                    icon: Icons.mail_outline_rounded,
-                    onTap: () => _sendByEmail(
-                      message,
-                      subject: 'Update on your repair - $_shopName',
-                    ),
                   ),
                 ],
               ),
@@ -249,22 +241,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     await _launchUri(
       Uri(scheme: 'sms', path: phone, queryParameters: {'body': message}),
       successLabel: 'messages',
-      fallbackShareText: message,
-    );
-  }
-
-  Future<void> _sendByEmail(String message, {required String subject}) async {
-    if (_customerEmail.isEmpty) {
-      _showMessage('Customer email is missing');
-      return;
-    }
-    await _launchUri(
-      Uri(
-        scheme: 'mailto',
-        path: _customerEmail,
-        queryParameters: {'subject': subject, 'body': message},
-      ),
-      successLabel: 'email',
       fallbackShareText: message,
     );
   }
@@ -931,8 +907,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     return fullName.isEmpty ? 'Customer' : fullName;
   }
 
-  String get _customerEmail => _repair['email']?.toString().trim() ?? '';
-
   String get _customerPhone => _repair['phoneNumber']?.toString().trim() ?? '';
 
   String get _shopName {
@@ -1042,26 +1016,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  Future<void> _sendCompletionByEmail() async {
-    if (_customerEmail.isEmpty) {
-      _showMessage('Customer email is missing');
-      return;
-    }
-
-    await _launchUri(
-      Uri(
-        scheme: 'mailto',
-        path: _customerEmail,
-        queryParameters: {
-          'subject': 'Your repair is complete - $_shopName',
-          'body': _buildCompletionMessage(),
-        },
-      ),
-      successLabel: 'email',
-      fallbackShareText: _buildCompletionMessage(),
-    );
-  }
-
   Future<void> _showCompletionContactSheet({bool autoOpened = false}) async {
     if (!mounted) return;
 
@@ -1092,7 +1046,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 Text(
                   autoOpened
                       ? 'Choose how you want to notify the customer that the repair is done.'
-                      : 'Send the completed-job update through WhatsApp, SMS, or email.',
+                      : 'Send the completed-job update through WhatsApp or SMS.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -1112,11 +1066,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       label: 'Message',
                       icon: Icons.sms_outlined,
                       onTap: _sendCompletionBySms,
-                    ),
-                    _contactActionChip(
-                      label: 'Email',
-                      icon: Icons.mail_outline_rounded,
-                      onTap: _sendCompletionByEmail,
                     ),
                   ],
                 ),
@@ -1187,26 +1136,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  Future<void> _sendRejectionByEmail(String reason) async {
-    if (_customerEmail.isEmpty) {
-      _showMessage('Customer email is missing');
-      return;
-    }
-
-    await _launchUri(
-      Uri(
-        scheme: 'mailto',
-        path: _customerEmail,
-        queryParameters: {
-          'subject': 'Repair update for your device - $_shopName',
-          'body': _buildRejectionMessage(reason),
-        },
-      ),
-      successLabel: 'email',
-      fallbackShareText: _buildRejectionMessage(reason),
-    );
-  }
-
   Future<void> _showRejectedContactSheet(String reason) async {
     if (!mounted) return;
 
@@ -1255,11 +1184,6 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       label: 'Message',
                       icon: Icons.sms_outlined,
                       onTap: () => _sendRejectionBySms(reason),
-                    ),
-                    _contactActionChip(
-                      label: 'Email',
-                      icon: Icons.mail_outline_rounded,
-                      onTap: () => _sendRejectionByEmail(reason),
                     ),
                   ],
                 ),
