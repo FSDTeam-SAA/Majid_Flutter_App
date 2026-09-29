@@ -26,9 +26,10 @@ import '../../../customer/presentation/widgets/add_customer_sheet.dart';
 import '../../data/repositories/invoice_repository_impl.dart';
 import '../../domain/entities/invoice.dart' as invoice_entity;
 import '../../domain/repositories/invoice_repository.dart';
+import '../../../../core/utils/invoice_template_settings.dart';
 import '../controller/invoice_data.dart';
 import '../utils/invoice_pdf_builder.dart';
-import '../utils/purchase_receipt_pdf.dart';
+import '../utils/invoice_template_builder.dart';
 import '../utils/verified_invoice_pdf.dart';
 import '../widgets/invoice_customer_picker.dart';
 import '../widgets/invoice_delivery_actions.dart';
@@ -1298,7 +1299,7 @@ class _InvoicePageState extends State<InvoicePage> {
           item.descriptionCtrl.text.trim(),
           item.colorCtrl.text.trim(),
           item.conditionCtrl.text.trim(),
-        ].where((v) => v.isNotEmpty).join(' • ');
+        ].where((v) => v.isNotEmpty).join(' | ');
         final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 1;
         final unitPrice = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
         final discount = double.tryParse(item.discountCtrl.text.trim()) ?? 0;
@@ -1320,7 +1321,13 @@ class _InvoicePageState extends State<InvoicePage> {
         );
       }
 
-      final pdfFile = await VerifiedInvoicePdf.build(
+      final activeTemplate = _profileCtrl.invoiceTemplate.isNotEmpty &&
+              _profileCtrl.invoiceTemplate != 'default'
+          ? _profileCtrl.invoiceTemplate
+          : InvoiceTemplateSettings.currentTemplate.value;
+
+      final pdfFile = await InvoiceTemplateBuilder.buildSalesInvoice(
+        templateId: activeTemplate,
         fileName: 'invoice_${now.millisecondsSinceEpoch}.pdf',
         invoiceNumber: 'INV-${now.millisecondsSinceEpoch}',
         createdAt: now,
@@ -1329,6 +1336,7 @@ class _InvoicePageState extends State<InvoicePage> {
         shopPhone: _profileCtrl.whatsappNumber.isNotEmpty
             ? _profileCtrl.whatsappNumber
             : _profileCtrl.phone,
+        shopAddress: _profileCtrl.shopAddress,
         customerName: customerName,
         customerEmail: _emailCtrl.text.trim(),
         customerPhone: _phoneCtrl.text.trim(),
@@ -1337,6 +1345,7 @@ class _InvoicePageState extends State<InvoicePage> {
         isPaid:
             _recordedAmountPaid != null && _recordedAmountPaid! >= totalAmount,
         currencySymbol: _profileCtrl.currencySymbol,
+        currencyCode: _profileCtrl.currencyCode,
         items: pdfItems,
         subtitle: 'SALES INVOICE',
       );
@@ -1365,6 +1374,7 @@ class _InvoicePageState extends State<InvoicePage> {
         MapEntry('type', 'Custom invoice'),
         MapEntry('totalAmount', totalAmount.toString()),
         MapEntry('paymentMethod', paymentType),
+        MapEntry('invoiceTemplate', activeTemplate),
         if (customerId.isNotEmpty) MapEntry('customerInfo', customerId),
         if (_recordedAmountPaid != null)
           MapEntry('amountPaid', _recordedAmountPaid!.toString()),
@@ -4380,7 +4390,13 @@ class _InvoicePageState extends State<InvoicePage> {
 
       final pdfItems = _purchaseLines;
 
-      final pdfFile = await PurchaseReceiptPdf.build(
+      final activeTemplate = _profileCtrl.invoiceTemplate.isNotEmpty &&
+              _profileCtrl.invoiceTemplate != 'default'
+          ? _profileCtrl.invoiceTemplate
+          : InvoiceTemplateSettings.currentTemplate.value;
+
+      final pdfFile = await InvoiceTemplateBuilder.buildPurchaseReceipt(
+        templateId: activeTemplate,
         fileNamePrefix: 'purchase_receipt',
         createdAt: now,
         shopName: _profileCtrl.shopName,
@@ -4406,6 +4422,7 @@ class _InvoicePageState extends State<InvoicePage> {
         MapEntry('type', 'purchase'),
         MapEntry('totalAmount', grandTotal.toString()),
         MapEntry('paymentMethod', paymentMethod),
+        MapEntry('invoiceTemplate', activeTemplate),
       ]);
       payload.files.add(
         MapEntry(
@@ -4693,12 +4710,18 @@ class _InvoicePageState extends State<InvoicePage> {
         footerNote: 'Delivery invoice generated from iMoScan.',
       );
 
+      final activeTemplate = _profileCtrl.invoiceTemplate.isNotEmpty &&
+              _profileCtrl.invoiceTemplate != 'default'
+          ? _profileCtrl.invoiceTemplate
+          : InvoiceTemplateSettings.currentTemplate.value;
+
       final payload = FormData();
       payload.fields.addAll([
         MapEntry('shopkeeperId', shopkeeperId),
         MapEntry('type', 'delivery'),
         MapEntry('totalAmount', grandTotal.toString()),
         MapEntry('paymentMethod', 'cash'),
+        MapEntry('invoiceTemplate', activeTemplate),
       ]);
       payload.files.add(
         MapEntry(

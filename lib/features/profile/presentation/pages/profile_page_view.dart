@@ -12,6 +12,7 @@ import '../widgets/profile_menu_item.dart';
 import 'business_health_score_page.dart';
 import 'edit_profile_page.dart';
 import 'invoice_logo_settings_page.dart';
+import 'invoice_template_settings_page.dart';
 import 'shopkeeper_id_card_page.dart';
 import '../../../customer/presentation/pages/customer_page.dart';
 import '../../../invoice/presentation/pages/invoice_page.dart';
@@ -193,6 +194,18 @@ class _ProfilePageViewState extends State<ProfilePageView>
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const InvoiceLogoSettingsPage(),
+                              ),
+                            ),
+                          ),
+                          (
+                            Icons.palette_outlined,
+                            'Invoice Template Designs',
+                            null,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const InvoiceTemplateSettingsPage(),
                               ),
                             ),
                           ),

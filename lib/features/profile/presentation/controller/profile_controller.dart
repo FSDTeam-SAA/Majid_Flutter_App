@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/utils/invoice_template_settings.dart';
 import '../../../stock/data/repositories/inventory_repository_impl.dart';
 import '../../data/repositories/dashboard_repository_impl.dart';
 import '../../data/repositories/payment_repository_impl.dart';
@@ -70,6 +71,21 @@ class ProfileController extends GetxController {
   String get userId => profile.value?.id ?? '';
   String get imageUrl => profile.value?.imageUrl ?? '';
   String get currencyCode => profile.value?.currencyCode ?? 'GBP';
+  String get invoiceTemplate => profile.value?.invoiceTemplate ?? 'default';
+
+  Future<bool> setInvoiceTemplate(String templateId) async {
+    final current = profile.value;
+    if (current == null) return false;
+    final success = await updateProfile(
+      firstName: current.firstName,
+      lastName: current.lastName,
+      invoiceTemplate: templateId,
+    );
+    if (success) {
+      await InvoiceTemplateSettings.save(templateId);
+    }
+    return success;
+  }
 
   /// Symbol for the shop's configured currency — falls back to GBP's `£`
   /// for any code we don't have a mapping for yet.
@@ -123,7 +139,11 @@ class ProfileController extends GetxController {
   Future<void> fetchProfile() async {
     isLoading.value = true;
     try {
-      profile.value = await _profileRepo.getProfile();
+      final fetched = await _profileRepo.getProfile();
+      profile.value = fetched;
+      if (fetched.invoiceTemplate.isNotEmpty) {
+        InvoiceTemplateSettings.save(fetched.invoiceTemplate);
+      }
       isSessionExpired.value = false;
     } catch (e) {
       debugPrint('Profile fetch error: $e');
@@ -143,6 +163,7 @@ class ProfileController extends GetxController {
     String? shopAddress,
     String? imagePath,
     String? currencyCode,
+    String? invoiceTemplate,
   }) async {
     isSaving.value = true;
     errorMessage.value = '';
@@ -156,6 +177,7 @@ class ProfileController extends GetxController {
         shopAddress: shopAddress,
         imagePath: imagePath,
         currencyCode: currencyCode,
+        invoiceTemplate: invoiceTemplate,
       );
       return true;
     } on ProfileException catch (e) {

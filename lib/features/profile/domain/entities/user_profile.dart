@@ -13,6 +13,7 @@ class UserProfile {
   final String phone;
   final String imageUrl;
   final String currencyCode;
+  final String invoiceTemplate;
 
   const UserProfile({
     required this.id,
@@ -26,6 +27,7 @@ class UserProfile {
     required this.phone,
     required this.imageUrl,
     this.currencyCode = 'GBP',
+    this.invoiceTemplate = 'default',
   });
 
   String get fullName => '$firstName $lastName'.trim();
@@ -42,5 +44,6 @@ class UserProfile {
     phone: '',
     imageUrl: '',
     currencyCode: 'GBP',
+    invoiceTemplate: 'default',
   );
 }

@@ -36,7 +36,30 @@ abstract final class PurchaseReceiptPdf {
     required String currencyCode,
   }) async {
     final pdf = pw.Document();
-    final serialCount = items
+    final cleanCurrency = _safeCurrency(currencyCode);
+    final cleanShopPhone = _sanitize(shopPhone);
+    final cleanShopAddress = _sanitize(shopAddress);
+    final cleanCustomerName = _sanitize(customerName);
+    final cleanCustomerPhone = _sanitize(customerPhone);
+    final cleanCustomerEmail = _sanitize(customerEmail);
+    final cleanCustomerAddress = _sanitize(customerAddress);
+    final cleanCustomerIdNumber = _sanitize(customerIdNumber);
+    final cleanShopName = _sanitize(shopName);
+    final cleanShopEmail = _sanitize(shopEmail);
+    final cleanPreparedBy = _sanitize(preparedBy);
+    final cleanItems = items
+        .map((item) => InvoicePdfItem(
+              name: _sanitize(item.name),
+              code: _sanitize(item.code),
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              tax: item.tax,
+              imeiSerial: _sanitize(item.imeiSerial),
+            ))
+        .toList();
+
+    final serialCount = cleanItems
         .where((item) => item.imeiSerial.trim().isNotEmpty)
         .length;
 
@@ -45,39 +68,39 @@ abstract final class PurchaseReceiptPdf {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(34, 32, 34, 30),
         build: (context) => [
-          _masthead(shopPhone, shopAddress),
+          _masthead(cleanShopPhone, cleanShopAddress),
           pw.SizedBox(height: 16),
           pw.Container(height: 1, color: _rule),
           pw.SizedBox(height: 16),
           _metaStrip(
             createdAt,
-            preparedBy,
-            items.length,
+            cleanPreparedBy,
+            cleanItems.length,
             serialCount,
-            currencyCode,
+            cleanCurrency,
           ),
           pw.SizedBox(height: 16),
           _panels(
-            customerName: customerName,
-            customerPhone: customerPhone,
-            customerEmail: customerEmail,
-            customerAddress: customerAddress,
-            customerIdNumber: customerIdNumber,
-            shopName: shopName,
-            shopAddress: shopAddress,
-            shopPhone: shopPhone,
-            shopEmail: shopEmail,
+            customerName: cleanCustomerName,
+            customerPhone: cleanCustomerPhone,
+            customerEmail: cleanCustomerEmail,
+            customerAddress: cleanCustomerAddress,
+            customerIdNumber: cleanCustomerIdNumber,
+            shopName: cleanShopName,
+            shopAddress: cleanShopAddress,
+            shopPhone: cleanShopPhone,
+            shopEmail: cleanShopEmail,
           ),
           pw.SizedBox(height: 20),
-          _itemsTable(items, currencyCode),
+          _itemsTable(cleanItems, cleanCurrency),
           pw.SizedBox(height: 18),
-          _totalBand(totalAmount, currencyCode),
+          _totalBand(totalAmount, cleanCurrency),
           pw.SizedBox(height: 26),
           pw.Container(height: 1, color: _rule),
           pw.SizedBox(height: 16),
           _thanks(),
           pw.SizedBox(height: 18),
-          _footerBar(shopPhone, shopEmail),
+          _footerBar(cleanShopPhone, cleanShopEmail),
         ],
       ),
     );
@@ -569,5 +592,45 @@ abstract final class PurchaseReceiptPdf {
     if (hour == 0) hour = 12;
     final minute = date.minute.toString().padLeft(2, '0');
     return '${hour.toString().padLeft(2, '0')}:$minute ${isPm ? 'PM' : 'AM'}';
+  }
+
+  static String _safeCurrency(String code) {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return 'USD';
+    if (trimmed.contains('৳')) return 'BDT';
+    if (trimmed.contains('€')) return 'EUR';
+    if (trimmed.contains('₹')) return 'INR';
+    if (trimmed.contains('₨')) return 'PKR';
+    if (trimmed.contains('د.إ')) return 'AED';
+    if (trimmed.contains('﷼')) return 'SAR';
+    if (trimmed.codeUnits.any((u) => u > 255)) {
+      return 'USD';
+    }
+    return trimmed;
+  }
+
+  static String _sanitize(String text) {
+    if (text.isEmpty) return text;
+    var sanitized = text
+        .replaceAll('•', '|')
+        .replaceAll('·', '|')
+        .replaceAll('▪', '|')
+        .replaceAll('►', '|')
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('‘', "'")
+        .replaceAll('’', "'")
+        .replaceAll('–', '-')
+        .replaceAll('—', '-');
+
+    final buf = StringBuffer();
+    for (final rune in sanitized.runes) {
+      if (rune <= 255) {
+        buf.writeCharCode(rune);
+      } else {
+        buf.write(' ');
+      }
+    }
+    return buf.toString();
   }
 }

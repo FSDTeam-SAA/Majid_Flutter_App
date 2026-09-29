@@ -21,6 +21,7 @@ UserProfile userProfileFromJson(Map<String, dynamic> json) {
     phone: json['phone']?.toString() ?? '',
     imageUrl: imageUrl,
     currencyCode: json['currency']?.toString() ?? 'GBP',
+    invoiceTemplate: json['invoiceTemplate']?.toString() ?? 'default',
   );
 }
 
@@ -45,6 +46,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? shopAddress,
     String? imagePath,
     String? currencyCode,
+    String? invoiceTemplate,
   }) async {
     try {
       final data = <String, dynamic>{
@@ -58,6 +60,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       if (shopName != null) data['shopName'] = shopName;
       if (shopAddress != null) data['shopAddress'] = shopAddress;
       if (currencyCode != null) data['currency'] = currencyCode;
+      if (invoiceTemplate != null) data['invoiceTemplate'] = invoiceTemplate;
 
       final payload = imagePath != null && imagePath.isNotEmpty
           ? FormData.fromMap({

@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/utils/shop_logo_settings.dart';
+import '../../../../core/utils/invoice_template_settings.dart';
+import 'invoice_template_settings_page.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
@@ -169,6 +171,8 @@ class _InvoiceLogoSettingsPageState extends State<InvoiceLogoSettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildTemplateNavigationCard(),
+                        const SizedBox(height: 16),
                         _buildLogoSourceCard(),
                         const SizedBox(height: 16),
                         _buildQuickFitCard(),
@@ -211,6 +215,56 @@ class _InvoiceLogoSettingsPageState extends State<InvoiceLogoSettingsPage> {
                 ),
               )
             : const Text('Save', style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+
+  Widget _buildTemplateNavigationCard() {
+    final tpl = InvoiceTemplateSettings.getTemplate(_profileCtrl.invoiceTemplate);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.palette_outlined,
+                color: AppColors.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Invoice Template Design',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Active: ${tpl.name} (${tpl.categoryName})',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const InvoiceTemplateSettingsPage()),
+            ),
+            child: const Text('Change'),
+          ),
+        ],
       ),
     );
   }

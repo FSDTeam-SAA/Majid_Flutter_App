@@ -88,6 +88,28 @@ abstract final class VerifiedInvoicePdf {
     String? consentReference,
   }) async {
     final pdf = pw.Document();
+    currencySymbol = _safeCurrency(currencySymbol);
+    shopName = _sanitize(shopName);
+    shopPhone = _sanitize(shopPhone);
+    shopEmail = _sanitize(shopEmail);
+    customerName = _sanitize(customerName);
+    customerPhone = _sanitize(customerPhone);
+    customerEmail = _sanitize(customerEmail);
+    customerAddress = _sanitize(customerAddress);
+    paymentLabel = _sanitize(paymentLabel);
+    subtitle = _sanitize(subtitle);
+    items = items
+        .map(
+          (item) => VerifiedInvoiceItem(
+            name: _sanitize(item.name),
+            imei: _sanitize(item.imei),
+            quantity: item.quantity,
+            lineTotal: item.lineTotal,
+            isVerified: item.isVerified,
+          ),
+        )
+        .toList();
+
     final subtotal = items.fold<double>(0, (sum, item) => sum + item.lineTotal);
     final money = _money(currencySymbol, subtotal);
 
@@ -757,8 +779,44 @@ abstract final class VerifiedInvoicePdf {
     );
   }
 
-  static String _money(String symbol, double amount) =>
-      '$symbol${amount.toStringAsFixed(2)}';
+  static String _safeCurrency(String symbol) {
+    final s = symbol.trim();
+    if (s == r'$' || s == 'USD') return r'$';
+    if (s == '£' || s == 'GBP') return '£';
+    if (s == r'A$' || s == 'AUD') return r'A$';
+    if (s == r'C$' || s == 'CAD') return r'C$';
+    if (s == '€' || s == 'EUR') return 'EUR ';
+    if (s == '৳' || s == 'BDT') return 'BDT ';
+    if (s == '₹' || s == 'INR') return 'INR ';
+    if (s == '₨' || s == 'PKR') return 'PKR ';
+    if (s.contains('د.إ') || s == 'AED') return 'AED ';
+    if (s.contains('﷼') || s == 'SAR') return 'SAR ';
+
+    if (s.runes.any((r) => r > 255)) {
+      return '';
+    }
+    return s.isEmpty ? '' : (s.length > 1 ? '$s ' : s);
+  }
+
+  static String _sanitize(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .replaceAll('•', '|')
+        .replaceAll('·', '|')
+        .replaceAll('▪', '-')
+        .replaceAll('►', '>')
+        .replaceAll('–', '-')
+        .replaceAll('—', '-')
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('‘', "'")
+        .replaceAll('’', "'");
+  }
+
+  static String _money(String symbol, double amount) {
+    final safe = _safeCurrency(symbol);
+    return '$safe${amount.toStringAsFixed(2)}';
+  }
 
   static String _orNa(String value) =>
       value.trim().isEmpty ? 'N/A' : value.trim();
