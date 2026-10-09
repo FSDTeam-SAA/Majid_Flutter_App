@@ -46,51 +46,57 @@ abstract final class DeviceCertificatePdf {
     }
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(36, 34, 36, 30),
-        build: (context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
+        footer: (_) => pw.Column(
           children: [
-            _headerBand(logo, imei),
-            pw.SizedBox(height: 22),
-            _panel(
-              'Device Details',
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Container(
-                    width: 74,
-                    height: 74,
-                    alignment: pw.Alignment.center,
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: _border),
-                      borderRadius: pw.BorderRadius.circular(6),
-                    ),
-                    child: _shieldGlyph(20),
-                  ),
-                  pw.SizedBox(width: 26),
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        _detailRow('Device:', _orNa(deviceName)),
-                        _detailRow('IMEI:', _orNa(imei)),
-                        _detailRow('Serial Number:', _orNa(serialNumber)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            _footer(imei),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'This is not a live report. IMO scan is not responsible for current status. We are responsible for the report being checked.',
+              textAlign: pw.TextAlign.center,
+              style: const pw.TextStyle(fontSize: 8, color: _slate),
             ),
-            pw.SizedBox(height: 18),
-            _panel('Verification Summary', _summaryGrid(fields)),
-            pw.SizedBox(height: 18),
-            _riskPanel(level, score, riskDescription),
-            pw.SizedBox(height: 26),
-            _footer(imei, provider, serviceId),
           ],
         ),
+        build: (context) => [
+          _headerBand(logo, imei),
+          pw.SizedBox(height: 14),
+          _panel(
+            'Device Details',
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Container(
+                  width: 74,
+                  height: 74,
+                  alignment: pw.Alignment.center,
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: _border),
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: _shieldGlyph(20),
+                ),
+                pw.SizedBox(width: 26),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      _detailRow('Device:', _orNa(deviceName)),
+                      _detailRow('IMEI:', _orNa(imei)),
+                      _detailRow('Serial Number:', _orNa(serialNumber)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          _panel('Verification Summary', _summaryGrid(fields)),
+          pw.SizedBox(height: 12),
+          _riskPanel(level, score, riskDescription),
+        ],
       ),
     );
 
@@ -164,10 +170,7 @@ abstract final class DeviceCertificatePdf {
           pw.Container(
             width: double.infinity,
             color: _panelHead,
-            padding: const pw.EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 11,
-            ),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: pw.Text(
               title,
               style: pw.TextStyle(
@@ -179,7 +182,7 @@ abstract final class DeviceCertificatePdf {
           ),
           pw.Container(
             width: double.infinity,
-            padding: const pw.EdgeInsets.all(16),
+            padding: const pw.EdgeInsets.all(12),
             child: body,
           ),
         ],
@@ -239,7 +242,7 @@ abstract final class DeviceCertificatePdf {
       final right = i + 1 < entries.length ? entries[i + 1] : null;
       rows.add(
         pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 14),
+          padding: const pw.EdgeInsets.only(bottom: 10),
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
@@ -307,10 +310,7 @@ abstract final class DeviceCertificatePdf {
           pw.Container(
             width: double.infinity,
             color: _amberHead,
-            padding: const pw.EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 11,
-            ),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: pw.Text(
               'Risk Analysis (AI Powered)',
               style: pw.TextStyle(
@@ -322,7 +322,7 @@ abstract final class DeviceCertificatePdf {
           ),
           pw.Container(
             width: double.infinity,
-            padding: const pw.EdgeInsets.all(16),
+            padding: const pw.EdgeInsets.all(12),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -465,7 +465,7 @@ abstract final class DeviceCertificatePdf {
     );
   }
 
-  static pw.Widget _footer(String imei, String provider, String serviceId) {
+  static pw.Widget _footer(String imei) {
     final tail = imei.length > 8 ? imei.substring(imei.length - 8) : imei;
 
     return pw.Column(
@@ -485,11 +485,6 @@ abstract final class DeviceCertificatePdf {
               style: const pw.TextStyle(fontSize: 9, color: _slate),
             ),
           ],
-        ),
-        pw.SizedBox(height: 5),
-        pw.Text(
-          'Provider: $provider | Service ID: $serviceId',
-          style: const pw.TextStyle(fontSize: 8, color: _slate),
         ),
       ],
     );

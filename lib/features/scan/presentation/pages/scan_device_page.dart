@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -19,7 +20,9 @@ import '../widgets/scan_search_bar.dart';
 import 'device_report_page.dart';
 
 class ScanDevicePage extends StatefulWidget {
-  const ScanDevicePage({super.key});
+  const ScanDevicePage({super.key, this.repository});
+
+  final ImeiRepository? repository;
 
   @override
   State<ScanDevicePage> createState() => _ScanDevicePageState();
@@ -28,6 +31,8 @@ class ScanDevicePage extends StatefulWidget {
 final List<ScanItem> sessionScans = [];
 
 class _ScanDevicePageState extends State<ScanDevicePage> {
+  static const _recentPreviewLimit = 6;
+  static const _historyPullThreshold = 32.0;
   final _controller = TextEditingController();
   late final ImeiRepository _imeiRepository;
   bool _dropdownOpen = false;
@@ -39,11 +44,15 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
   List<ScanItem> _recentScans = [];
   List<ScanDropdownOption> _services = [];
   ScanDropdownOption? _selectedService;
+  bool _openingHistory = false;
+  bool _historyNavigationScheduled = false;
+  double _historyPullDistance = 0;
 
   @override
   void initState() {
     super.initState();
-    _imeiRepository = ImeiRepositoryImpl(ApiClient(baseUrl));
+    _imeiRepository =
+        widget.repository ?? ImeiRepositoryImpl(ApiClient(baseUrl));
     _loadScanData();
   }
 
@@ -141,7 +150,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       }
       final newScan = _buildScanItemFromResponse(scanResult, imei);
       if (newScan != null) {
-        final existed = sessionScans.any((s) => s.imei == imei) ||
+        final existed =
+            sessionScans.any((s) => s.imei == imei) ||
             _recentScans.any((s) => s.imei == imei);
         sessionScans.removeWhere((s) => s.imei == imei);
         sessionScans.insert(0, newScan);
@@ -256,9 +266,72 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     }
   }
 
+  bool get _canScrollToHistory =>
+      !_isLoading &&
+      _errorMessage.isEmpty &&
+      !_isScanning &&
+      !_isExtractingImei &&
+      !_dropdownOpen &&
+      !_openingHistory &&
+      _recentScans.length >= _recentPreviewLimit &&
+      ModalRoute.of(context)?.isCurrent == true;
+
+  bool _handleScanScroll(ScrollNotification notification) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    if (notification is ScrollStartNotification ||
+        notification is ScrollEndNotification ||
+        !_canScrollToHistory) {
+      _historyPullDistance = 0;
+      return false;
+    }
+
+    if (notification is OverscrollNotification &&
+        notification.dragDetails != null &&
+        notification.overscroll > 0) {
+      // Clamping scroll physics report the extra drag as overscroll.
+      _historyPullDistance += notification.overscroll;
+    } else if (notification is ScrollUpdateNotification &&
+        notification.dragDetails != null) {
+      // iOS bouncing physics move the position beyond the bottom edge.
+      _historyPullDistance =
+          (notification.metrics.pixels - notification.metrics.maxScrollExtent)
+              .clamp(0.0, double.infinity);
+    }
+
+    if (_historyPullDistance >= _historyPullThreshold &&
+        !_historyNavigationScheduled) {
+      _historyNavigationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _historyNavigationScheduled = false;
+        if (mounted && _canScrollToHistory) unawaited(_openAllScans());
+      });
+    }
+    return false;
+  }
+
+  Future<void> _openAllScans() async {
+    if (!mounted || _openingHistory) return;
+    _openingHistory = true;
+    _historyPullDistance = 0;
+    try {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AllScanHistoryPage(repository: _imeiRepository),
+        ),
+      );
+      if (mounted) await _loadScanData();
+    } finally {
+      _openingHistory = false;
+      _historyPullDistance = 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final recentPreview = _recentScans.take(5).toList();
+    final recentPreview = _recentScans.take(_recentPreviewLimit).toList();
 
     return GradientScaffold(
       child: Column(
@@ -269,105 +342,103 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
               color: AppColors.primary,
               backgroundColor: AppColors.cardBackground,
               onRefresh: _loadScanData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  _floatingNavClearance(context),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 20),
-                    ScanSearchBar(
-                      controller: _controller,
-                      onScanTap: _openBarcodeScanner,
-                    ),
-                    SizedBox(height: 12),
-                    CarrierDropdown(
-                      isOpen: _dropdownOpen,
-                      options: _services.isEmpty
-                          ? verificationOptions
-                          : _services,
-                      selected: _selectedService,
-                      onToggle: () =>
-                          setState(() => _dropdownOpen = !_dropdownOpen),
-                      onSelect: (option) => setState(() {
-                        _selectedService = option;
-                        _dropdownOpen = false;
-                      }),
-                    ),
-                    SizedBox(height: 24),
-                    _buildScanNowButton(),
-                    SizedBox(height: 12),
-                    _buildUploadButton(),
-                    SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Recent Scans',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AllScanHistoryPage(),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _handleScanScroll,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    _floatingNavClearance(context),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 20),
+                      ScanSearchBar(
+                        controller: _controller,
+                        onScanTap: _openBarcodeScanner,
+                      ),
+                      SizedBox(height: 12),
+                      CarrierDropdown(
+                        isOpen: _dropdownOpen,
+                        options: _services.isEmpty
+                            ? verificationOptions
+                            : _services,
+                        selected: _selectedService,
+                        onToggle: () =>
+                            setState(() => _dropdownOpen = !_dropdownOpen),
+                        onSelect: (option) => setState(() {
+                          _selectedService = option;
+                          _dropdownOpen = false;
+                        }),
+                      ),
+                      SizedBox(height: 24),
+                      _buildScanNowButton(),
+                      SizedBox(height: 12),
+                      _buildUploadButton(),
+                      SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Recent Scans',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
-                            if (mounted) _loadScanData();
-                          },
-                          child: Text(
-                            'See All ($_totalScansCount)',
-                            style: TextStyle(
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _openAllScans,
+                            child: Text(
+                              'See All ($_totalScansCount)',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 14),
+                      if (_isLoading) ...[
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: CircularProgressIndicator(
                               color: AppColors.primary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 14),
-                    if (_isLoading) ...[
-                      Center(
-                        child: Padding(
+                      ] else if (_errorMessage.isNotEmpty) ...[
+                        _buildError(),
+                      ] else if (_recentScans.isEmpty) ...[
+                        Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
+                          child: Center(
+                            child: Text(
+                              'No scans yet',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
                           ),
                         ),
-                      ),
-                    ] else if (_errorMessage.isNotEmpty) ...[
-                      _buildError(),
-                    ] else if (_recentScans.isEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Center(
-                          child: Text(
-                            'No scans yet',
-                            style: TextStyle(color: AppColors.textSecondary),
+                      ] else ...[
+                        ...recentPreview.map(
+                          (item) => ScanItemCard(
+                            item: item,
+                            onTap: () => _openRecentScan(item),
                           ),
                         ),
-                      ),
-                    ] else ...[
-                      ...recentPreview.map(
-                        (item) => ScanItemCard(
-                          item: item,
-                          onTap: () => _openRecentScan(item),
-                        ),
-                      ),
+                      ],
+                      SizedBox(height: 20),
                     ],
-                    SizedBox(height: 20),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -590,7 +661,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => DeviceReportPage(report: item.report),
+          builder: (_) =>
+              DeviceReportPage(report: {...item.report, 'fromHistory': true}),
         ),
       );
       return;
@@ -632,7 +704,10 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
       Navigator.pop(context);
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)),
+        MaterialPageRoute(
+          builder: (_) =>
+              DeviceReportPage(report: {...report, 'fromHistory': true}),
+        ),
       );
     } on ImeiScanException catch (e) {
       if (mounted) {

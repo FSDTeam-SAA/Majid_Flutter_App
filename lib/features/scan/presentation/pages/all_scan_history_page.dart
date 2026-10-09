@@ -12,11 +12,18 @@ import '../../data/repositories/imei_repository_impl.dart';
 import '../../domain/repositories/imei_repository.dart';
 import '../controller/scan_data.dart';
 import 'device_report_page.dart';
+import 'barcode_scanner_page.dart';
 import 'scan_device_page.dart' show sessionScans;
 import '../widgets/scan_item_card.dart';
 
 class AllScanHistoryPage extends StatefulWidget {
-  const AllScanHistoryPage({super.key});
+  const AllScanHistoryPage({
+    super.key,
+    this.initialQuery = '',
+    this.repository,
+  });
+  final String initialQuery;
+  final ImeiRepository? repository;
 
   @override
   State<AllScanHistoryPage> createState() => _AllScanHistoryPageState();
@@ -28,11 +35,79 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
   String _errorMessage = '';
   int _totalCount = 0;
   List<ScanItem> _scans = [];
+  late final _search = TextEditingController(text: widget.initialQuery);
+  int _page = 1;
+  int _totalPages = 1;
+  bool _loadingOlder = false;
+  List<ScanItem> get _matches {
+    final query = _search.text.trim().toLowerCase();
+    return _scans
+        .where(
+          (s) => '${s.name} ${s.imei} ${s.report['customerName'] ?? ''}'
+              .toLowerCase()
+              .contains(query),
+        )
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scanSearch() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (!mounted || code == null) return;
+    setState(() => _search.text = code);
+    await _loadOlder(searchAll: true);
+  }
+
+  Future<void> _loadOlder({bool searchAll = false}) async {
+    if (_loadingOlder || _page >= _totalPages) return;
+    setState(() => _loadingOlder = true);
+    try {
+      do {
+        final result = await _imeiRepository.getHistoryResult(
+          page: _page + 1,
+          limit: 50,
+        );
+        if (!mounted) return;
+        final known = _scans
+            .map((s) => s.reportId)
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        setState(() {
+          _scans.addAll(
+            result.items.where(
+              (s) => s.reportId.isEmpty || !known.contains(s.reportId),
+            ),
+          );
+          _page = result.page;
+          _totalPages = result.totalPage;
+        });
+      } while (searchAll && mounted && _page < _totalPages);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load older reports. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingOlder = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _imeiRepository = ImeiRepositoryImpl(ApiClient(baseUrl));
+    _imeiRepository =
+        widget.repository ?? ImeiRepositoryImpl(ApiClient(baseUrl));
     _fetchScans();
   }
 
@@ -44,6 +119,9 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
 
     try {
       final result = await _imeiRepository.getHistoryResult(page: 1, limit: 50);
+      if (!mounted) return;
+      _page = result.page;
+      _totalPages = result.totalPage;
       final scans = result.items;
 
       scans.sort((a, b) {
@@ -52,9 +130,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
         return bDate.compareTo(aDate);
       });
 
-      final apiScans = scans
-          .where((s) => s.name != 'Unknown Device' && s.name != 'IMEI Check')
-          .toList();
+      final apiScans = scans;
 
       final apiImeis = apiScans.map((s) => s.imei).toSet();
       final extraSessionScans = sessionScans
@@ -73,11 +149,13 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
         _totalCount = result.total + extraSessionScans.length;
       });
     } on DioException catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage =
             e.response?.data?['message'] ?? 'Failed to load recent scans';
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -89,7 +167,8 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => DeviceReportPage(report: item.report),
+          builder: (_) =>
+              DeviceReportPage(report: {...item.report, 'fromHistory': true}),
         ),
       );
       return;
@@ -126,7 +205,10 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
       Navigator.pop(context);
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => DeviceReportPage(report: report)),
+        MaterialPageRoute(
+          builder: (_) =>
+              DeviceReportPage(report: {...report, 'fromHistory': true}),
+        ),
       );
     } on ImeiScanException catch (e) {
       if (mounted) {
@@ -156,7 +238,35 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(title: 'All Scans'),
+          const AppHeader(title: 'Device Reports'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _loadOlder(searchAll: true),
+              decoration: InputDecoration(
+                hintText:
+                    'Search IMEI or device · press Search for older reports',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  onPressed: _scanSearch,
+                ),
+              ),
+            ),
+          ),
+          if (_search.text.trim().isNotEmpty && _page < _totalPages)
+            TextButton(
+              onPressed: _loadingOlder
+                  ? null
+                  : () => _loadOlder(searchAll: true),
+              child: Text(
+                _loadingOlder
+                    ? 'Searching older reports...'
+                    : 'Search all older reports',
+              ),
+            ),
           Expanded(child: _buildBody()),
         ],
       ),
@@ -206,7 +316,7 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ).entrance(enableScale: false),
           const SizedBox(height: 14),
-          if (_scans.isEmpty)
+          if (_matches.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 48),
@@ -217,11 +327,16 @@ class _AllScanHistoryPageState extends State<AllScanHistoryPage> {
               ),
             )
           else
-            ..._scans.indexed.map(
+            ..._matches.indexed.map(
               (entry) => ScanItemCard(
                 item: entry.$2,
                 onTap: () => _openScan(entry.$2),
               ).entrance(index: entry.$1, begin: const Offset(0, 0.05)),
+            ),
+          if (_page < _totalPages)
+            TextButton(
+              onPressed: _loadingOlder ? null : () => _loadOlder(),
+              child: Text(_loadingOlder ? 'Loading...' : 'Load older reports'),
             ),
         ],
       ),

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,12 +13,12 @@ class TokenManager {
     required String accessToken,
     required String refreshToken,
   }) async {
+    await clearStaffSession();
     await _storage.write(key: _accessTokenKey, value: accessToken);
     await _storage.write(key: _refreshKey, value: refreshToken);
   }
 
   static Future<void> accessToken(String token) async {
-    debugPrint("Saving token is $token");
     await _storage.write(key: _accessTokenKey, value: token);
   }
 
@@ -44,10 +43,20 @@ class TokenManager {
   }
 
   static Future<void> clearToken() async {
+    await clearStaffSession();
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshKey);
     await _storage.delete(key: _role);
   }
+
+  static Future<String?> getStaffSession() =>
+      _storage.read(key: 'staff_session_v1');
+
+  static Future<void> saveStaffSession(String session) =>
+      _storage.write(key: 'staff_session_v1', value: session);
+
+  static Future<void> clearStaffSession() =>
+      _storage.delete(key: 'staff_session_v1');
 
   static Future<bool> isLoggedIn() async {
     final token = await _storage.read(key: _accessTokenKey);

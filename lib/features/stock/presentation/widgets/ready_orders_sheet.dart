@@ -64,7 +64,7 @@ class _ReadyOrdersSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ready for collection',
+                        'Orders',
                         style: CheckoutTokens.text(
                           size: 18,
                           weight: FontWeight.w800,

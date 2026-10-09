@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/network/api_service/commerce_events.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 
 import '../../../../core/network/api_service/api_client.dart';
@@ -46,6 +47,13 @@ class _RepairPageState extends State<RepairPage> {
     super.initState();
     _api = ApiClient(baseUrl);
     _fetchRepairs();
+    CommerceEvents.revision.addListener(_fetchRepairs);
+  }
+
+  @override
+  void dispose() {
+    CommerceEvents.revision.removeListener(_fetchRepairs);
+    super.dispose();
   }
 
   /// Rows shown per section before the See All button takes over.
@@ -77,6 +85,16 @@ class _RepairPageState extends State<RepairPage> {
       _allPendingRepairs.length > _pendingRepairs.length;
 
   String? _repairId(RepairItem item) => item.raw['_id']?.toString();
+
+  Future<void> _openRepairDetails(Map<String, dynamic> repair) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RepairRequestDetailsPage(repair: repair),
+      ),
+    );
+    if (mounted) await _fetchRepairs();
+  }
 
   Future<void> _nudgeTechnician(RepairItem item) async {
     final id = _repairId(item);
@@ -221,58 +239,27 @@ class _RepairPageState extends State<RepairPage> {
     final code = scanned?.trim();
     if (code == null || code.isEmpty || !mounted) return;
 
-    final localMatch = _repairs.firstWhere(
-      (item) => item.imei == code || _repairId(item) == code,
-      orElse: () => RepairItem(
-        name: '',
-        brand: '',
-        issueLabel: '',
-        issueDesc: '',
-        date: '',
-        status: '',
+    final uri = Uri.tryParse(code);
+    final query = uri != null && uri.hasScheme && uri.pathSegments.isNotEmpty
+        ? uri.pathSegments.last
+        : code;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AllRepairRequestsPage(initialQuery: query),
       ),
     );
-
-    if (localMatch.raw.isNotEmpty) {
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RepairRequestDetailsPage(repair: localMatch.raw),
-        ),
-      );
-      return;
-    }
-
-    // Not in the currently loaded page of results — try it as a request id.
-    try {
-      final res = await _api.get(RepairRequestEndpoints.byId(code));
-      final data = res.data['data'];
-      if (data is Map && mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RepairRequestDetailsPage(
-              repair: Map<String, dynamic>.from(data),
-            ),
-          ),
-        );
-        return;
-      }
-    } catch (_) {
-      // fall through to not-found message
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No repair request found for this code')),
-    );
+    if (mounted) await _fetchRepairs();
   }
 
   Future<void> _showCreateRepairSheet() async {
     final deviceCtrl = TextEditingController();
     final imeiCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    final additionalIssues = <TextEditingController>[];
+    List<String> previousDevices = [];
+    bool historyLoading = false;
+    String? historyError;
     final firstNameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
@@ -282,12 +269,14 @@ class _RepairPageState extends State<RepairPage> {
     Customer? selectedCustomer;
 
     final previousProblems = await _fetchPreviousProblems();
+    final customerOptions = await _fetchCustomerOptions();
 
     if (!mounted) return;
 
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.cardBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -296,226 +285,405 @@ class _RepairPageState extends State<RepairPage> {
         bool isSaving = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                18,
-                20,
-                MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: SingleChildScrollView(
+            Future<void> chooseCustomer(Customer? customer) async {
+              setSheetState(() {
+                selectedCustomer = customer;
+                previousDevices = [];
+                historyError = null;
+                historyLoading = customer != null;
+                if (customer != null) {
+                  firstNameCtrl.text = customer.fullName;
+                  emailCtrl.text = customer.email;
+                  phoneCtrl.text = customer.phone;
+                }
+              });
+              if (customer == null) return;
+              try {
+                final res = await _api.get(
+                  '$baseApiUrl/repair-requests/customer-history',
+                  query: {'phone': customer.phone, 'email': customer.email},
+                );
+                if (!ctx.mounted || selectedCustomer?.id != customer.id) return;
+                final data = res.data['data'];
+                setSheetState(
+                  () => previousDevices = data is Map
+                      ? (data['devices'] as List? ?? [])
+                            .map((d) => d.toString())
+                            .toList()
+                      : [],
+                );
+              } catch (_) {
+                if (ctx.mounted && selectedCustomer?.id == customer.id) {
+                  setSheetState(
+                    () =>
+                        historyError = 'Could not load customer repair history',
+                  );
+                }
+              } finally {
+                if (ctx.mounted && selectedCustomer?.id == customer.id) {
+                  setSheetState(() => historyLoading = false);
+                }
+              }
+            }
+
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  18,
+                  20,
+                  MediaQuery.of(ctx).viewInsets.bottom + 20,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'New Repair Request',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Back',
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.pop(ctx, false),
+                          icon: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'New Repair Request',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: 16),
-                    _sheetField(
-                      deviceCtrl,
-                      'Device Model',
-                      'e.g. iPhone 14 Pro',
-                    ),
-                    SizedBox(height: 10),
-                    _sheetField(
-                      imeiCtrl,
-                      'IMEI Number (Optional)',
-                      'Enter or scan IMEI',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: AppColors.primary,
-                        ),
-                        onPressed: () async {
-                          final scanned = await Navigator.push<String>(
-                            ctx,
-                            MaterialPageRoute(
-                              builder: (_) => const BarcodeScannerPage(),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _sheetField(
+                              deviceCtrl,
+                              'Device Model',
+                              'e.g. iPhone 14 Pro',
                             ),
-                          );
-                          if (scanned != null && scanned.trim().isNotEmpty) {
-                            setSheetState(() => imeiCtrl.text = scanned.trim());
-                          }
-                        },
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    _sheetSelectField(
-                      label: 'Select Problem',
-                      value: selectedProblem,
-                      placeholder: 'Search or select a previous problem',
-                      onTap: () async {
-                        final choice = await _showSearchableProblemSheet(
-                          ctx,
-                          previousProblems,
-                        );
-                        if (choice != null) {
-                          setSheetState(() {
-                            selectedProblem = choice;
-                            if (descCtrl.text.trim().isEmpty) {
-                              descCtrl.text = choice;
-                            }
-                          });
-                        }
-                      },
-                    ),
-                    SizedBox(height: 10),
-                    _sheetSelectField(
-                      label: 'Technician',
-                      value: selectedTechnician?.fullName,
-                      placeholder: 'Select staff',
-                      onTap: () => _openTechnicianPicker(
-                        ctx,
-                        (staff) =>
-                            setSheetState(() => selectedTechnician = staff),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    _sheetField(
-                      descCtrl,
-                      'Problem Description',
-                      'Describe the problem...',
-                      maxLines: 3,
-                    ),
-                    SizedBox(height: 10),
-                    _sheetSelectField(
-                      label: 'Customer',
-                      value: selectedCustomer == null
-                          ? null
-                          : (selectedCustomer!.fullName.isEmpty
-                                ? selectedCustomer!.email
-                                : selectedCustomer!.fullName),
-                      placeholder: 'Select existing customer (optional)',
-                      onTap: () => _openCustomerPicker(ctx, (customer) {
-                        setSheetState(() {
-                          selectedCustomer = customer;
-                          if (customer != null) {
-                            firstNameCtrl.text = customer.fullName;
-                            emailCtrl.text = customer.email;
-                            phoneCtrl.text = customer.phone;
-                          }
-                        });
-                      }),
-                    ),
-                    SizedBox(height: 10),
-                    _sheetField(firstNameCtrl, 'Customer Name', 'First name'),
-                    SizedBox(height: 10),
-                    _sheetField(
-                      emailCtrl,
-                      'Customer Email',
-                      'email@example.com',
-                    ),
-                    SizedBox(height: 10),
-                    _sheetField(phoneCtrl, 'Phone Number', '+44...'),
-                    SizedBox(height: 10),
-                    _sheetField(
-                      priceCtrl,
-                      'Repair Price',
-                      '0.00',
-                      keyboard: TextInputType.number,
-                    ),
-                    SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isSaving
-                            ? null
-                            : () async {
-                                if (deviceCtrl.text.trim().isEmpty ||
-                                    descCtrl.text.trim().isEmpty) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Device and description are required',
-                                      ),
+                            SizedBox(height: 10),
+                            _sheetField(
+                              imeiCtrl,
+                              'IMEI Number (Optional)',
+                              'Enter or scan IMEI',
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  Icons.qr_code_scanner_rounded,
+                                  color: AppColors.primary,
+                                ),
+                                onPressed: () async {
+                                  final scanned = await Navigator.push<String>(
+                                    ctx,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const BarcodeScannerPage(),
                                     ),
                                   );
-                                  return;
-                                }
-                                setSheetState(() => isSaving = true);
-                                try {
-                                  await _api.post(
-                                    RepairRequestEndpoints.add,
-                                    data: {
-                                      'deviceModel': deviceCtrl.text.trim(),
-                                      if (imeiCtrl.text.trim().isNotEmpty)
-                                        'IMEINumber': imeiCtrl.text.trim(),
-                                      'description': descCtrl.text.trim(),
-                                      'firstName': firstNameCtrl.text.trim(),
-                                      'email': emailCtrl.text.trim(),
-                                      'phoneNumber': phoneCtrl.text.trim(),
-                                      'price':
-                                          double.tryParse(
-                                            priceCtrl.text.trim(),
-                                          ) ??
-                                          0,
-                                      if (selectedTechnician != null)
-                                        'technicianId': selectedTechnician!.id,
-                                      if (selectedTechnician != null)
-                                        'technicianName':
-                                            selectedTechnician!.fullName,
-                                    },
-                                  );
-                                  SoundEffects.playNewOrderBooked();
-                                  if (ctx.mounted) Navigator.pop(ctx, true);
-                                } on DioException catch (e) {
-                                  if (ctx.mounted) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          e.response?.data?['message'] ??
-                                              'Failed to create repair request',
-                                        ),
-                                      ),
+                                  if (scanned != null &&
+                                      scanned.trim().isNotEmpty) {
+                                    setSheetState(
+                                      () => imeiCtrl.text = scanned.trim(),
                                     );
                                   }
-                                } catch (e) {
-                                  if (ctx.mounted) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to create repair request',
-                                        ),
-                                      ),
+                                },
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            _sheetSelectField(
+                              label: 'Select Problem',
+                              value: selectedProblem,
+                              placeholder:
+                                  'Search or select a previous problem',
+                              onTap: () async {
+                                final choice =
+                                    await _showSearchableProblemSheet(
+                                      ctx,
+                                      previousProblems,
                                     );
-                                  }
-                                } finally {
-                                  if (ctx.mounted) {
-                                    setSheetState(() => isSaving = false);
-                                  }
+                                if (choice != null) {
+                                  setSheetState(() {
+                                    selectedProblem = choice;
+                                    if (descCtrl.text.trim().isEmpty) {
+                                      descCtrl.text = choice;
+                                    }
+                                  });
                                 }
                               },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.surfaceForeground,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: isSaving
-                            ? SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: AppColors.surfaceForeground,
-                                ),
-                              )
-                            : Text(
-                                'Submit',
-                                style: TextStyle(
-                                  color: AppColors.surfaceForeground,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
+                            ),
+                            SizedBox(height: 10),
+                            _sheetSelectField(
+                              label: 'Technician',
+                              value: selectedTechnician?.fullName,
+                              placeholder: 'Select staff',
+                              onTap: () => _openTechnicianPicker(
+                                ctx,
+                                (staff) => setSheetState(
+                                  () => selectedTechnician = staff,
                                 ),
                               ),
+                            ),
+                            SizedBox(height: 10),
+                            _sheetField(
+                              descCtrl,
+                              'Problem Description',
+                              'Describe the problem...',
+                              maxLines: 3,
+                            ),
+                            for (var i = 0; i < additionalIssues.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _sheetField(
+                                        additionalIssues[i],
+                                        'Issue ${i + 2}',
+                                        'Describe another issue',
+                                        maxLines: 2,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                      ),
+                                      onPressed: () => setSheetState(() {
+                                        additionalIssues.removeAt(i).dispose();
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            TextButton.icon(
+                              onPressed: () => setSheetState(
+                                () => additionalIssues.add(
+                                  TextEditingController(),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add another issue'),
+                            ),
+                            SizedBox(height: 10),
+                            _sheetSelectField(
+                              label: 'Customer',
+                              value: selectedCustomer == null
+                                  ? null
+                                  : (selectedCustomer!.fullName.isEmpty
+                                        ? selectedCustomer!.email
+                                        : selectedCustomer!.fullName),
+                              placeholder:
+                                  'Select existing customer (optional)',
+                              onTap: () =>
+                                  _openCustomerPicker(ctx, chooseCustomer),
+                            ),
+                            SizedBox(height: 10),
+                            _sheetField(
+                              firstNameCtrl,
+                              'Customer Name',
+                              'First name',
+                              onChanged: (_) => setSheetState(() {}),
+                            ),
+                            if (selectedCustomer == null &&
+                                firstNameCtrl.text.trim().length >= 2)
+                              Wrap(
+                                children: customerOptions
+                                    .where(
+                                      (c) => c.fullName.toLowerCase().contains(
+                                        firstNameCtrl.text.trim().toLowerCase(),
+                                      ),
+                                    )
+                                    .take(5)
+                                    .map(
+                                      (c) => ActionChip(
+                                        label: Text(c.fullName),
+                                        onPressed: () => chooseCustomer(c),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            if (historyLoading)
+                              const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: Text(
+                                  'Loading previous repair devices...',
+                                ),
+                              ),
+                            if (historyError != null) Text(historyError!),
+                            if (previousDevices.isNotEmpty) ...[
+                              const Text('Previous repair devices'),
+                              Wrap(
+                                spacing: 6,
+                                children: previousDevices
+                                    .map(
+                                      (device) => ActionChip(
+                                        label: Text(device),
+                                        onPressed: () => setSheetState(
+                                          () => deviceCtrl.text = device,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ],
+                            SizedBox(height: 10),
+                            _sheetField(
+                              emailCtrl,
+                              'Customer Email',
+                              'email@example.com',
+                            ),
+                            SizedBox(height: 10),
+                            _sheetField(phoneCtrl, 'Phone Number', '+44...'),
+                            SizedBox(height: 10),
+                            _sheetField(
+                              priceCtrl,
+                              'Repair Price',
+                              '0.00',
+                              keyboard: TextInputType.number,
+                            ),
+                            SizedBox(height: 18),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: isSaving
+                                    ? null
+                                    : () async {
+                                        if (deviceCtrl.text.trim().isEmpty ||
+                                            descCtrl.text.trim().isEmpty) {
+                                          ScaffoldMessenger.of(
+                                            ctx,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Device and description are required',
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
+                                        setSheetState(() => isSaving = true);
+                                        try {
+                                          await _api.post(
+                                            RepairRequestEndpoints.add,
+                                            data: {
+                                              'deviceModel': deviceCtrl.text
+                                                  .trim(),
+                                              if (imeiCtrl.text
+                                                  .trim()
+                                                  .isNotEmpty)
+                                                'IMEINumber': imeiCtrl.text
+                                                    .trim(),
+                                              'description':
+                                                  [
+                                                        descCtrl.text.trim(),
+                                                        ...additionalIssues.map(
+                                                          (c) => c.text.trim(),
+                                                        ),
+                                                      ]
+                                                      .where(
+                                                        (s) => s.isNotEmpty,
+                                                      )
+                                                      .join('\n'),
+                                              'firstName': firstNameCtrl.text
+                                                  .trim(),
+                                              'email': emailCtrl.text.trim(),
+                                              'phoneNumber': phoneCtrl.text
+                                                  .trim(),
+                                              'price':
+                                                  double.tryParse(
+                                                    priceCtrl.text.trim(),
+                                                  ) ??
+                                                  0,
+                                              if (selectedTechnician != null)
+                                                'technicianId':
+                                                    selectedTechnician!.id,
+                                              if (selectedTechnician != null)
+                                                'technicianName':
+                                                    selectedTechnician!
+                                                        .fullName,
+                                            },
+                                          );
+                                          SoundEffects.playNewOrderBooked();
+                                          if (ctx.mounted) {
+                                            Navigator.pop(ctx, true);
+                                          }
+                                        } on DioException catch (e) {
+                                          if (ctx.mounted) {
+                                            ScaffoldMessenger.of(
+                                              ctx,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  e
+                                                          .response
+                                                          ?.data?['message'] ??
+                                                      'Failed to create repair request',
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (ctx.mounted) {
+                                            ScaffoldMessenger.of(
+                                              ctx,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Failed to create repair request',
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } finally {
+                                          if (ctx.mounted) {
+                                            setSheetState(
+                                              () => isSaving = false,
+                                            );
+                                          }
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.surfaceForeground,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                ),
+                                child: isSaving
+                                    ? SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: AppColors.surfaceForeground,
+                                        ),
+                                      )
+                                    : Text(
+                                        'Submit',
+                                        style: TextStyle(
+                                          color: AppColors.surfaceForeground,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -527,6 +695,21 @@ class _RepairPageState extends State<RepairPage> {
       },
     );
 
+    // Dispose after the sheet's exit animation has released its fields.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    for (final controller in [
+      deviceCtrl,
+      imeiCtrl,
+      descCtrl,
+      firstNameCtrl,
+      emailCtrl,
+      phoneCtrl,
+      priceCtrl,
+      ...additionalIssues,
+    ]) {
+      controller.dispose();
+    }
+    if (!mounted) return;
     if (created == true) {
       _fetchRepairs();
       if (mounted) {
@@ -571,8 +754,10 @@ class _RepairPageState extends State<RepairPage> {
     int maxLines = 1,
     TextInputType keyboard = TextInputType.text,
     Widget? suffixIcon,
+    ValueChanged<String>? onChanged,
   }) {
     return TextField(
+      onChanged: onChanged,
       controller: ctrl,
       maxLines: maxLines,
       keyboardType: keyboard,
@@ -1438,7 +1623,7 @@ class _RepairPageState extends State<RepairPage> {
     }
 
     final completed = _repairs.where((item) => item.isCompleted).length;
-    final inProgress = _repairs.length - completed;
+    final inProgress = _repairs.where((item) => item.isActive).length;
     final totalSales = _repairs.fold<double>(
       0,
       (sum, item) => sum + item.price,
@@ -1505,13 +1690,7 @@ class _RepairPageState extends State<RepairPage> {
                   item: item,
                   isNudging: _nudgingIds.contains(_repairId(item)),
                   onNudge: () => _nudgeTechnician(item),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          RepairRequestDetailsPage(repair: item.raw),
-                    ),
-                  ),
+                  onTap: () => _openRepairDetails(item.raw),
                 ),
               ),
               const SizedBox(height: 22),
@@ -1532,13 +1711,7 @@ class _RepairPageState extends State<RepairPage> {
               ..._recentRepairs.map(
                 (item) => RepairCard(
                   item: item,
-                  onViewReport: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          RepairRequestDetailsPage(repair: item.raw),
-                    ),
-                  ),
+                  onViewReport: () => _openRepairDetails(item.raw),
                 ),
               ),
             if (_hasMoreRepairs) ...[

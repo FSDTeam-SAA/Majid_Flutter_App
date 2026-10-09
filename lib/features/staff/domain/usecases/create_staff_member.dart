@@ -12,7 +12,6 @@ class CreateStaffMember {
     required String lastName,
     required String email,
     required String phone,
-    required String password,
   }) {
     return repository.createStaff(
       shopkeeperId: shopkeeperId,
@@ -20,7 +19,6 @@ class CreateStaffMember {
       lastName: lastName,
       email: email,
       phone: phone,
-      password: password,
     );
   }
 }

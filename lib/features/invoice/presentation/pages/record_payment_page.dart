@@ -12,13 +12,17 @@ import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../widgets/invoice_input_field.dart';
 import 'payment_recorded_page.dart';
+import '../utils/compact_receipt_pdf.dart';
 
 /// Matches the client's "Record Payment" mockup for the Purchase invoice
 /// flow: choose Cash or Bank Transfer, fill bank details if needed, then
 /// hand off to [PaymentRecordedPage] with the finished receipt.
 class RecordPaymentPage extends StatefulWidget {
+  final CompactReceiptData? Function()? receiptData;
   final double invoiceTotal;
   final double availableCash;
+  final bool initialCashSelected;
+  final ValueChanged<bool>? onPaymentMethodChanged;
   final Future<File?> Function({required String paymentMethod}) onSubmitPayment;
 
   const RecordPaymentPage({
@@ -26,6 +30,9 @@ class RecordPaymentPage extends StatefulWidget {
     required this.invoiceTotal,
     required this.availableCash,
     required this.onSubmitPayment,
+    this.receiptData,
+    this.initialCashSelected = true,
+    this.onPaymentMethodChanged,
   });
 
   @override
@@ -36,7 +43,7 @@ class _RecordPaymentPageState extends State<RecordPaymentPage> {
   // A getter, not a field: captured at construction this read the
   // GBP fallback before the profile had loaded and never updated.
   String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
-  bool _isCashSelected = true;
+  late bool _isCashSelected;
   bool _isSubmitting = false;
 
   final _accountHolderCtrl = TextEditingController();
@@ -53,6 +60,18 @@ class _RecordPaymentPageState extends State<RecordPaymentPage> {
     'Santander',
     'Other',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _isCashSelected = widget.initialCashSelected;
+  }
+
+  void _selectPaymentMethod(bool cashSelected) {
+    if (_isSubmitting) return;
+    setState(() => _isCashSelected = cashSelected);
+    widget.onPaymentMethodChanged?.call(cashSelected);
+  }
 
   @override
   void dispose() {
@@ -95,9 +114,12 @@ class _RecordPaymentPageState extends State<RecordPaymentPage> {
       MaterialPageRoute(
         builder: (_) => PaymentRecordedPage(
           receiptFile: file,
+          receiptData: widget.receiptData?.call(),
           paymentMethod: _isCashSelected ? 'Cash' : 'Bank Transfer',
           amountPaid: widget.invoiceTotal,
-          cashRemaining: widget.availableCash - widget.invoiceTotal,
+          cashRemaining: _isCashSelected
+              ? widget.availableCash - widget.invoiceTotal
+              : widget.availableCash,
         ),
       ),
     );
@@ -139,15 +161,15 @@ class _RecordPaymentPageState extends State<RecordPaymentPage> {
                     subtitle:
                         'Available Cash: $_currencySymbol${widget.availableCash.toStringAsFixed(2)}',
                     selected: _isCashSelected,
-                    onTap: () => setState(() => _isCashSelected = true),
+                    onTap: () => _selectPaymentMethod(true),
                   ),
                   const SizedBox(height: 10),
                   _buildMethodCard(
                     icon: Icons.account_balance_outlined,
                     title: 'Bank Transfer',
-                    subtitle: 'Customer will transfer to your account',
+                    subtitle: 'Pay the customer by bank transfer',
                     selected: !_isCashSelected,
-                    onTap: () => setState(() => _isCashSelected = false),
+                    onTap: () => _selectPaymentMethod(false),
                   ),
                   if (!_isCashSelected) ...[
                     const SizedBox(height: 20),

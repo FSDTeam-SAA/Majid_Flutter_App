@@ -53,16 +53,7 @@ class TimelineWidget extends StatelessWidget {
           shape: BoxShape.circle,
           color: const Color(0xFF4DB8FF),
         ),
-        child: const Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: Colors.white,
-            ),
-          ),
-        ),
+        child: const Icon(Icons.build_outlined, size: 18, color: Colors.white),
       );
     } else {
       final pendingBg = isDark

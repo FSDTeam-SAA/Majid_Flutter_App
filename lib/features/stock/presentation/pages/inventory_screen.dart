@@ -16,7 +16,7 @@ import '../../domain/entities/inventory_item.dart';
 import '../../domain/repositories/cart_repository.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../controller/stock_controller.dart';
-import 'add_new_device_page.dart';
+import '../utils/adjust_stock.dart';
 import 'cart_items_page.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -132,6 +132,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
       final haystack = [
         item.itemName,
+        item.sku,
+        item.upc,
         item.brand,
         item.imeiNumber,
         item.modelNumber,
@@ -296,19 +298,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<void> _editInventoryItem(InventoryItem item) async {
-    final created = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddNewDevicePage(
-          initialCategoryId: item.categoryId,
-          initialCategoryName: _categoryNameOf(item),
-          initialItem: item,
-        ),
-      ),
-    );
-
-    if (!mounted || created != true) return;
-    await fetchInventory();
+    if (await adjustStock(context, item.id) && mounted) await fetchInventory();
   }
 
   Future<void> _deleteInventoryItem(InventoryItem item) async {
@@ -414,7 +404,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           Expanded(
             child: Text(
-              'Inventory',
+              'Manage Stock',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -607,7 +597,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
             SizedBox(height: 8),
             Text(
-              'Try another category or search term, or add products to your stock first.',
+              'Try another category or search term. Add products on the website.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textSecondary,
@@ -616,36 +606,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
             ),
             SizedBox(height: 18),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final created = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AddNewDevicePage(
-                        initialCategoryId: _selectedCategoryId,
-                        initialCategoryName: _selectedCategoryLabel(),
-                      ),
-                    ),
-                  );
-                  if (!context.mounted || created != true) return;
-                  await fetchInventory();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.buttonText,
-                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                ),
-                icon: Icon(Icons.add_rounded),
-                label: Text(
-                  'Add New Device',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.buttonText,
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       );
@@ -836,7 +796,7 @@ class _InventoryCard extends StatelessWidget {
                   size: 20,
                 ),
                 onSelected: (value) {
-                  if (value == 'edit') {
+                  if (value == 'adjust') {
                     onEdit();
                   } else if (value == 'delete') {
                     onDelete();
@@ -844,17 +804,17 @@ class _InventoryCard extends StatelessWidget {
                 },
                 itemBuilder: (context) => [
                   PopupMenuItem<String>(
-                    value: 'edit',
+                    value: 'adjust',
                     child: Row(
                       children: [
                         Icon(
-                          Icons.edit_outlined,
+                          Icons.exposure_rounded,
                           color: AppColors.textPrimary,
                           size: 18,
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Edit',
+                          '+/- Stock',
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,

@@ -1,348 +1,285 @@
-import 'package:dio/dio.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-
-import '../../../../core/animation/app_entrance.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
-import '../../../../core/utils/colors.dart';
-import '../../../../core/widgets/app_loading_indicator.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../controller/repair_data.dart';
 import '../utils/repair_request_formatter.dart';
 import '../widgets/repair_card.dart';
 import 'repair_request_details_page.dart';
 
 class AllRepairRequestsPage extends StatefulWidget {
-  const AllRepairRequestsPage({super.key});
-
+  const AllRepairRequestsPage({
+    super.key,
+    this.initialQuery = '',
+    this.apiClient,
+  });
+  final String initialQuery;
+  final ApiClient? apiClient;
   @override
   State<AllRepairRequestsPage> createState() => _AllRepairRequestsPageState();
 }
 
 class _AllRepairRequestsPageState extends State<AllRepairRequestsPage> {
-  late final ApiClient _api;
-  final TextEditingController _searchCtrl = TextEditingController();
-  int _currentPage = 1;
-  int _totalPages = 1;
-  int _totalRecords = 0;
-  bool _isLoading = true;
-  String _errorMessage = '';
-  String _searchQuery = '';
-  List<RepairItem> _repairs = [];
-
+  late final ApiClient _api = widget.apiClient ?? ApiClient(baseUrl);
+  late final TextEditingController _search = TextEditingController(
+    text: widget.initialQuery,
+  );
+  List<RepairItem> _repairs = [], _searchRepairs = [];
+  bool _loading = false, _searching = false, _searchComplete = false;
+  int _page = 0, _pages = 1, _total = 0, _searchGeneration = 0;
+  String _error = '';
+  Timer? _debounce;
+  String get _query => _search.text.trim().toLowerCase();
   @override
   void initState() {
     super.initState();
-    _api = ApiClient(baseUrl);
-    _fetchRepairs();
+    _load(refresh: true);
+    if (_query.isNotEmpty) _searchChanged();
   }
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    _searchGeneration++;
+    _debounce?.cancel();
+    _search.dispose();
     super.dispose();
   }
 
-  List<RepairItem> get _filteredRepairs {
-    if (_searchQuery.isEmpty) {
-      return _repairs;
-    }
-
-    return _repairs.where((item) {
-      final haystack = [
-        item.name,
-        item.brand,
-        item.issueLabel,
-        item.issueDesc,
-        item.status,
-        item.date,
-      ].join(' ').toLowerCase();
-
-      return haystack.contains(_searchQuery);
-    }).toList();
-  }
-
-  Future<void> _fetchRepairs({int? page}) async {
-    final nextPage = page ?? _currentPage;
+  Future<void> _load({bool refresh = false}) async {
+    if (_loading) return;
     setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
-    try {
-      final res = await _api.get(
-        RepairRequestEndpoints.myHistory,
-        query: {'page': nextPage, 'limit': 10},
-      );
-      final data = res.data['data'];
-      if (data is! List) {
-        throw const FormatException('Invalid repair response');
+      _loading = true;
+      _error = '';
+      if (refresh) {
+        _searchComplete = false;
+        _searchRepairs = [];
       }
-
-      final meta = res.data['meta'];
+    });
+    try {
+      final page = refresh ? 1 : _page + 1;
+      final response = await _api.get(
+        RepairRequestEndpoints.myHistory,
+        query: {'page': page, 'limit': 20},
+      );
+      final data = response.data['data'];
+      if (data is! List) throw const FormatException('Invalid repair response');
+      if (!mounted) return;
+      final meta = response.data['meta'];
       setState(() {
-        _currentPage = nextPage;
-        _repairs = data
+        _page = page;
+        _pages = meta is Map ? (meta['totalPage'] as num?)?.toInt() ?? 1 : 1;
+        _total = meta is Map
+            ? (meta['total'] as num?)?.toInt() ?? data.length
+            : data.length;
+        final parsed = data
             .whereType<Map>()
             .map((item) => repairItemFromJson(Map<String, dynamic>.from(item)))
             .toList();
-        _totalRecords = meta is Map
-            ? ((meta['total'] as num?)?.toInt() ?? _repairs.length)
-            : _repairs.length;
-        _totalPages = meta is Map
-            ? ((meta['totalPage'] as num?)?.toInt() ?? 1)
-            : 1;
+        _repairs = refresh ? parsed : [..._repairs, ...parsed];
       });
-    } on DioException catch (e) {
-      setState(() {
-        _errorMessage =
-            e.response?.data?['message'] ?? 'Failed to load repair requests';
-      });
-    } catch (e) {
-      setState(() => _errorMessage = e.toString());
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not load repair history. Please retry.');
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _searchChanged() {
+    _debounce?.cancel();
+    _searchGeneration++;
+    setState(() {
+      _searching = false;
+      _error = '';
+    });
+    if (_query.isNotEmpty && !_searchComplete) {
+      _debounce = Timer(const Duration(milliseconds: 300), _loadSearch);
+    }
+  }
+
+  Future<void> _loadSearch() async {
+    final generation = ++_searchGeneration;
+    setState(() {
+      _searching = true;
+      _error = '';
+    });
+    final found = <RepairItem>[];
+    try {
+      var pages = 1;
+      for (var page = 1; page <= pages; page++) {
+        final response = await _api.get(
+          RepairRequestEndpoints.myHistory,
+          query: {'page': page, 'limit': 100},
+        );
+        if (!mounted || generation != _searchGeneration) return;
+        final data = response.data['data'];
+        if (data is! List) {
+          throw const FormatException('Invalid repair response');
+        }
+        final meta = response.data['meta'];
+        pages = meta is Map ? (meta['totalPage'] as num?)?.toInt() ?? 1 : 1;
+        found.addAll(
+          data.whereType<Map>().map(
+            (item) => repairItemFromJson(Map<String, dynamic>.from(item)),
+          ),
+        );
+        setState(() => _searchRepairs = List.of(found));
+      }
+      if (mounted && generation == _searchGeneration) {
+        setState(() => _searchComplete = true);
+      }
+    } catch (_) {
+      if (mounted && generation == _searchGeneration) {
+        setState(
+          () => _error = 'Could not search all older repairs. Please retry.',
+        );
+      }
+    } finally {
+      if (mounted && generation == _searchGeneration) {
+        setState(() => _searching = false);
+      }
+    }
+  }
+
+  Future<void> _scan() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (!mounted || code == null) return;
+    final uri = Uri.tryParse(code);
+    _search.text = uri != null && uri.hasScheme && uri.pathSegments.isNotEmpty
+        ? uri.pathSegments.last
+        : code;
+    _searchChanged();
+  }
+
+  Future<void> _open(RepairItem item) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RepairRequestDetailsPage(repair: item.raw),
+      ),
+    );
+    if (!mounted) return;
+    await _load(refresh: true);
+    if (mounted && _query.isNotEmpty) _searchChanged();
   }
 
   @override
   Widget build(BuildContext context) {
+    final rows = _query.isEmpty
+        ? _repairs
+        : [
+            ..._repairs,
+            ..._searchRepairs,
+          ].where((item) => repairMatchesQuery(item, _query)).toList();
+    final seen = <String>{};
+    final unique = rows
+        .where((item) => seen.add('${item.raw['_id']}'))
+        .toList();
     return GradientScaffold(
       child: Column(
         children: [
           const AppHeader(title: 'Repair Requests'),
-          Expanded(child: _buildBody()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: AppLoadingIndicator(label: 'Loading repair requests...'),
-      );
-    }
-
-    if (_errorMessage.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _errorMessage,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary),
-              ).entrance(enableScale: false),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _fetchRepairs,
-                child: const Text('Retry'),
-              ).entrance(index: 1),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final filteredRepairs = _filteredRepairs;
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _searchQuery.isEmpty
-                    ? '$_totalRecords Records'
-                    : '${filteredRepairs.length} of $_totalRecords Records',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ).entrance(enableScale: false),
-              const SizedBox(height: 12),
-              _buildSearchBar().entrance(index: 1),
-            ],
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            backgroundColor: AppColors.cardBackground,
-            onRefresh: () => _fetchRepairs(page: 1),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
-              children: [
-                if (_repairs.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Text(
-                        'No repair requests yet',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ).entrance(index: 2, enableScale: false),
-                    ),
-                  )
-                else if (filteredRepairs.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Text(
-                        'No repair requests match "$_searchQuery"',
-                        style: TextStyle(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
-                      ).entrance(index: 2, enableScale: false),
-                    ),
-                  )
-                else
-                  ...filteredRepairs.indexed.map(
-                    (entry) => RepairCard(
-                      item: entry.$2,
-                      onViewReport: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              RepairRequestDetailsPage(repair: entry.$2.raw),
-                        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: TextField(
+              controller: _search,
+              onChanged: (_) => _searchChanged(),
+              decoration: InputDecoration(
+                hintText: 'Search customer, device or IMEI',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_query.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _search.clear();
+                          _searchChanged();
+                        },
                       ),
-                    ).entrance(index: entry.$1, begin: const Offset(0, 0.05)),
-                  ),
-                const SizedBox(height: 8),
-                if (_totalPages > 1)
-                  _buildPagination().entrance(
-                    index: filteredRepairs.length + 1,
-                  ),
-              ],
+                    IconButton(
+                      tooltip: 'Scan IMEI or repair QR',
+                      icon: const Icon(Icons.qr_code_scanner),
+                      onPressed: _scan,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: AppColors.primary, width: 1.2),
-      ),
-      child: TextField(
-        controller: _searchCtrl,
-        onChanged: (value) =>
-            setState(() => _searchQuery = value.trim().toLowerCase()),
-        style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'Search repair requests...',
-          hintStyle: TextStyle(color: AppColors.primary, fontSize: 14),
-          prefixIcon: Icon(Icons.search, color: AppColors.primary, size: 20),
-          suffixIcon: _searchQuery.isEmpty
-              ? null
-              : IconButton(
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: AppColors.textSecondary,
-                    size: 18,
-                  ),
-                ),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 12),
-          isDense: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPagination() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        GestureDetector(
-          onTap: _currentPage > 1
-              ? () => _fetchRepairs(page: _currentPage - 1)
-              : null,
-          child: Row(
-            children: [
-              Icon(
-                Icons.chevron_left,
-                color: _currentPage > 1
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-                size: 18,
+          if (_searching || _loading) const LinearProgressIndicator(),
+          if (_error.isNotEmpty)
+            ListTile(
+              title: Text(_error),
+              trailing: TextButton(
+                onPressed: _query.isEmpty
+                    ? () => _load(refresh: _page == 0)
+                    : _loadSearch,
+                child: const Text('Retry'),
               ),
-              Text(
-                'PREVIOUS',
-                style: TextStyle(
-                  color: _currentPage > 1
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              _query.isEmpty
+                  ? '$_total records'
+                  : '${unique.length} matches${_searching ? ' · searching older repairs...' : ''}',
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        _buildPageNumber(_currentPage),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: _currentPage < _totalPages
-              ? () => _fetchRepairs(page: _currentPage + 1)
-              : null,
-          child: Row(
-            children: [
-              Text(
-                'NEXT',
-                style: TextStyle(
-                  color: _currentPage < _totalPages
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ++_searchGeneration;
+                await _load(refresh: true);
+                if (mounted && _query.isNotEmpty) await _loadSearch();
+              },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
+                itemCount: unique.length + 1,
+                itemBuilder: (context, index) {
+                  if (index < unique.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: RepairCard(
+                        item: unique[index],
+                        onViewReport: () => _open(unique[index]),
+                      ),
+                    );
+                  }
+                  if (_query.isEmpty && _page < _pages) {
+                    return OutlinedButton(
+                      onPressed: _loading ? null : () => _load(),
+                      child: const Text('Load older repairs'),
+                    );
+                  }
+                  if (unique.isEmpty &&
+                      !_loading &&
+                      !_searching &&
+                      _error.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                        'No matching repair requests',
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
-              Icon(
-                Icons.chevron_right,
-                color: _currentPage < _totalPages
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-                size: 18,
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPageNumber(int page) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          '$page',
-          style: TextStyle(
-            color: AppColors.surfaceForeground,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        ],
       ),
     );
   }

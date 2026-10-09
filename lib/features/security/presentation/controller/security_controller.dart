@@ -30,8 +30,12 @@ class ChallengeDispatch {
 
 /// Owns two-factor settings, the device list and the sign-in challenges.
 class SecurityController extends GetxController {
-  final SecurityStore _store = SecurityStore();
-  final ApiClient _api = ApiClient(baseUrl);
+  final SecurityStore _store;
+  final ApiClient _api;
+
+  SecurityController({SecurityStore? store, ApiClient? api})
+    : _store = store ?? SecurityStore(),
+      _api = api ?? ApiClient(baseUrl);
 
   final settings = const TwoFactorSettings().obs;
   final devices = <LoginDevice>[].obs;
@@ -71,7 +75,7 @@ class SecurityController extends GetxController {
               (value) => value.name == data['method'],
               orElse: () => TwoFactorMethod.email,
             ),
-            authenticatorSecret: settings.value.authenticatorSecret,
+            hasAuthenticator: data['hasAuthenticator'] == true,
             emailVerified: data['emailVerified'] == true,
             phoneVerified: data['phoneVerified'] == true,
           );
@@ -84,19 +88,21 @@ class SecurityController extends GetxController {
 
       // Sync devices from server if available
       try {
-        final devRes = await _api.get(SecurityEndpoints.devices);
+        final current = await describeCurrentDevice();
+        final devRes = await _api.get(
+          SecurityEndpoints.devices,
+          query: {'deviceId': current.id},
+        );
         if (devRes.statusCode == 200 &&
             devRes.data != null &&
             devRes.data['data'] != null) {
           final list = devRes.data['data'] as List<dynamic>;
-          if (list.isNotEmpty) {
-            final serverDevices = [
-              for (final item in list)
-                LoginDevice.fromJson(item as Map<String, dynamic>),
-            ];
-            devices.value = serverDevices;
-            await _store.writeDevices(serverDevices);
-          }
+          final serverDevices = [
+            for (final item in list)
+              LoginDevice.fromJson(item as Map<String, dynamic>),
+          ];
+          devices.value = serverDevices;
+          await _store.writeDevices(serverDevices);
         }
       } catch (e) {
         debugPrint('Could not sync devices from server: $e');
@@ -110,31 +116,33 @@ class SecurityController extends GetxController {
 
   // ---------------------------------------------------------------- settings
 
-  Future<void> setEnabled(bool enabled) async {
-    settings.value = settings.value.copyWith(enabled: enabled);
-    await _store.writeSettings(settings.value);
-
+  Future<bool> setEnabled(bool enabled) async {
     try {
-      await _api.patch(
+      final response = await _api.patch(
         SecurityEndpoints.toggleTwoFactor,
         data: {'enabled': enabled},
       );
-    } catch (e) {
-      debugPrint('Could not sync 2FA toggle with server: $e');
+      if (response.data['success'] != true) return false;
+      settings.value = settings.value.copyWith(enabled: enabled);
+      await _store.writeSettings(settings.value);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
-  Future<void> setMethod(TwoFactorMethod method) async {
-    settings.value = settings.value.copyWith(method: method);
-    await _store.writeSettings(settings.value);
-
+  Future<bool> setMethod(TwoFactorMethod method) async {
     try {
-      await _api.patch(
+      final response = await _api.patch(
         SecurityEndpoints.setMethod,
         data: {'method': method.name},
       );
-    } catch (e) {
-      debugPrint('Could not sync 2FA method with server: $e');
+      if (response.data['success'] != true) return false;
+      settings.value = settings.value.copyWith(method: method);
+      await _store.writeSettings(settings.value);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -182,203 +190,83 @@ class SecurityController extends GetxController {
   }) async {
     if (!Totp.verify(secret, code)) return false;
 
-    settings.value = settings.value.copyWith(
-      enabled: true,
-      method: TwoFactorMethod.authenticator,
-      authenticatorSecret: secret,
-    );
-    await _store.writeSettings(settings.value);
-
     try {
-      await _api.post(
+      final response = await _api.post(
         SecurityEndpoints.authenticatorConfirm,
         data: {'secret': secret, 'code': code},
       );
-    } catch (e) {
-      debugPrint('Could not confirm authenticator on server: $e');
+      if (response.data['success'] != true ||
+          response.data['data']?['success'] != true) {
+        return false;
+      }
+      settings.value = settings.value.copyWith(
+        enabled: true,
+        method: TwoFactorMethod.authenticator,
+        hasAuthenticator: true,
+        clearAuthenticatorSecret: true,
+      );
+      await _store.writeSettings(settings.value);
+      return true;
+    } catch (_) {
+      return false;
     }
-
-    return true;
   }
 
-  Future<void> removeAuthenticator() async {
-    final next = settings.value.copyWith(
-      clearAuthenticatorSecret: true,
-      method: settings.value.emailVerified
-          ? TwoFactorMethod.email
-          : TwoFactorMethod.sms,
-    );
-    settings.value = next;
-    await _store.writeSettings(next);
-
+  Future<bool> removeAuthenticator() async {
     try {
-      await _api.delete(SecurityEndpoints.removeAuthenticator);
-    } catch (e) {
-      debugPrint('Could not remove authenticator on server: $e');
+      final response = await _api.delete(SecurityEndpoints.removeAuthenticator);
+      if (response.data['success'] != true) return false;
+      settings.value = settings.value.copyWith(
+        clearAuthenticatorSecret: true,
+        hasAuthenticator: false,
+        method: response.data['data']?['method'] == 'sms'
+            ? TwoFactorMethod.sms
+            : TwoFactorMethod.email,
+      );
+      await _store.writeSettings(settings.value);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
   // -------------------------------------------------------------- challenges
 
-  /// Issues a one-time code for [method] to the backend server so a real email/SMS is sent,
-  /// while keeping a local fallback for offline/debug resilience.
+  /// Reports success only when the server confirms actual delivery.
   Future<ChallengeDispatch> sendChallenge({
     required TwoFactorMethod method,
     required String destination,
   }) async {
-    bool sentOnServer = false;
-    // 1. Call the backend API to send real email or SMS
     try {
-      final res = await _api.post(
+      final response = await _api.post(
         SecurityEndpoints.sendChallenge,
-        data: {
-          'method': method.name,
-          'email': destination,
-        },
+        data: {'method': method.name},
       );
-      debugPrint('sendChallenge server response: ${res.data}');
-      if (res.statusCode == 200) {
-        sentOnServer = true;
-      }
-    } catch (e) {
-      debugPrint('sendChallenge server error: $e');
-      // Try public auth 2FA route fallback
-      try {
-        final res2 = await _api.post(
-          AuthEndpoints.send2FaChallenge,
-          data: {
-            'email': destination,
-            'method': method.name,
-          },
-        );
-        if (res2.statusCode == 200) {
-          sentOnServer = true;
-        }
-      } catch (e2) {
-        debugPrint('AuthEndpoints.send2FaChallenge fallback error: $e2');
-      }
+      final data = response.data['data'];
+      return ChallengeDispatch(
+        sent: response.data['success'] == true && data?['sent'] == true,
+        destination: data?['destination']?.toString() ?? destination,
+      );
+    } catch (_) {
+      return ChallengeDispatch(sent: false, destination: destination);
     }
-
-    // Only store local challenge if server couldn't be reached (offline mode)
-    if (!sentOnServer) {
-      final code = OneTimeCode.generate();
-      final salt = OneTimeCode.newSalt();
-
-      await _store.writeChallenge({
-        'hash': OneTimeCode.hash(code, salt),
-        'salt': salt,
-        'method': method.name,
-        'destination': destination,
-        'expiresAt': DateTime.now().add(OneTimeCode.validity).toIso8601String(),
-        'attempts': 0,
-      });
-    } else {
-      // Clear local challenge so stale local codes don't interfere
-      await _store.writeChallenge(null);
-    }
-
-    return ChallengeDispatch(
-      sent: true,
-      destination: destination,
-      debugCode: null,
-    );
   }
 
-  /// Verifies a code against whichever challenge is live.
-  ///
-  /// Authenticator codes are checked against the stored secret; email and SMS
-  /// codes are verified against the backend server, with a local fallback.
+  /// The server verifies its configured secret, including on a new device.
+  /// An HTTP success or local cached secret alone cannot authorize a code.
   Future<bool> verifyChallenge(String code, {String? email}) async {
     final trimmed = code.replaceAll(RegExp(r'\s'), '');
-
-    final secret = settings.value.authenticatorSecret;
-    if (settings.value.method == TwoFactorMethod.authenticator &&
-        secret != null &&
-        secret.isNotEmpty) {
-      return Totp.verify(secret, trimmed);
-    }
-
-    // 1. Verify against the real backend server
+    if (!RegExp(r'^\d{6}$').hasMatch(trimmed)) return false;
     try {
-      final res = await _api.post(
+      final response = await _api.post(
         SecurityEndpoints.verifyChallenge,
-        data: {
-          'code': trimmed,
-          if (email != null && email.isNotEmpty) 'email': email,
-        },
+        data: {'code': trimmed},
       );
-      if (res.statusCode == 200 && res.data != null) {
-        final data = res.data;
-        final isValid = data['data']?['valid'] == true ||
-            data['valid'] == true;
-        if (isValid) {
-          await _store.writeChallenge(null);
-          await load();
-          return true;
-        } else {
-          return false;
-        }
-      }
-    } catch (e) {
-      debugPrint('verifyChallenge server error: $e');
-    }
-
-    // 1b. Fallback to public auth route (for unauthenticated sign-in 2FA)
-    if (email != null && email.isNotEmpty) {
-      try {
-        final res2 = await _api.post(
-          AuthEndpoints.verify2Fa,
-          data: {'email': email, 'code': trimmed},
-        );
-        if (res2.statusCode == 200 && res2.data != null) {
-          final data = res2.data;
-          final isValid = data['data']?['valid'] == true ||
-              data['valid'] == true ||
-              data['success'] == true;
-          if (isValid) {
-            await _store.writeChallenge(null);
-            return true;
-          } else {
-            return false;
-          }
-        }
-      } catch (e2) {
-        debugPrint('verify2Fa public route error: $e2');
-      }
-    }
-
-    // 2. Fallback: check local challenge only if backend couldn't be reached
-    final challenge = await _store.readChallenge();
-    if (challenge == null) return false;
-
-    final expiresAt = DateTime.tryParse(
-      challenge['expiresAt']?.toString() ?? '',
-    );
-    if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
-      await _store.writeChallenge(null);
+      return response.data['success'] == true &&
+          response.data['data']?['valid'] == true;
+    } catch (_) {
       return false;
     }
-
-    final attempts = (challenge['attempts'] as num?)?.toInt() ?? 0;
-    if (attempts >= 5) {
-      await _store.writeChallenge(null);
-      return false;
-    }
-
-    final matched = OneTimeCode.matches(
-      code: trimmed,
-      salt: challenge['salt']?.toString() ?? '',
-      storedHash: challenge['hash']?.toString() ?? '',
-    );
-
-    if (matched) {
-      await _store.writeChallenge(null);
-      return true;
-    }
-
-    challenge['attempts'] = attempts + 1;
-    await _store.writeChallenge(challenge);
-    return false;
   }
 
   // ------------------------------------------------------------------ devices
@@ -387,7 +275,8 @@ class SecurityController extends GetxController {
   Future<LoginDevice> describeCurrentDevice() async {
     var id = await _store.readTrustedDeviceId();
     if (id == null || id.isEmpty) {
-      id = 'dev_${DateTime.now().millisecondsSinceEpoch}_'
+      id =
+          'dev_${DateTime.now().millisecondsSinceEpoch}_'
           '${Random.secure().nextInt(0xffff)}';
       await _store.writeTrustedDeviceId(id);
     }
@@ -434,7 +323,7 @@ class SecurityController extends GetxController {
 
   /// Records this device as signed in, refreshing its "last active" stamp if
   /// it is already on the list.
-  Future<void> registerCurrentDevice() async {
+  Future<bool> registerCurrentDevice() async {
     final current = await describeCurrentDevice();
     final next = [
       for (final device in devices)
@@ -445,11 +334,8 @@ class SecurityController extends GetxController {
     if (!next.any((device) => device.id == current.id)) {
       next.add(current);
     }
-    devices.value = next;
-    await _store.writeDevices(next);
-
     try {
-      await _api.post(
+      final response = await _api.post(
         SecurityEndpoints.registerDevice,
         data: {
           'deviceId': current.id,
@@ -458,8 +344,18 @@ class SecurityController extends GetxController {
           'location': current.location,
         },
       );
+      if (response.data is! Map ||
+          response.data['success'] != true ||
+          response.data['data'] is! Map ||
+          response.data['data']['deviceId'] != current.id) {
+        return false;
+      }
+      devices.value = next;
+      await _store.writeDevices(next);
+      return true;
     } catch (e) {
       debugPrint('Could not register device with server: $e');
+      return false;
     }
   }
 
@@ -469,16 +365,24 @@ class SecurityController extends GetxController {
     final target = devices.firstWhereOrNull((device) => device.id == deviceId);
     if (target == null || target.isCurrent) return false;
 
-    devices.removeWhere((device) => device.id == deviceId);
-    await _store.writeDevices(devices);
-
     try {
-      await _api.delete(SecurityEndpoints.removeDevice(deviceId));
+      final response = await _api.delete(
+        SecurityEndpoints.removeDevice(deviceId),
+      );
+      final data = response.data;
+      if (data is! Map ||
+          data['success'] != true ||
+          data['data'] is! Map ||
+          data['data']['removed'] != true) {
+        return false;
+      }
+      devices.removeWhere((device) => device.id == deviceId);
+      await _store.writeDevices(devices);
+      return true;
     } catch (e) {
       debugPrint('Could not remove device on server: $e');
+      return false;
     }
-
-    return true;
   }
 
   // ----------------------------------------------------- new-device approval
@@ -488,10 +392,11 @@ class SecurityController extends GetxController {
     await _store.writePendingRequest(request);
   }
 
-  Future<void> approvePendingRequest() async {
+  Future<bool> approvePendingRequest() async {
+    if (!await registerCurrentDevice()) return false;
     pendingRequest.value = null;
     await _store.writePendingRequest(null);
-    await registerCurrentDevice();
+    return true;
   }
 
   Future<void> denyPendingRequest() async {

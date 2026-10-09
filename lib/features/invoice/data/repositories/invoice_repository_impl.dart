@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
+import '../../../../core/network/api_service/commerce_events.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
 import '../../domain/entities/invoice.dart';
@@ -17,6 +18,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   @override
   Future<void> createInvoice(FormData payload) async {
     await _api.post(InvoiceEndpoints.create, data: payload);
+    CommerceEvents.changed();
   }
 
   @override
@@ -80,16 +82,28 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final isIdImageDeleted = idImages is Map
         ? (idImages['isDeleted'] == true)
         : false;
-    final deleteAfterStr = item['idImageDeleteAfter']?.toString() ??
+    final deleteAfterStr =
+        item['idImageDeleteAfter']?.toString() ??
         (idImages is Map ? idImages['deleteAfter']?.toString() : null);
-    final idImageDeleteAfter =
-        deleteAfterStr != null ? DateTime.tryParse(deleteAfterStr) : null;
+    final idImageDeleteAfter = deleteAfterStr != null
+        ? DateTime.tryParse(deleteAfterStr)
+        : null;
 
     return Invoice(
       id: item['_id']?.toString() ?? '',
+      servedBy: item['servedBy']?.toString() ?? '',
+      deviceSearchText: (item['itemsIds'] as List? ?? [])
+          .whereType<Map>()
+          .map((i) => '${i['itemName'] ?? ''} ${i['imeiNumber'] ?? ''}')
+          .join(' '),
+      repairRequestId: item['repairRequestId'] is Map
+          ? item['repairRequestId']['_id']?.toString()
+          : item['repairRequestId']?.toString(),
       invoiceNumber: item['invoiceNumber']?.toString(),
       type: item['type']?.toString() ?? 'invoice',
       totalAmount: (item['totalAmount'] as num?)?.toDouble(),
+      dueAmount: (item['dueAmount'] as num?)?.toDouble(),
+      currency: item['currency']?.toString(),
       amountPaid:
           (item['amountPaid'] as num?)?.toDouble() ??
           (item['paymentDetails'] is Map

@@ -3,6 +3,7 @@
 class CalculationLine {
   /// The keyed term, shown as the shopkeeper typed it.
   final String expression;
+  final String? repairId;
 
   /// Units this line represents: `980 x 5` is 5, a bare `980` is 1.
   final int quantity;
@@ -15,6 +16,7 @@ class CalculationLine {
 
   const CalculationLine({
     required this.expression,
+    this.repairId,
     required this.quantity,
     required this.amount,
     this.name = '',
@@ -22,6 +24,7 @@ class CalculationLine {
 
   CalculationLine copyWith({String? name}) => CalculationLine(
     expression: expression,
+    repairId: repairId,
     quantity: quantity,
     amount: amount,
     name: name ?? this.name,

@@ -10,6 +10,9 @@ import '../../../invoice/data/repositories/invoice_repository_impl.dart';
 import '../../../invoice/domain/entities/invoice.dart';
 import '../../../invoice/domain/repositories/invoice_repository.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../../scan/presentation/pages/barcode_scanner_page.dart';
+import '../../../scan/presentation/pages/all_scan_history_page.dart';
+import '../../../invoice/presentation/widgets/invoice_delivery_actions.dart';
 import '../widgets/payment_method_icon.dart';
 import '../widgets/transaction_colors.dart';
 
@@ -47,6 +50,75 @@ class _ReportsPageState extends State<ReportsPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   List<Invoice> _invoices = [];
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scanSearch() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+    );
+    if (!mounted || code == null) return;
+    setState(() => _search.text = code);
+  }
+
+  Widget _searchResults() {
+    final query = _search.text.trim().toLowerCase();
+    final matches = _invoices
+        .where(
+          (i) =>
+              '${i.reference} ${i.customerName} ${i.customerEmail ?? ''} ${i.customerPhone ?? ''} ${i.deviceSearchText}'
+                  .toLowerCase()
+                  .contains(query),
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: 'Search IMEI, customer or device',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              onPressed: _scanSearch,
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AllScanHistoryPage(initialQuery: _search.text),
+            ),
+          ),
+          icon: const Icon(Icons.history),
+          label: const Text('Search device reports'),
+        ),
+        if (query.isNotEmpty) ...[
+          Text('${matches.length} matching invoices'),
+          for (final invoice in matches.take(30))
+            ListTile(
+              title: Text('${invoice.reference} · ${invoice.customerName}'),
+              subtitle: Text(
+                '${invoice.deviceSearchText}\n${invoice.createdAt ?? ''}',
+              ),
+              trailing: const Icon(Icons.picture_as_pdf_outlined),
+              onTap: () =>
+                  openOriginalInvoicePdf(context, pdfUrl: invoice.pdfUrl),
+            ),
+        ],
+        const SizedBox(height: 16),
+      ],
+    );
+  }
 
   @override
   void initState() {
@@ -228,6 +300,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _searchResults(),
                         Text(
                           'Card Payments & Expenses',
                           style: TextStyle(

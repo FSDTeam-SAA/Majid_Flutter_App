@@ -65,12 +65,17 @@ class ImeiRepositoryImpl implements ImeiRepository {
   Future<Map<String, dynamic>> checkImei({
     required String imei,
     required int serviceId,
+    bool generateNew = false,
   }) async {
     final Response res;
     try {
       res = await _api.post(
         ImeiEndpoints.checkV2,
-        data: {'imei': imei, 'serviceId': serviceId},
+        data: {
+          'imei': imei,
+          'serviceId': serviceId,
+          if (generateNew) 'generate': 'new',
+        },
       );
     } on DioException catch (e) {
       throw ImeiScanException(e.response?.data?['message']?.toString() ?? '');
@@ -86,7 +91,7 @@ class ImeiRepositoryImpl implements ImeiRepository {
         first is Map ? (first['message']?.toString() ?? '') : '',
       );
     }
-    return Map<String, dynamic>.from(first);
+    return {...Map<String, dynamic>.from(first), 'serviceId': serviceId};
   }
 
   @override
@@ -95,7 +100,9 @@ class ImeiRepositoryImpl implements ImeiRepository {
     if (page != null && page > 0) params['page'] = page;
     if (limit != null && limit > 0) params['limit'] = limit;
 
-    final queryString = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final queryString = params.entries
+        .map((e) => '${e.key}=${e.value}')
+        .join('&');
     final url = queryString.isNotEmpty
         ? '${ImeiEndpoints.history}?$queryString'
         : ImeiEndpoints.history;
@@ -112,9 +119,13 @@ class ImeiRepositoryImpl implements ImeiRepository {
         .toList();
 
     final meta = res.data['meta'];
-    final total = meta is Map ? (meta['total'] as num?)?.toInt() ?? items.length : items.length;
+    final total = meta is Map
+        ? (meta['total'] as num?)?.toInt() ?? items.length
+        : items.length;
     final resPage = meta is Map ? (meta['page'] as num?)?.toInt() ?? 1 : 1;
-    final totalPage = meta is Map ? (meta['totalPage'] as num?)?.toInt() ?? 1 : 1;
+    final totalPage = meta is Map
+        ? (meta['totalPage'] as num?)?.toInt() ?? 1
+        : 1;
 
     return ScanHistoryResult(
       items: items,

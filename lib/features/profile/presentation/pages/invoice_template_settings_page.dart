@@ -34,11 +34,7 @@ class _InvoiceTemplateSettingsPageState
 
   Future<void> _initSettings() async {
     final cached = await InvoiceTemplateSettings.load();
-    final profileTemplate = _profileCtrl.invoiceTemplate;
-    final effective =
-        profileTemplate.isNotEmpty && profileTemplate != 'default'
-            ? profileTemplate
-            : cached;
+    final effective = cached;
 
     if (!mounted) return;
     setState(() {
@@ -50,7 +46,7 @@ class _InvoiceTemplateSettingsPageState
     setState(() => _isSaving = true);
     try {
       // Save locally for instant offline availability
-      await InvoiceTemplateSettings.save(template.id);
+      await InvoiceTemplateSettings.save(template.id, localSelection: true);
 
       // Save to backend profile
       final success = await _profileCtrl.setInvoiceTemplate(template.id);
@@ -81,9 +77,8 @@ class _InvoiceTemplateSettingsPageState
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
+      builder: (ctx) =>
+          Center(child: CircularProgressIndicator(color: AppColors.primary)),
     );
 
     try {
@@ -194,8 +189,10 @@ class _InvoiceTemplateSettingsPageState
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: template.category == InvoiceCategory.traditional
                         ? Colors.amber.shade50
@@ -231,8 +228,11 @@ class _InvoiceTemplateSettingsPageState
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 14, color: AppColors.primary),
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(f, style: const TextStyle(fontSize: 12)),
                   ],
@@ -290,9 +290,7 @@ class _InvoiceTemplateSettingsPageState
     return GradientScaffold(
       child: Column(
         children: [
-          const AppHeader(
-            title: 'Invoice Templates',
-          ),
+          const AppHeader(title: 'Invoice Templates'),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -310,8 +308,11 @@ class _InvoiceTemplateSettingsPageState
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.auto_awesome,
-                            color: Color(0xFF2563EB), size: 20),
+                        const Icon(
+                          Icons.auto_awesome,
+                          color: Color(0xFF2563EB),
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -343,7 +344,9 @@ class _InvoiceTemplateSettingsPageState
                               setState(() => _filterCategory = cat);
                             }
                           },
-                          selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                          selectedColor: AppColors.primary.withValues(
+                            alpha: 0.15,
+                          ),
                           checkmarkColor: AppColors.primary,
                           labelStyle: TextStyle(
                             fontSize: 12,
@@ -420,10 +423,14 @@ class _InvoiceTemplateSettingsPageState
                                           const SizedBox(width: 6),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: template.category ==
-                                                      InvoiceCategory.traditional
+                                              color:
+                                                  template.category ==
+                                                      InvoiceCategory
+                                                          .traditional
                                                   ? Colors.amber.shade50
                                                   : Colors.indigo.shade50,
                                               borderRadius:
@@ -434,7 +441,8 @@ class _InvoiceTemplateSettingsPageState
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,
-                                                color: template.category ==
+                                                color:
+                                                    template.category ==
                                                         InvoiceCategory
                                                             .traditional
                                                     ? Colors.amber.shade900
@@ -458,19 +466,24 @@ class _InvoiceTemplateSettingsPageState
                                 if (isActive)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.green.shade50,
                                       border: Border.all(
-                                          color: Colors.green.shade300),
+                                        color: Colors.green.shade300,
+                                      ),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.check,
-                                            size: 12,
-                                            color: Colors.green.shade700),
+                                        Icon(
+                                          Icons.check,
+                                          size: 12,
+                                          color: Colors.green.shade700,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Active',
@@ -502,7 +515,8 @@ class _InvoiceTemplateSettingsPageState
                                 Container(
                                   height: 20,
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8),
+                                    horizontal: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: template.headerColor,
                                     borderRadius: BorderRadius.circular(4),
@@ -519,9 +533,9 @@ class _InvoiceTemplateSettingsPageState
                                           color: template.id == 'neo-bold'
                                               ? Colors.black
                                               : template.headerColor ==
-                                                      const Color(0xFFFFFDEB)
-                                                  ? Colors.black
-                                                  : Colors.white,
+                                                    const Color(0xFFFFFDEB)
+                                              ? Colors.black
+                                              : Colors.white,
                                         ),
                                       ),
                                       Text(
@@ -532,9 +546,9 @@ class _InvoiceTemplateSettingsPageState
                                           color: template.id == 'neo-bold'
                                               ? Colors.black
                                               : template.headerColor ==
-                                                      const Color(0xFFFFFDEB)
-                                                  ? Colors.black
-                                                  : Colors.white,
+                                                    const Color(0xFFFFFDEB)
+                                              ? Colors.black
+                                              : Colors.white,
                                         ),
                                       ),
                                     ],
@@ -565,7 +579,9 @@ class _InvoiceTemplateSettingsPageState
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: template.accentColor,
                                         borderRadius: BorderRadius.circular(3),
@@ -575,7 +591,8 @@ class _InvoiceTemplateSettingsPageState
                                         style: TextStyle(
                                           fontSize: 7,
                                           fontWeight: FontWeight.bold,
-                                          color: template.id == 'neo-bold' ||
+                                          color:
+                                              template.id == 'neo-bold' ||
                                                   template.id ==
                                                       'nordic-modern' ||
                                                   template.id == 'warm-minimal'
@@ -627,12 +644,15 @@ class _InvoiceTemplateSettingsPageState
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     onPressed: () => _previewTemplate(template),
-                                    icon: const Icon(Icons.visibility_outlined,
-                                        size: 15),
+                                    icon: const Icon(
+                                      Icons.visibility_outlined,
+                                      size: 15,
+                                    ),
                                     label: const Text('Preview'),
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 10),
+                                        vertical: 10,
+                                      ),
                                       textStyle: const TextStyle(fontSize: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
@@ -652,17 +672,17 @@ class _InvoiceTemplateSettingsPageState
                                           : Icons.touch_app_outlined,
                                       size: 15,
                                     ),
-                                    label: Text(
-                                      isActive ? 'Applied' : 'Apply',
-                                    ),
+                                    label: Text(isActive ? 'Applied' : 'Apply'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 10),
+                                        vertical: 10,
+                                      ),
                                       textStyle: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),

@@ -47,9 +47,17 @@ class RepairItem {
     return value.isEmpty ? '' : value;
   }
 
-  bool get isCompleted => rawStatus == 'completed' || status == 'Completed';
+  String get normalizedStatus => rawStatus.trim().toLowerCase();
 
-  bool get isRejected => rawStatus == 'rejected' || status == 'Rejected';
+  /// A collected device is also a successfully finished repair. Treating it
+  /// as active made it reappear in Pending Repairs after checkout.
+  bool get isCompleted =>
+      const {'completed', 'collected'}.contains(normalizedStatus) ||
+      const {'Completed', 'Collected'}.contains(status);
+
+  bool get isRejected =>
+      const {'rejected', 'unable-to-repair'}.contains(normalizedStatus) ||
+      const {'Rejected', 'Unable to Repair'}.contains(status);
 
   bool get isActive => !isCompleted && !isRejected;
 }

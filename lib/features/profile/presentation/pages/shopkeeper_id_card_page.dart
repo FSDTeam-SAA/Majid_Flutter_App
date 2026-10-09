@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,12 +8,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/utils/colors.dart';
+import '../../../../core/utils/document_saver.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/info_field.dart';
 import '../controller/profile_controller.dart';
+import '../utils/shopkeeper_qr_export.dart';
 
 class ShopkeeperIdCardPage extends StatefulWidget {
   const ShopkeeperIdCardPage({super.key});
@@ -25,7 +25,7 @@ class ShopkeeperIdCardPage extends StatefulWidget {
 }
 
 class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
-  final _qrKey = GlobalKey();
+  final _downloadButtonKey = GlobalKey();
   bool _isSaving = false;
 
   @override
@@ -144,8 +144,9 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
                       _buildQrBox(shortId),
                       SizedBox(height: 14),
                       AppButton(
+                        key: _downloadButtonKey,
                         label: _isSaving ? 'Saving...' : 'Download QR',
-                        onPressed: _isSaving
+                        onPressed: _isSaving || shortId.isEmpty
                             ? null
                             : () => _downloadQr(shortId),
                       ),
@@ -202,96 +203,96 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
   }
 
   Widget _buildQrBox(String shopkeeperId) {
-    return RepaintBoundary(
-      key: _qrKey,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.cardBackground, AppColors.fieldBackground],
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.cardBackground, AppColors.fieldBackground],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: Offset(0, 8),
           ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: Offset(0, 8),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'SCAN TO VERIFY',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2,
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              'SCAN TO VERIFY',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2,
+          ),
+          SizedBox(height: 16),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: QrImageView(
+              data: shopkeeperId,
+              version: QrVersions.auto,
+              size: 200,
+              backgroundColor: Colors.white,
+              eyeStyle: QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF1A1A2E),
+              ),
+              dataModuleStyle: QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF1A1A2E),
               ),
             ),
-            SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: QrImageView(
-                data: shopkeeperId,
-                version: QrVersions.auto,
-                size: 200,
-                backgroundColor: Colors.white,
-                eyeStyle: QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: Color(0xFF1A1A2E),
-                ),
-                dataModuleStyle: QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            shopkeeperId,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.5,
             ),
-            SizedBox(height: 14),
-            Text(
-              shopkeeperId,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _downloadQr(String shopkeeperId) async {
+    if (_isSaving || shopkeeperId.trim().isEmpty) return;
     setState(() => _isSaving = true);
     try {
-      final boundary =
-          _qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return;
-
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-
+      final pngBytes = await buildShopkeeperQrPng(shopkeeperId);
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/qr_$shopkeeperId.png');
-      await file.writeAsBytes(byteData.buffer.asUint8List());
+      final safeId = shopkeeperId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final file = File('${dir.path}/qr_$safeId.png');
+      await file.writeAsBytes(pngBytes, flush: true);
+      final saved = await DocumentSaver.save(file);
 
       if (!mounted) return;
-      await Share.shareXFiles([
-        XFile(file.path),
-      ], text: 'Shopkeeper QR: $shopkeeperId');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('QR saved to ${saved.locationLabel}'),
+          action: SnackBarAction(
+            label: 'Share',
+            onPressed: () => _shareQr(saved.file, shopkeeperId),
+          ),
+        ),
+      );
     } catch (e) {
+      debugPrint('Shopkeeper QR download failed: ${e.runtimeType}');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -299,6 +300,30 @@ class _ShopkeeperIdCardPageState extends State<ShopkeeperIdCardPage> {
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _shareQr(File file, String shopkeeperId) async {
+    if (!mounted) return;
+    final renderObject = _downloadButtonKey.currentContext?.findRenderObject();
+    final box = renderObject is RenderBox ? renderObject : null;
+    final origin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : Offset.zero & MediaQuery.sizeOf(context);
+    try {
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        text: 'Shopkeeper QR: $shopkeeperId',
+        sharePositionOrigin: origin,
+      );
+    } catch (e) {
+      debugPrint('Shopkeeper QR sharing failed: ${e.runtimeType}');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('QR is saved, but sharing failed. Open it in Files.'),
+        ),
+      );
     }
   }
 }

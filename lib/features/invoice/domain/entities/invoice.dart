@@ -3,10 +3,18 @@
 /// the raw JSON map returned by the invoices list endpoint.
 class Invoice {
   final String id;
+  final String servedBy;
+  final String deviceSearchText;
+  final String? repairRequestId;
+  String get trackingUrl => repairRequestId == null || repairRequestId!.isEmpty
+      ? ''
+      : 'https://imoscan.com/my-invoice/${Uri.encodeComponent(repairRequestId!)}';
   final String? invoiceNumber;
   final String type;
   final double? totalAmount;
   final double? amountPaid;
+  final double? dueAmount;
+  final String? currency;
   final String? createdAt;
   final String customerName;
   final String? customerId;
@@ -22,10 +30,15 @@ class Invoice {
 
   const Invoice({
     required this.id,
+    this.servedBy = '',
+    this.deviceSearchText = '',
+    this.repairRequestId,
     this.invoiceNumber,
     required this.type,
     this.totalAmount,
     this.amountPaid,
+    this.dueAmount,
+    this.currency,
     this.createdAt,
     required this.customerName,
     this.customerId,

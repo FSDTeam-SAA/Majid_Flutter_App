@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../../../../core/utils/invoice_amount.dart';
 
 class InvoicePdfItem {
   final String name;
@@ -25,7 +26,7 @@ class InvoicePdfItem {
 
   double get lineTotal {
     final subtotal = (quantity * unitPrice) - discount + tax;
-    return subtotal < 0 ? 0 : subtotal;
+    return subtotal < 0 ? 0 : invoiceMoney(subtotal);
   }
 }
 

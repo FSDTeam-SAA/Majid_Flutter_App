@@ -86,6 +86,9 @@ class _AuthenticatorSetupPageState extends State<AuthenticatorSetupPage> {
       _isSaving = false;
       _hasError = true;
     });
+    showErrorSnackbar(
+      'Could not enable authenticator. Check the code and connection, then retry.',
+    );
   }
 
   @override

@@ -48,12 +48,49 @@ class ReadyOrdersCard extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  'Orders Ready for Collection',
+                  'Orders',
                   maxLines: 2,
                   style: CheckoutTokens.text(size: 14, weight: FontWeight.w800),
                 ),
               ),
-              const Spacer(),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    tooltip: orders.isEmpty
+                        ? 'Orders'
+                        : '${orders.length} orders awaiting collection',
+                    onPressed: onToggleVisibility,
+                    icon: Icon(
+                      Icons.notifications_outlined,
+                      color: CheckoutTokens.accent,
+                    ),
+                  ),
+                  if (orders.isNotEmpty)
+                    Positioned(
+                      right: 2,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                        ),
+                        child: Text(
+                          '${orders.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               Material(
                 color: Colors.transparent,
                 child: InkWell(

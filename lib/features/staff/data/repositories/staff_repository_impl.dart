@@ -27,21 +27,19 @@ class StaffRepositoryImpl implements StaffRepository {
     required String lastName,
     required String email,
     required String phone,
-    required String password,
   }) async {
     final res = await api.post(
-      UserEndpoints.register,
+      UserEndpoints.createStaff,
       data: {
         'firstName': firstName,
         'lastName': lastName,
         'email': email,
         'phone': phone,
-        'password': password,
         'role': 'staff',
         'shopkeeperId': shopkeeperId,
       },
     );
-    final user = res.data['data']['user'];
+    final user = res.data['data'];
     return StaffModel.fromJson(Map<String, dynamic>.from(user));
   }
 

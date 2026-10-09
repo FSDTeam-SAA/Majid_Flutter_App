@@ -1,3 +1,5 @@
+import '../../../../core/utils/invoice_amount.dart';
+
 /// A repair the technician has finished, waiting to be collected and paid for.
 ///
 /// Sourced from `GET /repair-requests/completed`.
@@ -30,9 +32,29 @@ class ReadyOrder {
       customerPhone: json['phoneNumber']?.toString().trim() ?? '',
       customerEmail: json['email']?.toString().trim() ?? '',
       deviceModel: json['deviceModel']?.toString().trim() ?? 'Device',
-      price: _resolvePrice(json),
+      price: invoiceMoney(
+        (totalPrice(json) - depositPaid(json))
+            .clamp(0, double.infinity)
+            .toDouble(),
+      ),
       completedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
     );
+  }
+
+  /// Used by both the collection checkout and the repair receipt.
+  static double totalPrice(Map<String, dynamic> json) {
+    final rawDiscount = _number(json['discount']);
+    final discount = rawDiscount.clamp(0, 100);
+    return invoiceMoney(_resolvePrice(json) * (1 - discount / 100));
+  }
+
+  static double depositPaid(Map<String, dynamic> json) => invoiceMoney(
+    _number(json['depositPaid']).clamp(0, totalPrice(json)).toDouble(),
+  );
+
+  static double _number(dynamic value) {
+    final number = value is num ? value.toDouble() : double.tryParse('$value');
+    return number != null && number.isFinite && number >= 0 ? number : 0;
   }
 
   /// Round-trips this order through the saved checkout draft. Keys match
@@ -51,20 +73,20 @@ class ReadyOrder {
   /// The shopkeeper's quote wins; otherwise fall back to the technician's
   /// parts costs, which is all the backend records for some repairs.
   static double _resolvePrice(Map<String, dynamic> json) {
-    final direct = (json['price'] as num?)?.toDouble();
-    if (direct != null && direct > 0) return direct;
+    final direct = _number(json['price']);
+    if (direct > 0) return direct;
 
     final notes = json['shopkeeperNotes'];
     if (notes is Map) {
-      final cost = (notes['cost'] as num?)?.toDouble();
-      if (cost != null && cost > 0) return cost;
+      final cost = _number(notes['cost']);
+      if (cost > 0) return cost;
     }
 
     final techNotes = json['technicianNotes'];
     if (techNotes is List) {
       final total = techNotes.whereType<Map>().fold<double>(
         0,
-        (sum, note) => sum + ((note['cost'] as num?)?.toDouble() ?? 0),
+        (sum, note) => sum + _number(note['cost']),
       );
       if (total > 0) return total;
     }

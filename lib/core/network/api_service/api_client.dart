@@ -1,9 +1,9 @@
 //============================= new code ===================
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'api_endpoints.dart';
 
@@ -24,25 +24,29 @@ class ApiClient {
           receiveTimeout: Duration(seconds: 90),
         ),
       ) {
-    if (kDebugMode) {
-      dio.interceptors.add(
-        PrettyDioLogger(
-          requestHeader: true,
-          requestBody: true,
-          responseBody: true,
-          responseHeader: false,
-          error: true,
-          compact: true,
-        ),
-      );
-    }
-
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await TokenManager.getToken();
           if (token != null && !_shouldSkipAuthHeader(options.path)) {
             options.headers['Authorization'] = 'Bearer $token';
+            if (!options.path.contains('/staff-session/')) {
+              final savedSession = await TokenManager.getStaffSession();
+              if (savedSession != null) {
+                try {
+                  final session =
+                      jsonDecode(savedSession) as Map<String, dynamic>;
+                  final contextToken = session['token'];
+                  options.headers['X-Staff-Session'] =
+                      contextToken is String && contextToken.isNotEmpty
+                      ? contextToken
+                      : 'invalid';
+                } catch (_) {
+                  // Keep corrupt context from silently becoming an owner request.
+                  options.headers['X-Staff-Session'] = 'invalid';
+                }
+              }
+            }
           }
 
           if (kDebugMode) {
@@ -52,7 +56,9 @@ class ApiClient {
         },
         onResponse: (response, handler) {
           if (kDebugMode) {
-            debugPrint("[RESPONSE] ${response.statusCode} ${response.data}");
+            debugPrint(
+              "[RESPONSE] ${response.statusCode} ${response.requestOptions.path}",
+            );
           }
           return handler.next(response);
         },
@@ -86,7 +92,8 @@ class ApiClient {
             }
           }
 
-          if (err.response?.statusCode == 401) {
+          if (err.response?.statusCode == 401 &&
+              err.requestOptions.extra['authRetried'] != true) {
             final currentToken = await TokenManager.getToken();
             final storedRefreshToken = await TokenManager.getRefreshToken();
             // Only worth a refresh round-trip when we actually hold a refresh
@@ -100,6 +107,7 @@ class ApiClient {
                 await _handleRefresh();
 
                 final clonedRequest = err.requestOptions;
+                clonedRequest.extra['authRetried'] = true;
                 final newToken = await TokenManager.getToken();
                 clonedRequest.headers['Authorization'] = 'Bearer $newToken';
 
@@ -128,6 +136,10 @@ class ApiClient {
   Future<Response<dynamic>?> _retryRequestOnTransientFailure(
     RequestOptions requestOptions,
   ) async {
+    // A retry of a payment/stock mutation can create a duplicate transaction.
+    if (!['GET', 'HEAD'].contains(requestOptions.method.toUpperCase())) {
+      return null;
+    }
     final retryCount = (requestOptions.extra['retryCount'] as int?) ?? 0;
     if (retryCount >= 2) {
       return null;

@@ -2,17 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../domain/security_models.dart';
 import '../controller/security_controller.dart';
 
-/// "New Device Detected" — the owner's approve/deny step.
-///
-/// The client asked for the owner to be able to confirm a sign-in three ways:
-/// a pop-up notification on their registered device, an email, or their
-/// number. This screen is what all three routes land on, so the decision and
-/// its wording are identical however the owner got here. It pops `true` when
-/// the device is approved.
+/// Confirms registration on this installation after the verification step.
+/// Remote trusted-device approval requires a separate server protocol.
 class NewDevicePage extends StatefulWidget {
   final NewDeviceRequest request;
 
@@ -31,7 +27,12 @@ class _NewDevicePageState extends State<NewDevicePage> {
 
     final security = SecurityController.instance;
     if (approve) {
-      await security.approvePendingRequest();
+      final confirmed = await security.approvePendingRequest();
+      if (!confirmed) {
+        if (mounted) setState(() => _isBusy = false);
+        showErrorSnackbar('Could not register this device. Please retry.');
+        return;
+      }
     } else {
       await security.denyPendingRequest();
     }
@@ -77,8 +78,8 @@ class _NewDevicePageState extends State<NewDevicePage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Someone is trying to sign in to your imoscan account from a '
-              'device we have not seen before. Approve it only if this is you.',
+              'You are signing in on a new device. Confirm the details below '
+              'to add this device to your account.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textSecondary,
@@ -115,7 +116,7 @@ class _NewDevicePageState extends State<NewDevicePage> {
             ),
             const SizedBox(height: 28),
             AppButton(
-              label: 'Approve Device',
+              label: 'Confirm This Device',
               isLoading: _isBusy,
               onPressed: () => _decide(true),
             ),
@@ -130,7 +131,7 @@ class _NewDevicePageState extends State<NewDevicePage> {
                 ),
               ),
               child: Text(
-                'Deny Access',
+                'Cancel Sign-in',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,
@@ -140,8 +141,7 @@ class _NewDevicePageState extends State<NewDevicePage> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Denying will block this sign-in. If it was not you, change your '
-              'password straight away.',
+              'Confirm only on a device you trust. Cancel to return to sign-in.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),

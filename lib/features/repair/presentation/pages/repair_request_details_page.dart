@@ -12,9 +12,11 @@ import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../../core/widgets/info_field.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../staff/data/repositories/staff_repository_impl.dart';
-import '../../../stock/data/repositories/inventory_repository_impl.dart';
+import '../../data/repair_parts_repository.dart';
 import '../../../staff/domain/entities/staff_member.dart';
 import '../controller/repair_data.dart';
+import '../utils/repair_contact_uri.dart';
+import '../utils/repair_timeline.dart';
 import '../widgets/timeline_widget.dart';
 import '../widgets/waiting_for_parts_sheet.dart';
 import 'receipt_page.dart';
@@ -90,16 +92,15 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
   }
 
-  /// Part names offered in the picker, taken from the shop's own inventory.
   Future<List<String>> _fetchPartSuggestions() async {
     try {
-      final items = await InventoryRepositoryImpl(_api).getMyInventory();
-      return items
-          .map((item) => item.itemName.trim())
-          .where((name) => name.isNotEmpty)
-          .toSet()
-          .toList();
+      return await RepairPartsRepository(_api).names();
     } catch (_) {
+      if (mounted) {
+        _showMessage(
+          'Could not load saved parts. You can retry or enter a part name.',
+        );
+      }
       return const [];
     }
   }
@@ -112,6 +113,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       context: context,
       customerName: _customerName,
       partSuggestions: suggestions,
+      onCreatePart: RepairPartsRepository(_api).create,
     );
     if (result == null || !mounted) return;
 
@@ -147,8 +149,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
   }
 
-  /// Sends [message] to the customer. The backend only emails on completion,
-  /// so waiting-for-parts updates go out from the shopkeeper's own apps.
+  /// Sends [message] through an app chosen by the shopkeeper.
   Future<void> _showNotifySheet(String message) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -174,7 +175,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Send the parts update through WhatsApp or SMS.',
+                'Send the parts update through WhatsApp, message, or email.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -191,6 +192,14 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     label: 'Message',
                     icon: Icons.sms_outlined,
                     onTap: () => _sendBySms(message),
+                  ),
+                  _contactActionChip(
+                    label: 'Email',
+                    icon: Icons.mail_outline_rounded,
+                    onTap: () => _sendByEmail(
+                      message,
+                      subject: 'Update on your repair - $_shopName',
+                    ),
                   ),
                 ],
               ),
@@ -226,7 +235,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       return;
     }
     await _launchUri(
-      Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}'),
+      repairWhatsAppUri(phone, message),
       successLabel: 'WhatsApp',
       fallbackShareText: message,
     );
@@ -239,8 +248,20 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       return;
     }
     await _launchUri(
-      Uri(scheme: 'sms', path: phone, queryParameters: {'body': message}),
+      repairSmsUri(phone, message),
       successLabel: 'messages',
+      fallbackShareText: message,
+    );
+  }
+
+  Future<void> _sendByEmail(String message, {required String subject}) async {
+    if (_customerEmail.isEmpty) {
+      _showMessage('Customer email is missing');
+      return;
+    }
+    await _launchUri(
+      repairEmailUri(_customerEmail, subject: subject, body: message),
+      successLabel: 'email',
       fallbackShareText: message,
     );
   }
@@ -879,7 +900,10 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     return days != null || description.isNotEmpty;
   }
 
-  bool get _isCompleted => _repair['status']?.toString() == 'completed';
+  bool get _isCompleted => const {
+    'completed',
+    'collected',
+  }.contains(_repair['status']?.toString().trim().toLowerCase());
 
   String get _technicianDisplayName {
     final direct = _repair['technicianName']?.toString().trim() ?? '';
@@ -908,6 +932,8 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
   }
 
   String get _customerPhone => _repair['phoneNumber']?.toString().trim() ?? '';
+
+  String get _customerEmail => _repair['email']?.toString().trim() ?? '';
 
   String get _shopName {
     final repairShop = _repair['shopName']?.toString().trim() ?? '';
@@ -970,9 +996,15 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
         ? '\nTechnician note: $feedback'
         : '';
 
-    return 'Hello $_customerName, your ${_repair['deviceModel'] ?? 'device'} repair is completed at $_shopName.'
-        '\nRequest ID: $_requestShortCode.$priceText$feedbackText'
-        '\nYou can collect the device any time. Please contact us if you need any help.';
+    return [
+      'Hello $_customerName,',
+      '',
+      'Your ${_repair['deviceModel'] ?? 'device'} repair has been completed at $_shopName.',
+      '',
+      'Request ID: $_requestShortCode.$priceText$feedbackText',
+      '',
+      'Your device is ready for collection. Please contact us if you need any help.',
+    ].join('\n');
   }
 
   Future<void> _launchUri(
@@ -1011,9 +1043,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
 
     await _launchUri(
-      Uri.parse(
-        'https://wa.me/$phone?text=${Uri.encodeComponent(_buildCompletionMessage())}',
-      ),
+      repairWhatsAppUri(phone, _buildCompletionMessage()),
       successLabel: 'WhatsApp',
       fallbackShareText: _buildCompletionMessage(),
     );
@@ -1027,13 +1057,16 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
 
     await _launchUri(
-      Uri(
-        scheme: 'sms',
-        path: phone,
-        queryParameters: {'body': _buildCompletionMessage()},
-      ),
+      repairSmsUri(phone, _buildCompletionMessage()),
       successLabel: 'messages',
       fallbackShareText: _buildCompletionMessage(),
+    );
+  }
+
+  Future<void> _sendCompletionByEmail() async {
+    await _sendByEmail(
+      _buildCompletionMessage(),
+      subject: 'Your repair is complete - $_shopName',
     );
   }
 
@@ -1067,7 +1100,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                 Text(
                   autoOpened
                       ? 'Choose how you want to notify the customer that the repair is done.'
-                      : 'Send the completed-job update through WhatsApp or SMS.',
+                      : 'Send the completed-job update through WhatsApp, message, or email.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -1087,6 +1120,11 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       label: 'Message',
                       icon: Icons.sms_outlined,
                       onTap: _sendCompletionBySms,
+                    ),
+                    _contactActionChip(
+                      label: 'Email',
+                      icon: Icons.mail_outline_rounded,
+                      onTap: _sendCompletionByEmail,
                     ),
                   ],
                 ),
@@ -1131,9 +1169,7 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
 
     await _launchUri(
-      Uri.parse(
-        'https://wa.me/$phone?text=${Uri.encodeComponent(_buildRejectionMessage(reason))}',
-      ),
+      repairWhatsAppUri(phone, _buildRejectionMessage(reason)),
       successLabel: 'WhatsApp',
       fallbackShareText: _buildRejectionMessage(reason),
     );
@@ -1147,13 +1183,16 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     }
 
     await _launchUri(
-      Uri(
-        scheme: 'sms',
-        path: phone,
-        queryParameters: {'body': _buildRejectionMessage(reason)},
-      ),
+      repairSmsUri(phone, _buildRejectionMessage(reason)),
       successLabel: 'messages',
       fallbackShareText: _buildRejectionMessage(reason),
+    );
+  }
+
+  Future<void> _sendRejectionByEmail(String reason) async {
+    await _sendByEmail(
+      _buildRejectionMessage(reason),
+      subject: 'Repair update for your device - $_shopName',
     );
   }
 
@@ -1205,6 +1244,11 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                       label: 'Message',
                       icon: Icons.sms_outlined,
                       onTap: () => _sendRejectionBySms(reason),
+                    ),
+                    _contactActionChip(
+                      label: 'Email',
+                      icon: Icons.mail_outline_rounded,
+                      onTap: () => _sendRejectionByEmail(reason),
                     ),
                   ],
                 ),
@@ -1425,83 +1469,8 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  List<TimelineStep> _buildTimelineSteps() {
-    final status = _repair['status']?.toString() ?? '';
-
-    final statusOrder = [
-      'inProgress',
-      'order-assigned',
-      'reassigned',
-      'diagnosing',
-      'quote_sent',
-      'repairing',
-      'waiting-for-parts',
-      'completed',
-    ];
-
-    var currentIndex = statusOrder.indexOf(status);
-    if (currentIndex < 0 && status == 'approved') currentIndex = 1;
-    if (currentIndex < 0 && status == 'start-work') currentIndex = 5;
-    if (currentIndex < 0 && status == 'inReview') currentIndex = 3;
-
-    // Terminal states are finished, not in flight - showing the spinner on
-    // them made a completed repair look like it was still loading.
-    const finishedStatuses = {'completed', 'collected'};
-
-    TimelineStatus stepStatus(int index) {
-      if (currentIndex < 0) return TimelineStatus.pending;
-      if (index < currentIndex) return TimelineStatus.done;
-      if (index == currentIndex) {
-        return finishedStatuses.contains(status)
-            ? TimelineStatus.done
-            : TimelineStatus.inProgress;
-      }
-      return TimelineStatus.pending;
-    }
-
-    return [
-      TimelineStep(
-        'Order Booked',
-        'Your order has been successfully created',
-        stepStatus(0),
-      ),
-      TimelineStep(
-        'Order Assigned',
-        'A technician has been assigned',
-        stepStatus(1),
-      ),
-      TimelineStep(
-        'Reassigned',
-        'The repair has been reassigned for another issue',
-        stepStatus(2),
-      ),
-      TimelineStep(
-        'Diagnosing Started',
-        'Technician is diagnosing the issue',
-        stepStatus(3),
-      ),
-      TimelineStep(
-        'Quote Sent',
-        'A quote has been sent for the repair',
-        stepStatus(4),
-      ),
-      TimelineStep(
-        'Repairing Started',
-        'Device is being repaired',
-        stepStatus(5),
-      ),
-      TimelineStep(
-        'Waiting for Parts',
-        'Repair is paused until parts arrive',
-        stepStatus(6),
-      ),
-      TimelineStep(
-        'Repair Complete',
-        'Repair has been successfully completed',
-        stepStatus(7),
-      ),
-    ];
-  }
+  List<TimelineStep> _buildTimelineSteps() =>
+      buildRepairTimeline(_repair['status']?.toString() ?? '');
 
   Widget _buildIssueDescriptionCard() {
     return AppCard(
@@ -1832,8 +1801,8 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       _RepairActionSpec(
         label: 'Order Assigned',
         tone: _RepairActionTone.orderAssigned,
-        activeStatuses: const {'inProgress', 'order-assigned'},
-        onTap: () => _updateStatus('inProgress'),
+        activeStatuses: const {'order-assigned'},
+        onTap: () => _updateStatus('order-assigned'),
       ),
       _RepairActionSpec(
         label: 'Diagnosing Device',
@@ -2166,6 +2135,8 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       'approved' => 'Approved',
       'rejected' => 'Rejected',
       'completed' => 'Completed',
+      'collected' => 'Collected',
+      'unable-to-repair' => 'Unable to Repair',
       'inReview' => 'In Review',
       'start-work' => 'Start Work',
       'quote_sent' || 'quote-sent' => 'Quote Sent',

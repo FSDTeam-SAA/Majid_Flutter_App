@@ -63,10 +63,9 @@ class HomeController extends GetxController {
         _fetchRepairRequests(),
         _fetchCategories(),
         _fetchInvoices(),
+        _fetchDashboardStats(),
+        _fetchCashManagement(),
       ]);
-      // fetch dashboard after profile so userId is available
-      await _fetchDashboardStats();
-      await _fetchCashManagement();
     } catch (e) {
       debugPrint('HomeController error: $e');
     } finally {

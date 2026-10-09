@@ -24,6 +24,10 @@ class TransactionEntry {
   final String customerPhone;
   final String? pdfUrl;
   final bool isPaid;
+  final String trackingUrl;
+  final String servedBy;
+  final double? totalAmount, amountPaid, dueAmount;
+  final String currencyCode;
 
   const TransactionEntry({
     required this.title,
@@ -41,6 +45,12 @@ class TransactionEntry {
     this.customerPhone = '',
     this.pdfUrl,
     this.isPaid = true,
+    this.trackingUrl = '',
+    this.servedBy = '',
+    this.totalAmount,
+    this.amountPaid,
+    this.dueAmount,
+    this.currencyCode = '',
   });
 
   bool get isCredit =>

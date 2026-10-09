@@ -34,9 +34,10 @@ class _StaffPageState extends State<StaffPage> {
 
   Future<void> _loadRole() async {
     final role = await TokenManager.getRole();
+    final staffSession = await TokenManager.getStaffSession();
     if (mounted) {
       setState(() {
-        _isStaff = role == 'staff';
+        _isStaff = role == 'staff' || staffSession != null;
         _isCheckingRole = false;
       });
     }

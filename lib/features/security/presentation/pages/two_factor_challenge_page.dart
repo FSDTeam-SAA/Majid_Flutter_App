@@ -60,18 +60,22 @@ class _TwoFactorChallengePageState extends State<TwoFactorChallengePage> {
 
   Future<void> _dispatch() async {
     if (_method == TwoFactorMethod.authenticator) return;
-    await _security.sendChallenge(
+    final dispatched = await _security.sendChallenge(
       method: _method,
       destination: _destination,
     );
     if (!mounted) return;
+    if (!dispatched.sent) {
+      showErrorSnackbar(
+        'Could not send the code. Retry or use another verification method.',
+      );
+    }
   }
 
   /// The methods that are actually set up on this account — offering an
   /// unconfigured route would just dead-end the sign-in.
   List<TwoFactorMethod> get _available => [
-    if ((widget.settings.authenticatorSecret ?? '').isNotEmpty)
-      TwoFactorMethod.authenticator,
+    if (widget.settings.hasAuthenticator) TwoFactorMethod.authenticator,
     if (widget.settings.emailVerified && widget.email.isNotEmpty)
       TwoFactorMethod.email,
     if (widget.settings.phoneVerified && widget.phone.isNotEmpty)
@@ -108,14 +112,11 @@ class _TwoFactorChallengePageState extends State<TwoFactorChallengePage> {
             const SizedBox(height: 16),
             for (final option in options)
               ListTile(
-                leading: Icon(
-                  switch (option) {
-                    TwoFactorMethod.authenticator => Icons.key_outlined,
-                    TwoFactorMethod.email => Icons.mail_outline_rounded,
-                    TwoFactorMethod.sms => Icons.sms_outlined,
-                  },
-                  color: AppColors.primary,
-                ),
+                leading: Icon(switch (option) {
+                  TwoFactorMethod.authenticator => Icons.key_outlined,
+                  TwoFactorMethod.email => Icons.mail_outline_rounded,
+                  TwoFactorMethod.sms => Icons.sms_outlined,
+                }, color: AppColors.primary),
                 title: Text(
                   option.label,
                   style: TextStyle(
@@ -139,12 +140,18 @@ class _TwoFactorChallengePageState extends State<TwoFactorChallengePage> {
     );
 
     if (picked == null || !mounted) return;
+    if (!await _security.setMethod(picked)) {
+      showErrorSnackbar(
+        'Could not change the verification method. Please retry.',
+      );
+      return;
+    }
+    if (!mounted) return;
     setState(() {
       _method = picked;
       _code = '';
       _hasError = false;
     });
-    await _security.setMethod(picked);
     await _dispatch();
   }
 

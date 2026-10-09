@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:get/get.dart';
@@ -11,7 +9,13 @@ import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_outlined_button.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
+import '../../../../core/utils/invoice_template_settings.dart';
+import '../../../invoice/presentation/utils/invoice_template_builder.dart';
+import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
+import '../../../invoice/presentation/utils/compact_receipt_pdf.dart';
 import '../widgets/dashed_divider.dart';
+import '../../../stock/domain/entities/ready_order.dart';
+import '../../../../core/utils/invoice_amount.dart';
 
 class ReceiptPage extends StatefulWidget {
   final Map<String, dynamic> repair;
@@ -74,7 +78,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return 'Your Shop';
   }
 
-  double get _price => (widget.repair['price'] as num?)?.toDouble() ?? 0;
+  double get _price => ReadyOrder.totalPrice(widget.repair);
 
   String get _date {
     final parsed = DateTime.tryParse(
@@ -111,9 +115,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return '$hour:$minute $period';
   }
 
-  String get _status =>
-      widget.repair['status']?.toString().toUpperCase() ?? 'COMPLETED';
-
   String get _invoiceNumber {
     final id = _orderId;
     final short = id.length > 6
@@ -131,21 +132,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return widget.repair['email']?.toString() ?? 'N/A';
   }
 
-  String get _techFeedback =>
-      widget.repair['technicianFeedback']?.toString() ?? '';
-
-  List<Map<String, String>> get _techNotes {
-    final notes = widget.repair['technicianNotes'];
-    if (notes is! List || notes.isEmpty) return [];
-    return notes.whereType<Map>().map((n) {
-      return {
-        'part': n['partName']?.toString() ?? '-',
-        'cost': '${_profileCtrl.currencySymbol}${(n['cost'] as num?)?.toStringAsFixed(2) ?? '0.00'}',
-        'time': '${n['time']?.toString() ?? '-'}h',
-      };
-    }).toList();
-  }
-
   Future<void> _primeProfileShopName() async {
     await _profileCtrl.fetchProfile();
     if (!mounted) return;
@@ -154,437 +140,112 @@ class _ReceiptPageState extends State<ReceiptPage> {
     });
   }
 
-  Future<void> _generateAndSharePdf() async {
+  String get _customerPhone => widget.repair['phoneNumber']?.toString() ?? '';
+  double get _paid =>
+      (widget.repair['status'] == 'collected'
+              ? _price
+              : ReadyOrder.depositPaid(widget.repair))
+          .clamp(0, _price)
+          .toDouble();
+  List<VerifiedInvoiceItem> get _receiptItems => [
+    VerifiedInvoiceItem(
+      name: '$_deviceModel repair',
+      imei: widget.repair['IMEINumber']?.toString() ?? '',
+      quantity: 1,
+      lineTotal: _price,
+    ),
+  ];
+  CompactReceiptData get _compactReceipt => CompactReceiptData(
+    reference: _invoiceNumber,
+    shopName: _shopName,
+    shopAddress: _profileCtrl.shopAddress,
+    shopPhone: _profileCtrl.phone,
+    customerName: _customerName,
+    customerPhone: _customerPhone,
+    customerEmail: _email,
+    currencyCode: _profileCtrl.currencyCode,
+    date: DateTime.tryParse(
+      widget.repair['createdAt']?.toString() ?? '',
+    )?.toLocal(),
+    title: 'Repair Receipt',
+    items: _receiptItems,
+    total: _price,
+    paid: _paid,
+    due: invoiceMoney(_price - _paid),
+    trackingUrl: _qrData,
+    servedBy: _profileCtrl.servedBy,
+  );
+
+  Future<void> _printReceipt() async {
+    if (_isGenerating) return;
     setState(() => _isGenerating = true);
     try {
-      final pdf = pw.Document();
-      final green = PdfColor.fromHex('#4CAF50');
-      final darkText = PdfColors.grey900;
-      final lightText = PdfColors.grey600;
-
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.zero,
-          build: (context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // ── Green header ──
-                pw.Container(
-                  width: double.infinity,
-                  padding: const pw.EdgeInsets.fromLTRB(40, 36, 40, 28),
-                  color: green,
-                  child: pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'Repair Invoice',
-                            style: pw.TextStyle(
-                              fontSize: 26,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.white,
-                            ),
-                          ),
-                          pw.SizedBox(height: 4),
-                          pw.Text(
-                            'Verified Device Repair Invoice',
-                            style: pw.TextStyle(
-                              fontSize: 11,
-                              color: PdfColor.fromHex('#C8E6C9'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.white,
-                          borderRadius: pw.BorderRadius.circular(6),
-                        ),
-                        child: pw.Text(
-                          '✓  VERIFIED',
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontWeight: pw.FontWeight.bold,
-                            color: green,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 40),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.SizedBox(height: 24),
-
-                      // ── Invoice no & date ──
-                      pw.Container(
-                        padding: const pw.EdgeInsets.all(16),
-                        decoration: pw.BoxDecoration(
-                          border: pw.Border.all(color: PdfColors.grey300),
-                          borderRadius: pw.BorderRadius.circular(8),
-                        ),
-                        child: pw.Row(
-                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                          children: [
-                            pw.Column(
-                              crossAxisAlignment: pw.CrossAxisAlignment.start,
-                              children: [
-                                pw.Text(
-                                  'INVOICE NO',
-                                  style: pw.TextStyle(
-                                    fontSize: 9,
-                                    color: lightText,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                pw.SizedBox(height: 4),
-                                pw.Text(
-                                  _invoiceNumber,
-                                  style: pw.TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: darkText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            pw.Column(
-                              crossAxisAlignment: pw.CrossAxisAlignment.end,
-                              children: [
-                                pw.Text(
-                                  'DATE',
-                                  style: pw.TextStyle(
-                                    fontSize: 9,
-                                    color: lightText,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                pw.SizedBox(height: 4),
-                                pw.Text(
-                                  _date,
-                                  style: pw.TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: darkText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      pw.SizedBox(height: 20),
-
-                      // ── Device info box ──
-                      pw.Container(
-                        width: double.infinity,
-                        padding: const pw.EdgeInsets.all(16),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColor.fromHex('#F5F5F5'),
-                          borderRadius: pw.BorderRadius.circular(8),
-                        ),
-                        child: pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Text(
-                              _deviceModel,
-                              style: pw.TextStyle(
-                                fontSize: 18,
-                                fontWeight: pw.FontWeight.bold,
-                                color: darkText,
-                              ),
-                            ),
-                            if (widget.repair['IMEINumber'] != null) ...[
-                              pw.SizedBox(height: 4),
-                              pw.Text(
-                                'IMEI: ${widget.repair['IMEINumber']}',
-                                style: pw.TextStyle(
-                                  fontSize: 11,
-                                  color: lightText,
-                                ),
-                              ),
-                            ],
-                            pw.SizedBox(height: 4),
-                            pw.Text(
-                              'Status: $_status',
-                              style: pw.TextStyle(
-                                fontSize: 11,
-                                color: lightText,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      pw.SizedBox(height: 20),
-
-                      // ── Customer & Shop side by side ──
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Expanded(
-                            child: _pdfInfoBox(
-                              'CUSTOMER',
-                              _customerName,
-                              _email,
-                            ),
-                          ),
-                          pw.SizedBox(width: 16),
-                          pw.Expanded(
-                            child: _pdfInfoBox(
-                              'REPAIR SHOP',
-                              _shopName,
-                              'Created: $_date',
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.SizedBox(height: 24),
-
-                      // ── Repair notes table ──
-                      _buildNotesTable(),
-                      pw.SizedBox(height: 20),
-
-                      // ── Technician feedback & totals row ──
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Expanded(
-                            child: pw.Container(
-                              padding: const pw.EdgeInsets.all(14),
-                              decoration: pw.BoxDecoration(
-                                border: pw.Border.all(color: PdfColors.grey300),
-                                borderRadius: pw.BorderRadius.circular(8),
-                              ),
-                              child: pw.Column(
-                                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                children: [
-                                  pw.Text(
-                                    'TECHNICIAN FEEDBACK',
-                                    style: pw.TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: pw.FontWeight.bold,
-                                      color: darkText,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                  pw.SizedBox(height: 8),
-                                  pw.Text(
-                                    _techFeedback.isNotEmpty
-                                        ? _techFeedback
-                                        : 'No feedback provided yet.',
-                                    style: pw.TextStyle(
-                                      fontSize: 10,
-                                      color: lightText,
-                                      lineSpacing: 4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          pw.SizedBox(width: 16),
-                          pw.Container(
-                            width: 140,
-                            padding: const pw.EdgeInsets.all(14),
-                            decoration: pw.BoxDecoration(
-                              border: pw.Border.all(color: PdfColors.grey300),
-                              borderRadius: pw.BorderRadius.circular(8),
-                            ),
-                            child: pw.Column(
-                              crossAxisAlignment: pw.CrossAxisAlignment.start,
-                              children: [
-                                _pdfTotalLine(
-                                  'Subtotal',
-                                  _formatCurrency(_price),
-                                ),
-                                pw.SizedBox(height: 6),
-                                _pdfTotalLine('Tax', _formatCurrency(0)),
-                                pw.Divider(color: PdfColors.grey400),
-                                pw.SizedBox(height: 2),
-                                pw.Row(
-                                  mainAxisAlignment:
-                                      pw.MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    pw.Text(
-                                      'TOTAL',
-                                      style: pw.TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: pw.FontWeight.bold,
-                                        color: darkText,
-                                      ),
-                                    ),
-                                    pw.Text(
-                                      _formatCurrency(_price),
-                                      style: pw.TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: pw.FontWeight.bold,
-                                        color: darkText,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.SizedBox(height: 24),
-
-                      // ── QR code ──
-                      pw.BarcodeWidget(
-                        barcode: pw.Barcode.qrCode(),
-                        data: _qrData,
-                        width: 80,
-                        height: 80,
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        'Scan to verify invoice',
-                        style: pw.TextStyle(fontSize: 9, color: lightText),
-                      ),
-                      pw.SizedBox(height: 20),
-                      pw.Divider(color: PdfColors.grey300),
-                      pw.SizedBox(height: 10),
-
-                      // ── Footer ──
-                      pw.Center(
-                        child: pw.Column(
-                          children: [
-                            pw.Text(
-                              'Thank you for choosing $_shopName',
-                              style: pw.TextStyle(
-                                fontSize: 10,
-                                color: lightText,
-                              ),
-                            ),
-                            pw.SizedBox(height: 2),
-                            pw.Text(
-                              'Computer generated smart verified invoice',
-                              style: pw.TextStyle(
-                                fontSize: 9,
-                                color: PdfColors.grey400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+      final bytes = await CompactReceiptPdf.build(_compactReceipt);
+      await Printing.layoutPdf(
+        name: _invoiceNumber,
+        format: PdfPageFormat.roll80,
+        dynamicLayout: false,
+        onLayout: (_) async => bytes,
       );
-
-      final dir = await getTemporaryDirectory();
-      final fileName =
-          'repair_invoice_${_invoiceNumber.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(await pdf.save());
-
-      if (!mounted) return;
-      try {
-        await Share.shareXFiles([
-          XFile(file.path),
-        ], text: 'Repair Invoice - $_deviceModel');
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('PDF saved: ${file.path}')));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not print receipt')),
+        );
       }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
   }
 
-  pw.Widget _pdfInfoBox(String title, String name, String subtitle) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(14),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey300),
-        borderRadius: pw.BorderRadius.circular(8),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            title,
-            style: pw.TextStyle(
-              fontSize: 9,
-              color: PdfColors.grey500,
-              letterSpacing: 1,
-            ),
-          ),
-          pw.SizedBox(height: 6),
-          pw.Text(
-            name,
-            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 3),
-          pw.Text(
-            subtitle,
-            style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _buildNotesTable() {
-    final green = PdfColor.fromHex('#4CAF50');
-    final notes = _techNotes;
-
-    final rows = notes.isEmpty
-        ? [
-            ['−', 'No Repair Notes Added', '−', _formatCurrency(0)],
-          ]
-        : notes.map((n) => ['-', n['part']!, n['time']!, n['cost']!]).toList();
-
-    return pw.TableHelper.fromTextArray(
-      headerDecoration: pw.BoxDecoration(color: green),
-      headerStyle: pw.TextStyle(
-        fontSize: 10,
-        fontWeight: pw.FontWeight.bold,
-        color: PdfColors.white,
-      ),
-      cellStyle: pw.TextStyle(fontSize: 10),
-      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      headers: ['DATE', 'DESCRIPTION', 'TIME', 'COST'],
-      data: rows,
-    );
-  }
-
-  pw.Widget _pdfTotalLine(String label, String value) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      children: [
-        pw.Text(
-          label,
-          style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-        ),
-        pw.Text(value, style: pw.TextStyle(fontSize: 10)),
-      ],
-    );
+  Future<void> _generateAndSharePdf() async {
+    if (_isGenerating) return;
+    setState(() => _isGenerating = true);
+    try {
+      final file = await InvoiceTemplateBuilder.buildSalesInvoice(
+        fileName: '$_invoiceNumber.pdf',
+        invoiceNumber: _invoiceNumber,
+        createdAt:
+            DateTime.tryParse(widget.repair['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+        templateId: InvoiceTemplateSettings.activeId,
+        shopName: _shopName,
+        shopEmail: _profileCtrl.email,
+        shopPhone: _profileCtrl.phone,
+        shopAddress: _profileCtrl.shopAddress,
+        customerName: _customerName,
+        customerEmail: _email,
+        customerPhone: _customerPhone,
+        customerAddress: '',
+        subtitle: 'REPAIR RECEIPT',
+        paymentLabel: widget.repair['paymentMethod']?.toString() ?? '',
+        isPaid: _paid >= _price,
+        amountPaid: _paid,
+        currencySymbol: _profileCtrl.currencySymbol,
+        currencyCode: _profileCtrl.currencyCode,
+        items: _receiptItems,
+        trackingUrl: _qrData,
+        servedBy: _profileCtrl.servedBy,
+      );
+      if (!mounted) return;
+      final box = context.findRenderObject() as RenderBox?;
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Repair receipt $_invoiceNumber',
+        text: 'Track your repair: $_qrData',
+        sharePositionOrigin: box == null
+            ? const Rect.fromLTWH(0, 0, 1, 1)
+            : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not generate receipt')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
   }
 
   String _formatCurrency(double value) {
@@ -634,9 +295,19 @@ class _ReceiptPageState extends State<ReceiptPage> {
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 10, 16, 28),
-            child: AppOutlinedButton(
-              label: _isGenerating ? 'Generating...' : 'Get PDF Receipt',
-              onPressed: _isGenerating ? null : _generateAndSharePdf,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppOutlinedButton(
+                  label: _isGenerating ? 'Generating...' : 'Get PDF Receipt',
+                  onPressed: _isGenerating ? null : _generateAndSharePdf,
+                ),
+                const SizedBox(height: 8),
+                AppOutlinedButton(
+                  label: 'Print Receipt · 80 mm',
+                  onPressed: _isGenerating ? null : _printReceipt,
+                ),
+              ],
             ),
           ),
         ],

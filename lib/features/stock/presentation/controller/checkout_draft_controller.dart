@@ -56,6 +56,7 @@ class CheckoutDraftController extends GetxController {
     for (final order in repairs.values)
       CalculationLine(
         expression: '1',
+        repairId: order.id,
         quantity: 1,
         amount: order.price,
         name: '${order.deviceModel} repair',

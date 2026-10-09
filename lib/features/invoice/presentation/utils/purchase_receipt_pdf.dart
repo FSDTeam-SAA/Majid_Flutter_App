@@ -48,15 +48,17 @@ abstract final class PurchaseReceiptPdf {
     final cleanShopEmail = _sanitize(shopEmail);
     final cleanPreparedBy = _sanitize(preparedBy);
     final cleanItems = items
-        .map((item) => InvoicePdfItem(
-              name: _sanitize(item.name),
-              code: _sanitize(item.code),
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discount: item.discount,
-              tax: item.tax,
-              imeiSerial: _sanitize(item.imeiSerial),
-            ))
+        .map(
+          (item) => InvoicePdfItem(
+            name: _sanitize(item.name),
+            code: _sanitize(item.code),
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discount: item.discount,
+            tax: item.tax,
+            imeiSerial: _sanitize(item.imeiSerial),
+          ),
+        )
         .toList();
 
     final serialCount = cleanItems

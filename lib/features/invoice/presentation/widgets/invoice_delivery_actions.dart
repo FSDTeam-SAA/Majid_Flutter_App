@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,9 +12,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart'
-    show baseUrl, CustomerEndpoints, InvoiceEndpoints;
+    show baseUrl, CustomerEndpoints, InvoiceEndpoints, UserEndpoints;
 import '../../../../core/utils/colors.dart';
 import '../../../transactions/presentation/widgets/transaction_colors.dart';
+import '../../../repair/presentation/utils/repair_contact_uri.dart';
+import '../utils/compact_receipt_pdf.dart';
 
 bool _hasPdf(String? url) {
   final uri = Uri.tryParse(url ?? '');
@@ -101,19 +105,20 @@ Future<void> sendInvoiceMessage(
   required String? pdfUrl,
   required String invoiceRef,
   required String customerPhone,
+  String shopName = '',
+  String trackingUrl = '',
 }) async {
   if (!_hasPdf(pdfUrl)) {
     _showMessage(context, 'Original invoice PDF is unavailable');
     return;
   }
-  final message = 'Your invoice $invoiceRef: $pdfUrl';
+  final message =
+      'Thank you for visiting ${shopName.isEmpty ? 'our shop' : shopName}. '
+      'Your invoice $invoiceRef: $pdfUrl'
+      '${trackingUrl.isEmpty ? '' : '\nTrack your repair: $trackingUrl'}';
   final phone = customerPhone.replaceAll(RegExp(r'[^\d+]'), '');
   if (phone.isNotEmpty) {
-    final uri = Uri(
-      scheme: 'sms',
-      path: phone,
-      queryParameters: {'body': message},
-    );
+    final uri = repairSmsUri(phone, message);
     try {
       if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
     } catch (_) {}
@@ -141,6 +146,7 @@ Future<void> showInvoiceEmailSheet(
   required String amountLabel,
   required String customerId,
   required String customerEmail,
+  String trackingUrl = '',
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -155,6 +161,7 @@ Future<void> showInvoiceEmailSheet(
       amountLabel: amountLabel,
       customerId: customerId,
       customerEmail: customerEmail,
+      trackingUrl: trackingUrl,
     ),
   );
 }
@@ -165,6 +172,7 @@ class _InvoiceEmailSheet extends StatefulWidget {
   final String amountLabel;
   final String customerId;
   final String customerEmail;
+  final String trackingUrl;
 
   const _InvoiceEmailSheet({
     required this.invoiceRef,
@@ -172,6 +180,7 @@ class _InvoiceEmailSheet extends StatefulWidget {
     required this.amountLabel,
     required this.customerId,
     required this.customerEmail,
+    required this.trackingUrl,
   });
 
   @override
@@ -263,6 +272,7 @@ class _InvoiceEmailSheetState extends State<_InvoiceEmailSheet> {
           'invoiceRef': widget.invoiceRef,
           'pdfUrl': widget.pdfUrl,
           'amountLabel': widget.amountLabel,
+          if (widget.trackingUrl.isNotEmpty) 'trackingUrl': widget.trackingUrl,
           if (widget.customerId.isNotEmpty) 'customerId': widget.customerId,
         },
       );
@@ -403,7 +413,9 @@ class _InvoiceEmailSheetState extends State<_InvoiceEmailSheet> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Text(
-                  'Email includes the invoice details and direct PDF download link. Tap the PDF above to share it via another app.',
+                  widget.trackingUrl.isEmpty
+                      ? 'Email includes the invoice PDF and download link.'
+                      : 'Email includes the invoice PDF and repair tracking link.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
@@ -505,5 +517,300 @@ class _InvoiceEmailSheetState extends State<_InvoiceEmailSheet> {
         ),
       ),
     ],
+  );
+}
+
+Future<void> printOriginalInvoicePdf(
+  BuildContext context, {
+  required String? pdfUrl,
+  required String invoiceRef,
+  CompactReceiptData? receipt,
+}) async {
+  if (receipt != null) {
+    final compact = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('Choose print format')),
+            ListTile(
+              leading: const Icon(Icons.receipt_long),
+              title: const Text('Receipt · 80 mm'),
+              onTap: () => Navigator.pop(ctx, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Original invoice PDF'),
+              enabled: _hasPdf(pdfUrl),
+              onTap: () => Navigator.pop(ctx, false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (compact == null || !context.mounted) return;
+    if (compact) {
+      try {
+        final bytes = await CompactReceiptPdf.build(receipt);
+        await Printing.layoutPdf(
+          name: '$invoiceRef-receipt',
+          format: PdfPageFormat.roll80,
+          dynamicLayout: false,
+          onLayout: (_) async => bytes,
+        );
+      } catch (_) {
+        if (context.mounted) {
+          _showMessage(context, 'Could not print the receipt');
+        }
+      }
+      return;
+    }
+  }
+  if (!_hasPdf(pdfUrl)) {
+    _showMessage(context, 'Original invoice PDF is unavailable');
+    return;
+  }
+  try {
+    final file = await _originalPdf(pdfUrl!, invoiceRef);
+    final bytes = await File(file.path).readAsBytes();
+    await Printing.layoutPdf(name: invoiceRef, onLayout: (_) async => bytes);
+  } catch (_) {
+    if (context.mounted) _showMessage(context, 'Could not print the invoice');
+  }
+}
+
+Future<void> shareInvoiceOnWhatsApp(
+  BuildContext context, {
+  required String? pdfUrl,
+  required String invoiceRef,
+  String trackingUrl = '',
+}) async {
+  if (!_hasPdf(pdfUrl)) {
+    _showMessage(context, 'Original invoice PDF is unavailable');
+    return;
+  }
+  try {
+    final file = await _originalPdf(pdfUrl!, invoiceRef);
+    if (!context.mounted) return;
+    await Share.shareXFiles(
+      [file],
+      subject: 'Invoice $invoiceRef',
+      text: trackingUrl.isEmpty
+          ? 'Invoice $invoiceRef'
+          : 'Track your repair: $trackingUrl',
+      sharePositionOrigin: _shareOrigin(context),
+    );
+  } catch (_) {
+    if (context.mounted) {
+      _showMessage(context, 'Could not prepare the invoice for WhatsApp');
+    }
+  }
+}
+
+Future<void> showScorePlus(
+  BuildContext context, {
+  required String invoiceId,
+  String email = '',
+  String phone = '',
+}) async {
+  try {
+    final res = await ApiClient(baseUrl).get(UserEndpoints.myProfile);
+    final shop = res.data['data'] as Map;
+    final url = Uri.tryParse(shop['googleReviewPageUrl']?.toString() ?? '');
+    if (!context.mounted) return;
+    if (url == null || url.scheme != 'https' || url.host.isEmpty) {
+      _showMessage(
+        context,
+        'Set your Google review link in website shop settings first',
+      );
+      return;
+    }
+    final message =
+        'Thank you for visiting ${shop['shopName'] ?? 'our shop'}! '
+        'We would appreciate your Google review: $url';
+    final channel = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('ScorePlus — request a Google review')),
+            for (final label in ['Email', 'SMS', 'WhatsApp'])
+              ListTile(
+                title: Text(label),
+                onTap: () => Navigator.pop(ctx, label),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (channel == null || !context.mounted) return;
+    if (channel == 'Email') {
+      if (invoiceId.isEmpty) {
+        _showMessage(
+          context,
+          'Save the invoice before sending a review request',
+        );
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => _ReviewRequestEmailSheet(
+          invoiceId: invoiceId,
+          email: email,
+          reviewUrl: url.toString(),
+        ),
+      );
+      return;
+    }
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final uri = switch (channel) {
+      'SMS' => repairSmsUri(phone.replaceAll(RegExp(r'[^\d+]'), ''), message),
+      _ => repairWhatsAppUri(digits, message),
+    };
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        context.mounted) {
+      _showMessage(context, 'Could not open $channel');
+    }
+  } catch (_) {
+    if (context.mounted) {
+      _showMessage(context, 'Could not load your shop review link');
+    }
+  }
+}
+
+class _ReviewRequestEmailSheet extends StatefulWidget {
+  const _ReviewRequestEmailSheet({
+    required this.invoiceId,
+    required this.email,
+    required this.reviewUrl,
+  });
+  final String invoiceId;
+  final String email;
+  final String reviewUrl;
+
+  @override
+  State<_ReviewRequestEmailSheet> createState() =>
+      _ReviewRequestEmailSheetState();
+}
+
+class _ReviewRequestEmailSheetState extends State<_ReviewRequestEmailSheet> {
+  late final _recipient = TextEditingController(text: widget.email);
+  bool _sending = false;
+  bool _sent = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _recipient.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    if (_sending || _sent) return;
+    final recipient = _recipient.text.trim();
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(recipient)) {
+      setState(() => _error = 'Enter a valid recipient email');
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      final response = await ApiClient(baseUrl).post(
+        InvoiceEndpoints.reviewRequest(widget.invoiceId),
+        data: {'email': recipient, 'googleReviewUrl': widget.reviewUrl},
+      );
+      if (response.data is! Map || response.data['success'] != true) {
+        throw const FormatException('Review request was not confirmed');
+      }
+      if (mounted) setState(() => _sent = true);
+    } on DioException catch (e) {
+      if (mounted) {
+        final data = e.response?.data;
+        setState(
+          () => _error = data is Map
+              ? data['message']?.toString() ??
+                    'Review request was not confirmed'
+              : 'Review request was not confirmed. Check before sending again.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'Review request was not confirmed. Check before sending again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        20 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ScorePlus — email review request',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _recipient,
+              enabled: !_sending && !_sent,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Customer email'),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            if (_sent)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'Review request sent. Sending a request does not mark a review as received.',
+                ),
+              ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _sending
+                    ? null
+                    : _sent
+                    ? () => Navigator.pop(context)
+                    : _send,
+                child: Text(
+                  _sending
+                      ? 'Sending...'
+                      : _sent
+                      ? 'Done'
+                      : 'Send review request',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }

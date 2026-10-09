@@ -8,7 +8,9 @@ import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
 import '../../../scan/presentation/widgets/searchable_picker_sheet.dart';
-import '../../../invoice/presentation/pages/invoice_page.dart';
+import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
+import '../../../customer/presentation/widgets/customer_balance_card.dart';
+import '../utils/checkout_payment.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../controller/stock_basket_controller.dart';
 import '../theme/checkout_tokens.dart';
@@ -38,6 +40,7 @@ class _StockCheckoutReviewPageState extends State<StockCheckoutReviewPage> {
   Customer? _selectedCustomer;
   List<Customer> _customers = [];
   bool _isLoadingCustomers = false;
+  bool _isPaying = false;
 
   @override
   void initState() {
@@ -116,35 +119,41 @@ class _StockCheckoutReviewPageState extends State<StockCheckoutReviewPage> {
   /// Hands the reviewed lines to the existing Create Invoice flow, which owns
   /// customer selection, the PDF and the payment record. Stock is decremented
   /// there, once payment actually completes.
-  void _charge() {
-    if (_basket.lines.isEmpty) return;
-
-    final drafts = [
-      for (final line in _basket.lines)
-        InvoiceDraftPrefill(
-          itemName: line.item.itemName,
-          description: line.item.productDetails ?? '',
-          color: line.item.color ?? '',
-          condition: line.item.currentState,
-          imeiSerial: line.item.imeiNumber,
-          price: line.newPrice,
-          quantity: line.quantity,
-        ),
-    ];
-
-    final customerId = _selectedCustomer?.id;
-
-    _basket.clear();
-    showSuccessSnackbar('Items sent to invoice for payment');
-    Navigator.pushReplacement(
+  Future<void> _charge() async {
+    if (_isPaying || _basket.lines.isEmpty) return;
+    if (_priceControllers.values.any((c) {
+      final v = double.tryParse(c.text);
+      return v == null || !v.isFinite || v < 0;
+    })) {
+      showErrorSnackbar('Enter valid item prices');
+      return;
+    }
+    setState(() => _isPaying = true);
+    final paid = await recordCheckoutPayment(
       context,
-      MaterialPageRoute(
-        builder: (_) => InvoicePage(
-          initialDrafts: drafts,
-          initialCustomerId: customerId,
-        ),
-      ),
+      onRecorded: _basket.clear,
+      customer: _selectedCustomer,
+      items: [
+        for (final line in _basket.lines)
+          VerifiedInvoiceItem(
+            name: line.item.itemName,
+            imei: line.item.imeiNumber,
+            quantity: line.quantity,
+            lineTotal: line.lineTotal,
+          ),
+      ],
+      stockLines: [
+        for (final line in _basket.lines)
+          {'itemId': line.item.id, 'quantity': line.quantity},
+      ],
     );
+    if (!mounted) return;
+    if (paid) {
+      _basket.clear();
+      Navigator.pop(context);
+    } else {
+      setState(() => _isPaying = false);
+    }
   }
 
   @override
@@ -193,6 +202,11 @@ class _StockCheckoutReviewPageState extends State<StockCheckoutReviewPage> {
                   _banner(),
                   const SizedBox(height: 16),
                   _customerCard(),
+                  if (_selectedCustomer != null)
+                    CustomerBalanceCard(
+                      customerId: _selectedCustomer!.id,
+                      currencySymbol: _currency,
+                    ),
                   const SizedBox(height: 16),
                   _itemsCard(),
                   const SizedBox(height: 16),
@@ -405,7 +419,10 @@ class _StockCheckoutReviewPageState extends State<StockCheckoutReviewPage> {
                   line.item.itemName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: CheckoutTokens.text(size: 13.5, weight: FontWeight.w700),
+                  style: CheckoutTokens.text(
+                    size: 13.5,
+                    weight: FontWeight.w700,
+                  ),
                 ),
                 if (percent != null) ...[
                   const SizedBox(height: 3),
@@ -561,7 +578,7 @@ class _StockCheckoutReviewPageState extends State<StockCheckoutReviewPage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _charge,
+        onTap: _isPaying ? null : _charge,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           height: 58,

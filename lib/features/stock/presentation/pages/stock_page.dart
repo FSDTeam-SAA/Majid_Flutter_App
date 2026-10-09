@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/network/api_service/commerce_events.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
@@ -28,10 +29,7 @@ import '../widgets/ready_orders_sheet.dart';
 import '../../domain/entities/calculation_line.dart';
 import 'calculation_note_page.dart';
 import 'quantity_review_page.dart';
-import 'add_category_sheet.dart';
-import 'add_new_device_page.dart';
 import 'inventory_screen.dart';
-import 'manage_categories_page.dart';
 import 'stock_categories_page.dart';
 
 class StockPage extends StatefulWidget {
@@ -41,7 +39,7 @@ class StockPage extends StatefulWidget {
   State<StockPage> createState() => _StockPageState();
 }
 
-class _StockPageState extends State<StockPage> {
+class _StockPageState extends State<StockPage> with WidgetsBindingObserver {
   late final ApiClient _api;
   late final StockController _stockCtrl;
   late final StockBasketController _basket;
@@ -51,6 +49,8 @@ class _StockPageState extends State<StockPage> {
   final TextEditingController _searchCtrl = TextEditingController();
   bool _isReadyOrdersSheetOpen = false;
   List<ReadyOrder> _readyOrders = [];
+  bool _fetchingOrders = false;
+  String _ordersError = '';
 
   /// Keypad amounts, their names and any pulled-in repairs. Held outside this
   /// State because the bottom navigation disposes the page on every tab
@@ -62,6 +62,7 @@ class _StockPageState extends State<StockPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final api = ApiClient(baseUrl);
     _api = api;
     _stockCtrl = Get.find<StockController>();
@@ -70,10 +71,13 @@ class _StockPageState extends State<StockPage> {
     _authCtrl = Get.find<AuthController>();
     _draft = CheckoutDraftController.instance;
     _bootstrap();
+    CommerceEvents.revision.addListener(_bootstrap);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    CommerceEvents.revision.removeListener(_bootstrap);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -84,23 +88,45 @@ class _StockPageState extends State<StockPage> {
 
   /// Repairs the technicians have finished, ready to be collected and paid
   /// for. Failures fall back to an empty state in the sheet.
-  Future<void> _fetchReadyOrders() async {
-    try {
-      final res = await _api.get(
-        RepairRequestEndpoints.completed,
-        query: {'page': 1, 'limit': 20},
-      );
-      final data = res.data['data'];
-      if (data is! List || !mounted) return;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _fetchReadyOrders();
+  }
 
-      setState(() {
-        _readyOrders = data
-            .whereType<Map>()
-            .map((item) => ReadyOrder.fromJson(Map<String, dynamic>.from(item)))
-            .toList();
-      });
+  Future<void> _fetchReadyOrders() async {
+    if (_fetchingOrders) return;
+    _fetchingOrders = true;
+    try {
+      final orders = <ReadyOrder>[];
+      var pages = 1;
+      for (var page = 1; page <= pages; page++) {
+        final res = await _api.get(
+          RepairRequestEndpoints.completed,
+          query: {'page': page, 'limit': 100},
+        );
+        if (!mounted) return;
+        final data = res.data['data'];
+        if (data is! List) {
+          throw const FormatException('Invalid orders response');
+        }
+        final meta = res.data['meta'];
+        pages = meta is Map ? (meta['totalPage'] as num?)?.toInt() ?? 1 : 1;
+        orders.addAll(
+          data.whereType<Map>().map(
+            (item) => ReadyOrder.fromJson(Map<String, dynamic>.from(item)),
+          ),
+        );
+      }
+      if (mounted) {
+        setState(() {
+          _readyOrders = orders;
+          _ordersError = '';
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _readyOrders = []);
+      if (mounted) setState(() => _ordersError = 'Could not refresh orders');
+    } finally {
+      _fetchingOrders = false;
     }
   }
 
@@ -295,6 +321,14 @@ class _StockPageState extends State<StockPage> {
         return Column(
           children: [
             _buildHeader(context),
+            if (_ordersError.isNotEmpty)
+              ListTile(
+                title: Text(_ordersError),
+                trailing: TextButton(
+                  onPressed: _fetchReadyOrders,
+                  child: const Text('Retry'),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
               child: ReadyOrdersCard(
@@ -488,46 +522,8 @@ class _StockPageState extends State<StockPage> {
                     const SizedBox(height: 10),
                     _buildMenuOption(
                       context,
-                      Icons.create_new_folder_rounded,
-                      'Add New Category',
-                      () {
-                        Navigator.pop(context);
-                        showAddCategorySheet(context);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _buildMenuOption(
-                      context,
-                      Icons.add_box_rounded,
-                      'Add New Device',
-                      () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => AddNewDevicePage()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _buildMenuOption(
-                      context,
-                      Icons.category_rounded,
-                      'Manage Categories',
-                      () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ManageCategoriesPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _buildMenuOption(
-                      context,
                       Icons.inventory_rounded,
-                      'View Inventory',
+                      'Manage Stock',
                       () {
                         Navigator.pop(context);
                         Navigator.push(

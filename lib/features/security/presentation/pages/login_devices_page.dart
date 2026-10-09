@@ -25,9 +25,7 @@ class LoginDevicesPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Remove this device?',
           style: TextStyle(
@@ -37,8 +35,7 @@ class LoginDevicesPage extends StatelessWidget {
           ),
         ),
         content: Text(
-          '${device.name} will be signed out and will have to verify again '
-          'the next time it signs in.',
+          'Remove ${device.name} from your registered devices?',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13.5,
@@ -72,7 +69,7 @@ class LoginDevicesPage extends StatelessWidget {
     if (removed) {
       showSuccessSnackbar('${device.name} removed');
     } else {
-      showErrorSnackbar('This device cannot be removed here — log out instead');
+      showErrorSnackbar('Could not remove this device. Please retry.');
     }
   }
 
@@ -94,7 +91,7 @@ class LoginDevicesPage extends StatelessWidget {
                   Text(
                     devices.isEmpty
                         ? 'No devices recorded yet'
-                        : '${devices.length} device${devices.length == 1 ? '' : 's'} connected',
+                        : '${devices.length} device${devices.length == 1 ? '' : 's'} registered',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 20,
@@ -103,7 +100,7 @@ class LoginDevicesPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'These devices are currently signed in to your account. '
+                    'These devices are registered to your account. '
                     'Remove any you do not recognise.',
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -122,8 +119,7 @@ class LoginDevicesPage extends StatelessWidget {
                           device: device,
                           onRemove: device.isCurrent
                               ? null
-                              : () =>
-                                    _confirmRemove(context, security, device),
+                              : () => _confirmRemove(context, security, device),
                         ),
                       ),
                     ),
@@ -164,7 +160,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Devices appear here after they sign in and are approved.',
+            'Devices appear here after their registration is confirmed.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
           ),

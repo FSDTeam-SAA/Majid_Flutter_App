@@ -3,6 +3,7 @@ class InventoryItem {
   final String id;
   final String itemName;
   final String? sku;
+  final String? upc;
   final String? brand;
   final String? color;
   final String? storage;
@@ -24,6 +25,7 @@ class InventoryItem {
     required this.id,
     required this.itemName,
     this.sku,
+    this.upc,
     this.brand,
     this.color,
     this.storage,

@@ -14,6 +14,7 @@ import '../../../consent/presentation/controller/consent_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
 import '../utils/device_certificate_pdf.dart';
+import '../../data/repositories/imei_repository_impl.dart';
 import '../utils/provider_field_privacy.dart';
 import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
 import '../widgets/smart_invoice_sheet.dart';
@@ -37,6 +38,7 @@ class DeviceReportPage extends StatefulWidget {
 
 class _DeviceReportPageState extends State<DeviceReportPage> {
   bool _isGeneratingPdf = false;
+  bool _isRegenerating = false;
   bool _isCreatingInvoice = false;
   final GlobalKey _downloadCertificateButtonKey = GlobalKey();
   final GlobalKey _smartInvoiceButtonKey = GlobalKey();
@@ -58,6 +60,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                 MediaQuery.paddingOf(context).bottom + 24,
               ),
               children: [
+                _buildReportFreshness(),
                 ..._buildFieldWidgets(allFields),
                 SizedBox(height: 12),
                 AiRiskCard(
@@ -187,6 +190,45 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
 
   // ─── PDF ───
 
+  Widget _buildReportFreshness() {
+    final data = widget.report['data'];
+    final isCached =
+        widget.report['fromHistory'] == true ||
+        widget.report['cached'] == true ||
+        widget.report['oldGenerated'] == true ||
+        (data is Map &&
+            (data['oldGenerated'] == true || data['cached'] == true));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (isCached) ...[
+              const Text(
+                'Previously checked report',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'This saved report is not a live check. Generate a new report to check the current status.',
+              ),
+            ] else
+              const Text(
+                'Report reflects the status at the time it was checked.',
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _isRegenerating ? null : _generateNew,
+              icon: const Icon(Icons.refresh),
+              label: Text(_isRegenerating ? 'Checking...' : 'Generate New'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Pulls a value out of the report, trying the display labels first and then
   /// the raw provider keys.
   String _reportValue(List<String> candidates) {
@@ -304,6 +346,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         createdAt: now,
         shopName: profileCtrl.shopName,
         shopEmail: profileCtrl.email,
+        servedBy: profileCtrl.servedBy,
         shopPhone: profileCtrl.whatsappNumber.isNotEmpty
             ? profileCtrl.whatsappNumber
             : profileCtrl.phone,
@@ -362,7 +405,11 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       final payload = FormData();
       payload.fields.addAll([
         MapEntry('shopkeeperId', shopkeeperId),
-        MapEntry('type', 'Custom invoice'),
+        // A smart invoice records a handset bought/traded in from the
+        // customer. It is cash leaving the shop, so persist it as a purchase
+        // instead of a sales invoice; Transactions can then show it as an
+        // expense with a negative amount.
+        MapEntry('type', 'purchase'),
         if (customerId.isNotEmpty) MapEntry('customerInfo', customerId),
         MapEntry('totalAmount', customer.amount.toString()),
         MapEntry('paymentMethod', customer.paymentMethod),
@@ -415,6 +462,56 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
       showErrorSnackbar('Failed to create smart invoice');
     } finally {
       if (mounted) setState(() => _isCreatingInvoice = false);
+    }
+  }
+
+  Future<void> _generateNew() async {
+    if (_isRegenerating) return;
+    final device = _smartInvoiceDevice;
+    final raw = _data;
+    final serviceId = int.tryParse(
+      (widget.report['serviceId'] ?? raw['serviceId'] ?? '').toString(),
+    );
+    if (serviceId == null) {
+      showErrorSnackbar(
+        'Open Scan and choose a verification service to generate a new report.',
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generate a new report?'),
+        content: const Text(
+          'This runs a fresh check. The selected service charge may apply.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Generate New'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isRegenerating = true);
+    try {
+      final result = await ImeiRepositoryImpl(
+        ApiClient(baseUrl),
+      ).checkImei(imei: device.imei, serviceId: serviceId, generateNew: true);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => DeviceReportPage(report: result)),
+      );
+    } catch (e) {
+      if (mounted) showErrorSnackbar(e.toString());
+    } finally {
+      if (mounted) setState(() => _isRegenerating = false);
     }
   }
 

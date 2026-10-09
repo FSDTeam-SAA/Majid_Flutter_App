@@ -1,13 +1,11 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart' hide FormData, MultipartFile;
-import '../../../../core/network/api_service/api_client.dart';
-import '../../../../core/network/api_service/api_endpoints.dart';
+import 'package:get/get.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
-import '../../../invoice/presentation/utils/invoice_pdf_builder.dart';
+import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
+import '../../../stock/presentation/utils/checkout_payment.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -20,7 +18,6 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  late final ApiClient _api;
   bool _ordersExpanded = false;
   bool _isSending = false;
   // A getter, not a field: captured at construction this read the
@@ -35,97 +32,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
   double get _price => (_repair['price'] as num?)?.toDouble() ?? 0;
   double get _depositPaid => (_repair['depositPaid'] as num?)?.toDouble() ?? 0;
   double get _discount => (_repair['discount'] as num?)?.toDouble() ?? 0;
-  double get _totalCost {
-    final subtotal = _price - _depositPaid;
-    if (_discount > 0) {
-      return subtotal * (1 - _discount / 100);
-    }
-    return subtotal;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _api = ApiClient(baseUrl);
-  }
+  double get _totalCost =>
+      (_price * (1 - _discount.clamp(0, 100) / 100) - _depositPaid).clamp(
+        0,
+        double.infinity,
+      );
 
   Future<void> _sendInvoice() async {
+    if (_isSending) return;
     final repairId = _repair['_id']?.toString();
     if (repairId == null || repairId.isEmpty) {
       _showMessage('Invalid repair request');
       return;
     }
-
     setState(() => _isSending = true);
-    try {
-      final now = DateTime.now();
-      final pdfFile = await InvoicePdfBuilder.build(
-        fileNamePrefix: 'repair_invoice',
-        invoiceTitle: 'REPAIR INVOICE',
-        invoiceNumber: repairId,
-        createdAt: now,
-        shopName: _repair['shopName']?.toString() ?? 'Your Shop',
-        shopAddress: _repair['shopAddress']?.toString() ?? '',
-        shopEmail: _repair['shopEmail']?.toString() ?? '',
-        shopPhone: _repair['shopPhone']?.toString() ?? '',
-        customerName: [
-          _repair['firstName']?.toString() ?? '',
-          _repair['lastName']?.toString() ?? '',
-        ].where((value) => value.isNotEmpty).join(' '),
-        customerEmail: _repair['email']?.toString() ?? '',
-        customerPhone:
-            _repair['phoneNumber']?.toString() ??
-            _repair['phone']?.toString() ??
-            '',
-        customerAddress:
-            _repair['address']?.toString() ??
-            _repair['billingAddress']?.toString() ??
-            '',
-        paymentType: _repair['paymentType']?.toString() ?? 'cash',
-        currencySymbol: _currencySymbol,
-        items: [
-          InvoicePdfItem(
-            name: _deviceModel,
-            code: _requestId,
-            quantity: 1,
-            unitPrice: _price,
-          ),
-        ],
-        totalAmount: _totalCost,
-        footerNote: 'Generated from iMoScan checkout flow.',
-      );
-      final shopkeeperId = (_repair['shopkeeperId'] ?? _repair['userId'] ?? '')
-          .toString();
-      final customerId = (_repair['customerId'] ?? '').toString();
-      final payload = FormData();
-      payload.fields.addAll([
-        MapEntry('shopkeeperId', shopkeeperId),
-        MapEntry('type', 'repair'),
-        MapEntry('repairRequestId', repairId),
-        MapEntry('totalAmount', _totalCost.toString()),
-        MapEntry('paymentMethod', _repair['paymentType']?.toString() ?? 'cash'),
-        if (customerId.isNotEmpty) MapEntry('customerInfo', customerId),
-      ]);
-      payload.files.add(
-        MapEntry(
-          'invoice',
-          await MultipartFile.fromFile(
-            pdfFile.path,
-            filename: pdfFile.uri.pathSegments.last,
-          ),
+    final paid = await recordCheckoutPayment(
+      context,
+      repairIds: [repairId],
+      customerName: '${_repair['firstName'] ?? ''} ${_repair['lastName'] ?? ''}'
+          .trim(),
+      customerEmail: _repair['email']?.toString() ?? '',
+      customerPhone:
+          (_repair['phoneNumber'] ?? _repair['phone'])?.toString() ?? '',
+      items: [
+        VerifiedInvoiceItem(
+          name: _deviceModel,
+          quantity: 1,
+          lineTotal: _totalCost,
         ),
-      );
-
-      await _api.post(InvoiceEndpoints.create, data: payload);
-      if (!mounted) return;
-      _showMessage('Invoice sent successfully!');
+      ],
+    );
+    if (!mounted) return;
+    if (paid) {
       Navigator.pop(context, true);
-    } on DioException catch (e) {
-      _showMessage(e.response?.data?['message'] ?? 'Failed to send invoice');
-    } catch (e) {
-      _showMessage('Failed to send invoice');
-    } finally {
-      if (mounted) setState(() => _isSending = false);
+    } else {
+      setState(() => _isSending = false);
     }
   }
 
@@ -187,7 +128,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           Padding(
             padding: EdgeInsets.fromLTRB(16, 10, 16, 20),
             child: AppButton(
-              label: _isSending ? 'Sending...' : 'Send Invoice',
+              label: _isSending ? 'Please wait...' : 'Charge',
               onPressed: _isSending ? null : _sendInvoice,
             ),
           ),

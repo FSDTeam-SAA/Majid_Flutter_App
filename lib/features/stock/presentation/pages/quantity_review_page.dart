@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
+import '../../../customer/presentation/widgets/customer_balance_card.dart';
+import '../utils/checkout_payment.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
@@ -115,6 +118,7 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
   Customer? _selectedCustomer;
   List<Customer> _customers = [];
   bool _isLoadingCustomers = false;
+  bool _isPaying = false;
 
   @override
   void initState() {
@@ -221,7 +225,7 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
 
   void _updatePrice(int index, String raw) {
     final lineTotal = double.tryParse(raw.trim());
-    if (lineTotal == null) return;
+    if (lineTotal == null || !lineTotal.isFinite || lineTotal < 0) return;
     final item = _stock[index];
     final unitPrice = lineTotal / item.quantity;
     setState(() => _stock[index] = item.copyWith(newPrice: unitPrice));
@@ -320,6 +324,11 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
                 _banner(),
                 const SizedBox(height: 16),
                 _customerCard(),
+                if (_selectedCustomer != null)
+                  CustomerBalanceCard(
+                    customerId: _selectedCustomer!.id,
+                    currencySymbol: widget.currencySymbol,
+                  ),
                 const SizedBox(height: 16),
                 _itemsCard(),
                 const SizedBox(height: 16),
@@ -825,6 +834,54 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
     );
   }
 
+  Future<void> _pay() async {
+    if (_isPaying) return;
+    for (var i = 0; i < _stock.length; i++) {
+      final value = double.tryParse(_priceControllers[i].text);
+      if (value == null || !value.isFinite || value < 0) {
+        showErrorSnackbar('Enter a valid item amount');
+        return;
+      }
+    }
+    setState(() => _isPaying = true);
+    final paid = await recordCheckoutPayment(
+      context,
+      onRecorded: widget.onClearAll,
+      items: [
+        for (final line in _lines)
+          VerifiedInvoiceItem(
+            name: line.name.isEmpty ? line.expression : line.name,
+            quantity: line.quantity,
+            lineTotal: line.amount,
+          ),
+        for (final item in _stock)
+          VerifiedInvoiceItem(
+            name: item.name,
+            quantity: item.quantity,
+            lineTotal: item.total,
+          ),
+      ],
+      stockLines: [
+        for (final item in _stock)
+          {'itemId': item.id, 'quantity': item.quantity},
+      ],
+      repairIds: [
+        for (final line in _lines)
+          if (line.repairId != null) line.repairId!,
+      ],
+      customer: _selectedCustomer,
+      customerName: widget.customerHint?.name ?? '',
+      customerEmail: widget.customerHint?.email ?? '',
+      customerPhone: widget.customerHint?.phone ?? '',
+    );
+    if (!mounted) return;
+    if (paid) {
+      Navigator.pop(context, _total);
+    } else {
+      setState(() => _isPaying = false);
+    }
+  }
+
   Widget _payButton() {
     // Every row can now be removed, so the button has an empty state.
     final isEmpty = _lines.isEmpty && _stock.isEmpty;
@@ -832,7 +889,7 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: isEmpty ? null : () => Navigator.pop(context, _total),
+        onTap: isEmpty || _isPaying ? null : _pay,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           height: 58,
@@ -843,7 +900,9 @@ class _QuantityReviewPageState extends State<QuantityReviewPage> {
           ),
           child: Center(
             child: Text(
-              isEmpty
+              _isPaying
+                  ? 'Please wait...'
+                  : isEmpty
                   ? 'Nothing to pay for'
                   : 'Pay ${widget.currencySymbol}${_plain(_total)}',
               style: CheckoutTokens.text(

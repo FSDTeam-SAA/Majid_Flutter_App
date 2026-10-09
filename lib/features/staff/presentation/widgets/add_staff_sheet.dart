@@ -33,8 +33,6 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
   final _lastNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  bool _obscurePassword = true;
   String _errorMessage = '';
 
   @override
@@ -43,7 +41,6 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
     _lastNameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
-    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -61,10 +58,6 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
       setState(() => _errorMessage = 'Please enter a valid email address.');
       return;
     }
-    if (_passwordCtrl.text.trim().length < 6) {
-      setState(() => _errorMessage = 'Password must be at least 6 characters.');
-      return;
-    }
 
     try {
       await widget.controller.createStaff(
@@ -72,7 +65,6 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
         lastName: _lastNameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
-        password: _passwordCtrl.text.trim(),
       );
       if (mounted) Navigator.pop(context, true);
     } on DioException catch (e) {
@@ -140,7 +132,7 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Create a staff login. The role will be saved as staff.',
+                  'Add staff, then set their 4-digit PIN using Switch Staff.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12.5,
@@ -177,7 +169,6 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 10),
-                _buildPasswordField(),
                 if (_errorMessage.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(
@@ -223,47 +214,6 @@ class _AddStaffSheetState extends State<AddStaffSheet> {
                 }),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: AppColors.primary.withValues(
-            alpha: AppColors.isDark ? 0.6 : 0.72,
-          ),
-          width: 1.2,
-        ),
-      ),
-      child: TextField(
-        controller: _passwordCtrl,
-        obscureText: _obscurePassword,
-        style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'Password',
-          hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-          isDense: true,
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscurePassword
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
-            onPressed: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
       ),

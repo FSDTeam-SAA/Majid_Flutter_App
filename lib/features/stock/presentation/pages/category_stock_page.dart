@@ -16,7 +16,7 @@ import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_empty_panel.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
-import 'add_new_device_page.dart';
+import '../utils/adjust_stock.dart';
 
 /// Stock inside one category (or the whole catalogue when no category is
 /// given), with the per-item quantity stepper and Sell action.
@@ -202,21 +202,6 @@ class _CategoryStockPageState extends State<CategoryStockPage> {
                     ],
                   ),
                 ),
-                CheckoutIconButton(
-                  icon: Icons.add_rounded,
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddNewDevicePage(
-                          initialCategoryId: widget.categoryId,
-                          initialCategoryName: widget.categoryName,
-                        ),
-                      ),
-                    );
-                    _fetch();
-                  },
-                ),
               ],
             ),
           ),
@@ -283,6 +268,9 @@ class _CategoryStockPageState extends State<CategoryStockPage> {
             onDecrement: () => _step(item, -1),
             onIncrement: () => _step(item, 1),
             onSell: () => _sell(item),
+            onAdjust: () async {
+              if (await adjustStock(context, item.id)) _fetch();
+            },
           );
         },
       ),
@@ -297,6 +285,7 @@ class _StockRow extends StatelessWidget {
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
   final VoidCallback onSell;
+  final VoidCallback onAdjust;
 
   const _StockRow({
     required this.item,
@@ -305,14 +294,13 @@ class _StockRow extends StatelessWidget {
     required this.onDecrement,
     required this.onIncrement,
     required this.onSell,
+    required this.onAdjust,
   });
 
   @override
   Widget build(BuildContext context) {
     final imageUrl = item.imageUrl;
-    final stockLabel = item.quantity > 0
-        ? '${item.quantity} in stock'
-        : 'Stock not tracked';
+    final stockLabel = '${item.quantity} in stock';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -372,6 +360,11 @@ class _StockRow extends StatelessWidget {
                     weight: FontWeight.w700,
                     color: CheckoutTokens.accent,
                   ),
+                ),
+                TextButton.icon(
+                  onPressed: onAdjust,
+                  icon: const Icon(Icons.exposure_rounded, size: 16),
+                  label: const Text('+/- Stock'),
                 ),
                 const SizedBox(height: 6),
                 Text(

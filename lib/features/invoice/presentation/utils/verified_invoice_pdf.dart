@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'invoice_tracking_footer.dart';
+import '../../../../core/utils/invoice_amount.dart';
 
 /// One line on the invoice. Verification details are optional so the same
 /// document serves a scanned device sale and a plain shop invoice.
@@ -81,11 +83,14 @@ abstract final class VerifiedInvoicePdf {
     required String customerAddress,
     required String paymentLabel,
     required bool isPaid,
+    double? amountPaid,
     required String currencySymbol,
     required List<VerifiedInvoiceItem> items,
     String subtitle = 'VERIFIED DEVICE SALE',
     VerifiedInvoiceApiSummary? apiSummary,
     String? consentReference,
+    String trackingUrl = '',
+    String servedBy = '',
   }) async {
     final pdf = pw.Document();
     currencySymbol = _safeCurrency(currencySymbol);
@@ -104,17 +109,47 @@ abstract final class VerifiedInvoicePdf {
             name: _sanitize(item.name),
             imei: _sanitize(item.imei),
             quantity: item.quantity,
-            lineTotal: item.lineTotal,
+            lineTotal: invoiceMoney(item.lineTotal),
             isVerified: item.isVerified,
           ),
         )
         .toList();
 
-    final subtotal = items.fold<double>(0, (sum, item) => sum + item.lineTotal);
+    final subtotal = invoiceMoney(
+      items.fold<double>(0, (sum, item) => sum + item.lineTotal),
+    );
+    if (!subtotal.isFinite ||
+        subtotal < 0 ||
+        items.any(
+          (item) =>
+              item.quantity <= 0 ||
+              !item.lineTotal.isFinite ||
+              item.lineTotal < 0,
+        )) {
+      throw const FormatException('Invalid invoice items');
+    }
     final money = _money(currencySymbol, subtotal);
+    final paidAmount = invoiceMoney(amountPaid ?? (isPaid ? subtotal : 0));
+    if (!paidAmount.isFinite || paidAmount < 0 || paidAmount > subtotal) {
+      throw const FormatException('Invalid amount paid');
+    }
+    final balance = invoiceMoney(
+      (subtotal - paidAmount).clamp(0, subtotal).toDouble(),
+    );
+    final statusLabel = balance == 0
+        ? 'PAID'
+        : paidAmount > 0
+        ? 'PART PAID'
+        : 'UNPAID';
 
     pdf.addPage(
       pw.MultiPage(
+        footer: (_) => invoiceTrackingFooter(
+          trackingUrl: trackingUrl,
+          servedBy: servedBy,
+          paymentSummary:
+              'Paid: ${_money(currencySymbol, paidAmount)} | Balance due: ${_money(currencySymbol, balance)}',
+        ),
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(32, 32, 32, 28),
         build: (context) => [
@@ -140,11 +175,14 @@ abstract final class VerifiedInvoicePdf {
             _apiSummary(apiSummary),
           ],
           pw.SizedBox(height: 16),
-          _noteAndTotals(apiSummary, money, isPaid),
+          _noteAndTotals(apiSummary, money, isPaid, statusLabel),
           if (consentReference != null && consentReference.isNotEmpty) ...[
             pw.SizedBox(height: 10),
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 6,
+              ),
               decoration: pw.BoxDecoration(
                 color: _panelTint,
                 borderRadius: pw.BorderRadius.circular(6),
@@ -634,6 +672,7 @@ abstract final class VerifiedInvoicePdf {
     VerifiedInvoiceApiSummary? summary,
     String money,
     bool isPaid,
+    String statusLabel,
   ) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -738,7 +777,7 @@ abstract final class VerifiedInvoicePdf {
               pw.Align(
                 alignment: pw.Alignment.centerRight,
                 child: pw.Text(
-                  isPaid ? 'PAID' : 'UNPAID',
+                  statusLabel,
                   style: pw.TextStyle(
                     fontSize: 9,
                     fontWeight: pw.FontWeight.bold,

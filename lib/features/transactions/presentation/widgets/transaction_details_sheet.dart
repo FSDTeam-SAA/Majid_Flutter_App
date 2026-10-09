@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../invoice/presentation/widgets/invoice_delivery_actions.dart';
+import '../../../invoice/presentation/utils/compact_receipt_pdf.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/transaction_entry.dart';
 import 'payment_method_icon.dart';
@@ -10,8 +11,8 @@ import 'transaction_colors.dart';
 
 /// The mockup's Transaction Details sheet. Everything the backend already
 /// gives us (invoice ref, date, amount, customer, payment method, PDF) is
-/// live; the rows the backend does not yet return (item, authorisation,
-/// served by) show as "Not recorded yet" rather than being
+/// live; the rows the backend does not yet return (item, authorisation)
+/// show as "Not recorded yet" rather than being
 /// hidden, so the layout matches the spec today and just fills in once those
 /// fields exist.
 Future<void> showTransactionDetailsSheet(
@@ -34,7 +35,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
 
   const _TransactionDetailsSheet({required this.entry});
 
-  String get _currencySymbol => Get.find<ProfileController>().currencySymbol;
+  String get _currencySymbol => entry.currencyCode.isEmpty ? Get.find<ProfileController>().currencySymbol : '${entry.currencyCode} ';
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +156,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
                           _paymentMethodRow(),
                           _row('Card', _cardLabel()),
                           _row('Authorisation', _notRecorded()),
-                          _row('Served by', _notRecorded()),
+                          _row('Served by', _orNotRecorded(entry.servedBy)),
                         ]),
                       ),
                     ],
@@ -188,6 +189,34 @@ class _TransactionDetailsSheet extends StatelessWidget {
                       icon: Icons.sms_outlined,
                       label: 'Send message',
                       onTap: () => _sendMessage(context),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => shareInvoiceOnWhatsApp(
+                        context,
+                        pdfUrl: entry.pdfUrl,
+                        invoiceRef: entry.invoiceRef,
+                        trackingUrl: entry.trackingUrl,
+                      ),
+                      icon: const Icon(Icons.chat_outlined),
+                      label: const Text('WhatsApp'),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => showScorePlus(
+                        context,
+                        invoiceId: entry.invoiceId,
+                        email: entry.customerEmail,
+                        phone: entry.customerPhone,
+                      ),
+                      icon: const Icon(Icons.star_outline),
+                      label: const Text('ScorePlus'),
                     ),
                   ),
                 ],
@@ -477,10 +506,32 @@ class _TransactionDetailsSheet extends StatelessWidget {
   }
 
   Future<void> _printDuplicate(BuildContext context) async {
-    await shareOriginalInvoicePdf(
+    await printOriginalInvoicePdf(
       context,
       pdfUrl: entry.pdfUrl,
       invoiceRef: entry.invoiceRef,
+      receipt: CompactReceiptData(
+        reference: entry.invoiceRef,
+        shopName: Get.find<ProfileController>().shopName,
+        shopAddress: Get.find<ProfileController>().shopAddress,
+        shopPhone: Get.find<ProfileController>().phone,
+        customerName: entry.customerName,
+        customerPhone: entry.customerPhone,
+        customerEmail: entry.customerEmail,
+        currencyCode: entry.currencyCode.isEmpty
+            ? Get.find<ProfileController>().currencyCode
+            : entry.currencyCode,
+        title: entry.kind == TransactionKind.expense
+            ? 'Purchase Receipt'
+            : 'Receipt',
+        date: entry.date,
+        total: entry.totalAmount,
+        paid: entry.amountPaid ?? (entry.isPaid ? entry.totalAmount : null),
+        due: entry.dueAmount,
+        paymentMethod: entry.method,
+        servedBy: entry.servedBy,
+        trackingUrl: entry.trackingUrl,
+      ),
     );
   }
 
@@ -492,6 +543,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
       amountLabel: '$_currencySymbol${entry.amount.abs().toStringAsFixed(2)}',
       customerId: entry.customerId,
       customerEmail: entry.customerEmail,
+      trackingUrl: entry.trackingUrl,
     );
   }
 
@@ -501,6 +553,10 @@ class _TransactionDetailsSheet extends StatelessWidget {
       pdfUrl: entry.pdfUrl,
       invoiceRef: entry.invoiceRef,
       customerPhone: entry.customerPhone,
+      shopName: Get.isRegistered<ProfileController>()
+          ? Get.find<ProfileController>().shopName
+          : '',
+      trackingUrl: entry.trackingUrl,
     );
   }
 

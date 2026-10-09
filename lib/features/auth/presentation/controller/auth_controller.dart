@@ -8,6 +8,7 @@ import '../../../../core/network/api_service/token_meneger.dart';
 import '../../../home/presentation/controller/home_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../staff/presentation/controller/staff_controller.dart';
+import '../../../staff/presentation/controller/staff_session_controller.dart';
 import '../../../stock/presentation/controller/stock_controller.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -179,6 +180,7 @@ class AuthController extends GetxController {
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
       );
+      Get.delete<StaffSessionController>(force: true);
       await TokenManager.saveRole(response.user.role);
       user.value = response.user;
       _clearFields();
@@ -279,6 +281,7 @@ class AuthController extends GetxController {
     Get.delete<ProfileController>(force: true);
     Get.delete<StockController>(force: true);
     Get.delete<StaffController>(force: true);
+    Get.delete<StaffSessionController>(force: true);
   }
 
   Future<bool> _execute(Future<void> Function() action) async {

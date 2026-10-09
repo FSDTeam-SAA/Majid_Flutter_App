@@ -47,7 +47,11 @@ class TwoFactorSettingsPage extends StatelessWidget {
                         );
                         return;
                       }
-                      await security.setEnabled(value);
+                      if (!await security.setEnabled(value)) {
+                        showErrorSnackbar(
+                          'Could not save two-factor settings. Please retry.',
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 22),
@@ -127,8 +131,7 @@ class TwoFactorSettingsPage extends StatelessWidget {
 
   bool _isConfigured(TwoFactorMethod method, TwoFactorSettings settings) =>
       switch (method) {
-        TwoFactorMethod.authenticator =>
-          (settings.authenticatorSecret ?? '').isNotEmpty,
+        TwoFactorMethod.authenticator => settings.hasAuthenticator,
         TwoFactorMethod.email => settings.emailVerified,
         TwoFactorMethod.sms => settings.phoneVerified,
       };
@@ -141,7 +144,7 @@ class TwoFactorSettingsPage extends StatelessWidget {
     TwoFactorSettings settings,
   ) async {
     if (method == TwoFactorMethod.authenticator) {
-      if ((settings.authenticatorSecret ?? '').isEmpty) {
+      if (!settings.hasAuthenticator) {
         await Navigator.push<bool>(
           context,
           MaterialPageRoute(
@@ -154,7 +157,11 @@ class TwoFactorSettingsPage extends StatelessWidget {
         );
         return;
       }
-      await security.setMethod(method);
+      if (!await security.setMethod(method)) {
+        showErrorSnackbar(
+          'Could not save the verification method. Please retry.',
+        );
+      }
       return;
     }
 
@@ -180,7 +187,11 @@ class TwoFactorSettingsPage extends StatelessWidget {
       if (!verified) return;
     }
 
-    await security.setMethod(method);
+    if (!await security.setMethod(method)) {
+      showErrorSnackbar(
+        'Could not save the verification method. Please retry.',
+      );
+    }
   }
 
   /// Sends a code to [destination] and marks it confirmed once entered.
@@ -190,10 +201,16 @@ class TwoFactorSettingsPage extends StatelessWidget {
     TwoFactorMethod method,
     String destination,
   ) async {
-    await security.sendChallenge(
+    final dispatched = await security.sendChallenge(
       method: method,
       destination: destination,
     );
+    if (!dispatched.sent) {
+      showErrorSnackbar(
+        'Could not send a verification code. Please retry or use another method.',
+      );
+      return false;
+    }
     if (!context.mounted) return false;
 
     final verified = await Navigator.push<bool>(
@@ -205,12 +222,16 @@ class TwoFactorSettingsPage extends StatelessWidget {
           onVerify: (code) =>
               security.verifyChallenge(code, email: destination),
           onResend: () async {
-            await security.sendChallenge(
+            final dispatched = await security.sendChallenge(
               method: method,
               destination: destination,
             );
             if (context.mounted) {
-              showSuccessSnackbar('Verification code sent to $destination');
+              if (dispatched.sent) {
+                showSuccessSnackbar('Verification code sent to $destination');
+              } else {
+                showErrorSnackbar('Could not resend the code. Please retry.');
+              }
             }
           },
         ),
@@ -256,9 +277,7 @@ class _IntroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  enabled
-                      ? 'Two-factor is on'
-                      : 'Add a second step to sign in',
+                  enabled ? 'Two-factor is on' : 'Add a second step to sign in',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
@@ -268,7 +287,7 @@ class _IntroCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Every time a new device signs in, we ask for a verification '
-                  'code and let you approve or deny the device.',
+                  'code before you confirm the device details.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12.5,

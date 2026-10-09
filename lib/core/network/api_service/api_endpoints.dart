@@ -27,8 +27,7 @@ class SecurityEndpoints {
       "$baseApiUrl/security/2fa/authenticator/setup";
   static String authenticatorConfirm =
       "$baseApiUrl/security/2fa/authenticator/confirm";
-  static String removeAuthenticator =
-      "$baseApiUrl/security/2fa/authenticator";
+  static String removeAuthenticator = "$baseApiUrl/security/2fa/authenticator";
   static String sendChallenge = "$baseApiUrl/security/2fa/send-challenge";
   static String verifyChallenge = "$baseApiUrl/security/2fa/verify-challenge";
   static String confirmDestination =
@@ -41,6 +40,12 @@ class SecurityEndpoints {
 }
 
 class UserEndpoints {
+  static String createStaff = "$baseApiUrl/user/create-staff";
+  static String staffSessionMembers = "$baseApiUrl/user/staff-session/members";
+  static String switchStaff = "$baseApiUrl/user/staff-session/switch";
+  static String returnToOwner = "$baseApiUrl/user/staff-session/owner";
+  static String staffPin(String staffId) =>
+      "$baseApiUrl/user/staff-session/pin/$staffId";
   static String register = "$baseApiUrl/user/register";
   static String verifyEmail = "$baseApiUrl/user/verify-email";
   static String resendOtp = "$baseApiUrl/user/resend-otp";
@@ -126,6 +131,8 @@ class InvoiceEndpoints {
   static String byShopkeeper(String shopkeeperId) =>
       "$baseApiUrl/invoices/shopkeeper/$shopkeeperId";
   static String byId(String id) => "$baseApiUrl/invoices/$id";
+  static String reviewRequest(String id) =>
+      "$baseApiUrl/invoices/${Uri.encodeComponent(id)}/review-request";
 }
 
 class CustomerEndpoints {
@@ -224,9 +231,14 @@ class ConsentEndpoints {
   static String request = "$baseApiUrl/consent/request";
   static String myRequests = "$baseApiUrl/consent/my-requests";
   static String status(String id) => "$baseApiUrl/consent/status/$id";
-  static String verify(String identifier) => "$baseApiUrl/consent/verify/$identifier";
-  static String approve(String identifier) => "$baseApiUrl/consent/approve/$identifier";
-  static String decline(String identifier) => "$baseApiUrl/consent/decline/$identifier";
-  static String resend(String identifier) => "$baseApiUrl/consent/resend/$identifier";
-  static String publicConsent(String token) => "$baseApiUrl/consent/public/$token";
+  static String verify(String identifier) =>
+      "$baseApiUrl/consent/verify/$identifier";
+  static String approve(String identifier) =>
+      "$baseApiUrl/consent/approve/$identifier";
+  static String decline(String identifier) =>
+      "$baseApiUrl/consent/decline/$identifier";
+  static String resend(String identifier) =>
+      "$baseApiUrl/consent/resend/$identifier";
+  static String publicConsent(String token) =>
+      "$baseApiUrl/consent/public/$token";
 }

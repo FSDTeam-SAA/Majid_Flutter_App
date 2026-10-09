@@ -10,10 +10,8 @@ import '../domain/security_models.dart';
 /// It lives in [FlutterSecureStorage] (Keychain / EncryptedSharedPreferences)
 /// because it holds the authenticator secret and the hashed challenge codes.
 ///
-/// The backend has no two-factor or device-session routes yet. Everything the
-/// UI needs is stored here so the flows are complete and testable on device;
-/// when the server endpoints land, only this class needs to change — the
-/// controller and every screen talk to it, not to storage directly.
+/// Server-confirmed settings are cached here for display; code verification
+/// and security-setting changes always require the backend.
 class SecurityStore {
   static const _storage = FlutterSecureStorage();
 
@@ -63,9 +61,7 @@ class SecurityStore {
     final raw = await _storage.read(key: _pendingRequestKey);
     if (raw == null || raw.isEmpty) return null;
     try {
-      return NewDeviceRequest.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
-      );
+      return NewDeviceRequest.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (e) {
       debugPrint('Could not read pending device request: $e');
       return null;

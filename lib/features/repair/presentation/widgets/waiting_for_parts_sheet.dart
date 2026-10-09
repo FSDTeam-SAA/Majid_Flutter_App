@@ -32,6 +32,7 @@ Future<WaitingForPartsResult?> showWaitingForPartsSheet({
   required BuildContext context,
   required String customerName,
   required List<String> partSuggestions,
+  Future<String> Function(String)? onCreatePart,
 }) {
   return showModalBottomSheet<WaitingForPartsResult>(
     context: context,
@@ -43,6 +44,7 @@ Future<WaitingForPartsResult?> showWaitingForPartsSheet({
     builder: (context) => _WaitingForPartsSheet(
       customerName: customerName,
       partSuggestions: partSuggestions,
+      onCreatePart: onCreatePart,
     ),
   );
 }
@@ -50,10 +52,12 @@ Future<WaitingForPartsResult?> showWaitingForPartsSheet({
 class _WaitingForPartsSheet extends StatefulWidget {
   final String customerName;
   final List<String> partSuggestions;
+  final Future<String> Function(String)? onCreatePart;
 
   const _WaitingForPartsSheet({
     required this.customerName,
     required this.partSuggestions,
+    this.onCreatePart,
   });
 
   @override
@@ -129,8 +133,11 @@ class _WaitingForPartsSheetState extends State<_WaitingForPartsSheet> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) =>
-          _PartPicker(suggestions: widget.partSuggestions, initial: _partName),
+      builder: (context) => _PartPicker(
+        suggestions: widget.partSuggestions,
+        initial: _partName,
+        onCreate: widget.onCreatePart,
+      ),
     );
     if (picked == null || !mounted) return;
     setState(() => _partName = picked);
@@ -636,14 +643,40 @@ class _MessagePreview extends StatelessWidget {
 class _PartPicker extends StatefulWidget {
   final List<String> suggestions;
   final String initial;
+  final Future<String> Function(String)? onCreate;
 
-  const _PartPicker({required this.suggestions, required this.initial});
+  const _PartPicker({
+    required this.suggestions,
+    required this.initial,
+    this.onCreate,
+  });
 
   @override
   State<_PartPicker> createState() => _PartPickerState();
 }
 
 class _PartPickerState extends State<_PartPicker> {
+  bool _saving = false;
+  String _error = '';
+  Future<void> _create() async {
+    if (_saving || widget.onCreate == null || _query.isEmpty) return;
+    setState(() {
+      _saving = true;
+      _error = '';
+    });
+    try {
+      final name = await widget.onCreate!(_query);
+      if (mounted) Navigator.pop(context, name);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Could not save the part. Please try again.';
+        });
+      }
+    }
+  }
+
   late final TextEditingController _searchCtrl = TextEditingController(
     text: widget.initial,
   );
@@ -700,6 +733,7 @@ class _PartPickerState extends State<_PartPicker> {
           const SizedBox(height: 14),
           TextField(
             controller: _searchCtrl,
+            enabled: !_saving,
             autofocus: true,
             onChanged: (_) => setState(() {}),
             style: GoogleFonts.plusJakartaSans(
@@ -734,11 +768,24 @@ class _PartPickerState extends State<_PartPicker> {
             ),
           ),
           const SizedBox(height: 12),
+          if (_error.isNotEmpty)
+            Text(
+              _error,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          if (canUseTyped && widget.onCreate != null)
+            FilledButton.icon(
+              onPressed: _saving ? null : _create,
+              icon: const Icon(Icons.add),
+              label: Text(_saving ? 'Saving...' : 'Add new part'),
+            ),
           if (canUseTyped)
             _PartOption(
-              label: 'Use "$_query"',
+              label: 'Use "$_query" for this repair',
               isCustom: true,
-              onTap: () => Navigator.pop(context, _query),
+              onTap: () {
+                if (!_saving) Navigator.pop(context, _query);
+              },
             ),
           Flexible(
             child: matches.isEmpty && !canUseTyped
@@ -761,7 +808,9 @@ class _PartPickerState extends State<_PartPicker> {
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) => _PartOption(
                       label: matches[index],
-                      onTap: () => Navigator.pop(context, matches[index]),
+                      onTap: () {
+                        if (!_saving) Navigator.pop(context, matches[index]);
+                      },
                     ),
                   ),
           ),

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../utils/scanner_session.dart';
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
@@ -26,15 +29,18 @@ class BarcodeScannerPage extends StatefulWidget {
 
 class _BarcodeScannerPageState extends State<BarcodeScannerPage>
     with WidgetsBindingObserver {
-  MobileScannerController _scannerController = MobileScannerController(
+  final MobileScannerController _scannerController = MobileScannerController(
     formats: const [BarcodeFormat.all],
-    detectionSpeed: DetectionSpeed.unrestricted,
+    detectionSpeed: DetectionSpeed.normal,
     autoStart: false,
   );
 
   bool _hasDetectedSingleCode = false;
   String? _startError;
-  int _startAttempts = 0;
+  late final ScannerSession _cameraSession;
+  bool _requestingPermission = false;
+  bool _retrying = false;
+  bool _active = true;
 
   // Multi-scan state
   late final List<String> _scannedCodes = [...widget.initialCodes];
@@ -46,73 +52,79 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _startCamera();
+    _cameraSession = ScannerSession(
+      start: _scannerController.start,
+      stop: _scannerController.stop,
+      dispose: _scannerController.dispose,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_startCamera());
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _scannerController.dispose();
+    unawaited(_cameraSession.close());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_scannerController.value.isInitialized) return;
-    if (state == AppLifecycleState.resumed) {
-      _startCamera();
-    } else if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused) {
-      _scannerController.stop();
+    _active = state == AppLifecycleState.resumed;
+    // OS permission prompts also generate lifecycle events. The permission
+    // request owns initial startup until it completes.
+    if (_requestingPermission) return;
+    if (_active) {
+      unawaited(_startCamera());
+    } else {
+      unawaited(_cameraSession.setActive(false).catchError((Object _) {}));
     }
   }
 
-  static const _maxStartAttempts = 3;
-
   Future<void> _startCamera() async {
-    final allowed = await AppPermissionsController.instance.ensure(
-      AppPermission.camera,
-    );
-    if (!allowed) {
-      if (mounted) {
+    if (!mounted || !_active || _requestingPermission) return;
+    _requestingPermission = true;
+    try {
+      final allowed = await AppPermissionsController.instance.ensure(
+        AppPermission.camera,
+      );
+      if (!mounted) return;
+      if (!allowed) {
         setState(
           () => _startError =
-              'Camera access is needed to scan. Allow it in Device Settings '
-              'to use the scanner.',
+              'Camera access is needed to scan. Allow it in Device Settings.',
         );
-      }
-      return;
-    }
-
-    try {
-      await _scannerController.start();
-      if (mounted) {
-        setState(() {
-          _startError = null;
-          _startAttempts = 0;
-        });
-      }
-    } catch (e) {
-      _startAttempts++;
-      if (_startAttempts < _maxStartAttempts) {
-        final oldController = _scannerController;
-        _scannerController = MobileScannerController(
-          formats: const [BarcodeFormat.all],
-          detectionSpeed: DetectionSpeed.unrestricted,
-          autoStart: false,
-        );
-        await oldController.dispose();
-        await Future.delayed(const Duration(milliseconds: 300));
-        if (mounted) await _startCamera();
         return;
       }
+      await _cameraSession.setActive(_active);
+      if (mounted) setState(() => _startError = null);
+    } catch (e) {
       if (mounted) setState(() => _startError = e.toString());
+    } finally {
+      _requestingPermission = false;
+      // A background event may arrive while native startup is still pending.
+      if (mounted && !_active) {
+        await _cameraSession.setActive(false).catchError((Object _) {});
+      }
     }
   }
 
   Future<void> _retryCamera() async {
-    _startAttempts = 0;
-    await _startCamera();
+    if (_retrying || !mounted || !_active) return;
+    setState(() => _retrying = true);
+    try {
+      final allowed = await AppPermissionsController.instance.ensure(
+        AppPermission.camera,
+      );
+      if (!mounted || !_active || !allowed) return;
+      await _cameraSession.retry();
+      if (mounted) setState(() => _startError = null);
+    } catch (e) {
+      if (mounted) setState(() => _startError = e.toString());
+    } finally {
+      if (mounted) setState(() => _retrying = false);
+    }
   }
 
   void _handleDetection(BarcodeCapture capture) {
@@ -406,23 +418,24 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
+                          MobileScanner(
+                            controller: _scannerController,
+                            useAppLifecycleState: false,
+                            tapToFocus: true,
+                            onDetect: _handleDetection,
+                            errorBuilder: (context, error) {
+                              return _CameraErrorView(
+                                message:
+                                    error.errorDetails?.message ??
+                                    error.errorCode.name,
+                                onRetry: _retryCamera,
+                              );
+                            },
+                          ),
                           if (_startError != null)
                             _CameraErrorView(
                               message: _startError!,
                               onRetry: _retryCamera,
-                            )
-                          else
-                            MobileScanner(
-                              controller: _scannerController,
-                              onDetect: _handleDetection,
-                              errorBuilder: (context, error) {
-                                return _CameraErrorView(
-                                  message:
-                                      error.errorDetails?.message ??
-                                      error.errorCode.name,
-                                  onRetry: _retryCamera,
-                                );
-                              },
                             ),
                           IgnorePointer(
                             child: DecoratedBox(
@@ -583,7 +596,16 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage>
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () => _scannerController.toggleTorch(),
+                        onPressed:
+                            _retrying || !_scannerController.value.isRunning
+                            ? null
+                            : () async {
+                                try {
+                                  await _scannerController.toggleTorch();
+                                } catch (_) {
+                                  // Some devices have no flashlight.
+                                }
+                              },
                         icon: const Icon(Icons.flashlight_on_outlined),
                         color: AppColors.primary,
                         tooltip: 'Toggle Flash',

@@ -37,7 +37,10 @@ class _DownloadMyDataPageState extends State<DownloadMyDataPage> {
   final DataExportService _exports = DataExportService();
   String? _busyAction;
 
-  Future<void> _run(String action, Future<DataExportResult> Function() task) async {
+  Future<void> _run(
+    String action,
+    Future<DataExportResult> Function() task,
+  ) async {
     if (_busyAction != null) return;
     setState(() => _busyAction = action);
     try {
@@ -53,10 +56,9 @@ class _DownloadMyDataPageState extends State<DownloadMyDataPage> {
 
   Future<void> _offerShare(DataExportResult result) async {
     showSuccessSnackbar('Export saved to ${result.locationLabel}');
-    await Share.shareXFiles(
-      [XFile(result.file.path)],
-      text: 'imoscan data export',
-    );
+    await Share.shareXFiles([
+      XFile(result.file.path),
+    ], text: 'imoscan data export');
   }
 
   /// Business data is owner/admin material, so it is gated behind the
@@ -86,10 +88,14 @@ class _DownloadMyDataPageState extends State<DownloadMyDataPage> {
       final destination = settings.method == TwoFactorMethod.email
           ? profile.email
           : profile.phone;
-      await security.sendChallenge(
+      final dispatched = await security.sendChallenge(
         method: settings.method,
         destination: destination,
       );
+      if (!dispatched.sent) {
+        showErrorSnackbar('Could not send a verification code. Please retry.');
+        return false;
+      }
       message = 'Enter the 6-digit code sent to $destination.';
     }
 
@@ -148,10 +154,7 @@ class _DownloadMyDataPageState extends State<DownloadMyDataPage> {
     );
     if (picked == null) return;
 
-    await _run(
-      'customer',
-      () => _exports.exportCustomerData(picked.id),
-    );
+    await _run('customer', () => _exports.exportCustomerData(picked.id));
   }
 
   @override

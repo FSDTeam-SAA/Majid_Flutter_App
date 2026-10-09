@@ -9,7 +9,6 @@ abstract class StaffRepository {
     required String lastName,
     required String email,
     required String phone,
-    required String password,
   });
 
   Future<void> deleteStaff(String staffId);

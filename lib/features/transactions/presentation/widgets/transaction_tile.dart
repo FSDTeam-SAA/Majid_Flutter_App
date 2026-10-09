@@ -91,7 +91,7 @@ class TransactionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '$sign${Get.find<ProfileController>().currencySymbol}'
+                  '$sign${entry.currencyCode.isEmpty ? Get.find<ProfileController>().currencySymbol : '${entry.currencyCode} '}'
                   '${entry.amount.abs().toStringAsFixed(2)}',
                   style: TextStyle(
                     color: amountColor,

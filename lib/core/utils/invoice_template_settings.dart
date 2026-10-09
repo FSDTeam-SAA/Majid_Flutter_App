@@ -37,6 +37,7 @@ class InvoiceTemplateItem {
 /// Global settings and persistence for the active invoice template design.
 class InvoiceTemplateSettings {
   static const String _key = 'preferred_invoice_template';
+  static const _pendingKey = 'invoice_template_pending_sync';
 
   static const List<InvoiceTemplateItem> templates = [
     InvoiceTemplateItem(
@@ -150,23 +151,38 @@ class InvoiceTemplateSettings {
   ];
 
   /// Live notifier holding the currently active template ID.
-  static final ValueNotifier<String> currentTemplate =
-      ValueNotifier<String>('default');
+  static final ValueNotifier<String> currentTemplate = ValueNotifier<String>(
+    'default',
+  );
 
   /// Loads the saved template from local storage, defaulting to 'default'.
   static Future<String> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_key) ?? 'default';
+    final saved = getTemplate(prefs.getString(_key)).id;
     currentTemplate.value = saved;
     return saved;
   }
 
   /// Saves the preferred template to local storage and updates the notifier.
-  static Future<void> save(String templateId) async {
+  static Future<void> save(
+    String templateId, {
+    bool localSelection = false,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, templateId);
+    await prefs.setBool(_pendingKey, localSelection);
     currentTemplate.value = templateId;
   }
+
+  static Future<void> syncFromProfile(String templateId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_pendingKey) == true) return;
+    await save(getTemplate(templateId).id);
+  }
+
+  /// The profile sync updates this notifier too. A user's local selection
+  /// takes effect immediately even while its server save is pending.
+  static String get activeId => getTemplate(currentTemplate.value).id;
 
   /// Returns the [InvoiceTemplateItem] corresponding to [id], or the default.
   static InvoiceTemplateItem getTemplate([String? id]) {

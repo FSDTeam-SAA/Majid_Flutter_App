@@ -20,6 +20,7 @@ InventoryItem inventoryItemFromJson(Map<String, dynamic> json) {
     id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
     itemName: json['itemName']?.toString() ?? '',
     sku: json['sku']?.toString(),
+    upc: (json['upc'] ?? json['UPC'] ?? json['barcode'])?.toString(),
     brand: json['brand']?.toString(),
     color: json['color']?.toString(),
     storage: json['storage']?.toString(),

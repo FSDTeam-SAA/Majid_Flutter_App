@@ -6,6 +6,7 @@ import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/invoice_template_settings.dart';
 import '../../../stock/data/repositories/inventory_repository_impl.dart';
+import '../../../staff/presentation/controller/staff_session_controller.dart';
 import '../../data/repositories/dashboard_repository_impl.dart';
 import '../../data/repositories/payment_repository_impl.dart';
 import '../../data/repositories/profile_repository_impl.dart';
@@ -62,6 +63,11 @@ class ProfileController extends GetxController {
   bool get hasNoProfile => profile.value == null;
 
   String get fullName => profile.value?.fullName ?? '';
+  String get servedBy =>
+      Get.isRegistered<StaffSessionController>() &&
+          Get.find<StaffSessionController>().staffName.value.isNotEmpty
+      ? Get.find<StaffSessionController>().staffName.value
+      : fullName;
   String get email => profile.value?.email ?? '';
   double get balance => profile.value?.balance ?? 0;
   String get shopName => profile.value?.shopName ?? '';
@@ -142,7 +148,7 @@ class ProfileController extends GetxController {
       final fetched = await _profileRepo.getProfile();
       profile.value = fetched;
       if (fetched.invoiceTemplate.isNotEmpty) {
-        InvoiceTemplateSettings.save(fetched.invoiceTemplate);
+        await InvoiceTemplateSettings.syncFromProfile(fetched.invoiceTemplate);
       }
       isSessionExpired.value = false;
     } catch (e) {

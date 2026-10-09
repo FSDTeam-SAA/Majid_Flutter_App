@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import 'core/animation/app_motion.dart';
 import 'core/theme/app_theme_controller.dart';
 import 'core/utils/colors.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
@@ -11,6 +10,8 @@ import 'features/scan/presentation/pages/scan_device_page.dart';
 import 'features/stock/presentation/pages/stock_categories_page.dart';
 import 'features/stock/presentation/pages/stock_page.dart';
 import 'features/transactions/presentation/pages/transactions_home_page.dart';
+import 'features/staff/presentation/controller/staff_session_controller.dart';
+import 'features/staff/presentation/widgets/switch_staff_sheet.dart';
 
 class AppGroundView extends StatefulWidget {
   final int initialIndex;
@@ -23,6 +24,18 @@ class AppGroundView extends StatefulWidget {
 
 class _AppGroundViewState extends State<AppGroundView> {
   late int _selectedIndex;
+  final Map<int, Widget> _visitedPages = {};
+
+  Widget _page(int index) => _visitedPages.putIfAbsent(
+    index,
+    () => switch (index) {
+      0 => const StockCategoriesPage(),
+      1 => StockPage(),
+      2 => ScanDevicePage(),
+      3 => const TransactionsHomePage(),
+      _ => RepairPage(),
+    },
+  );
 
   @override
   void initState() {
@@ -31,19 +44,14 @@ class _AppGroundViewState extends State<AppGroundView> {
   }
 
   void _selectTab(int index) {
+    if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
     final themeCtrl = Get.find<ProfileThemeController>();
-    final pages = [
-      const StockCategoriesPage(),
-      StockPage(),
-      ScanDevicePage(),
-      const TransactionsHomePage(),
-      RepairPage(),
-    ];
+    final staffSession = StaffSessionController.instance;
 
     return Obx(() {
       themeCtrl.selectedTheme.value;
@@ -62,41 +70,54 @@ class _AppGroundViewState extends State<AppGroundView> {
           backgroundColor: AppColors.background,
           bottomNavigationBar: isKeyboardOpen
               ? null
-              : AppBottomNavBar(
-                  selectedIndex: _selectedIndex,
-                  onTap: _selectTab,
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              staffSession.staffName.value.isEmpty
+                                  ? 'Serving as Owner'
+                                  : 'Serving as ${staffSession.staffName.value}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => showSwitchStaffSheet(context),
+                            child: const Text('Switch Staff'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppBottomNavBar(
+                      selectedIndex: _selectedIndex,
+                      onTap: _selectTab,
+                    ),
+                  ],
                 ),
           body: Stack(
             children: [
               Positioned.fill(
-                child: AnimatedSwitcher(
-                  duration: AppMotion.standard,
-                  reverseDuration: AppMotion.quick,
-                  switchInCurve: AppMotion.easeOutCubic,
-                  switchOutCurve: AppMotion.easeInOut,
-                  transitionBuilder: (child, animation) {
-                    final slideAnimation =
-                        Tween<Offset>(
-                          begin: const Offset(0.04, 0),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: animation,
-                            curve: AppMotion.easeOutCubic,
-                          ),
-                        );
-
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: slideAnimation,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: KeyedSubtree(
-                    key: ValueKey(_selectedIndex),
-                    child: pages[_selectedIndex],
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: List.generate(
+                    5,
+                    (index) =>
+                        _visitedPages.containsKey(index) ||
+                            index == _selectedIndex
+                        ? TickerMode(
+                            enabled: index == _selectedIndex,
+                            child: _page(index),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 ),
               ),

@@ -46,6 +46,7 @@ abstract class ImeiRepository {
   Future<Map<String, dynamic>> checkImei({
     required String imei,
     required int serviceId,
+    bool generateNew = false,
   });
 
   /// Fetches scan history with pagination metadata (including total count).

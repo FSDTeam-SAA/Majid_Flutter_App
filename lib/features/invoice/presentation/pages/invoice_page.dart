@@ -12,6 +12,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
+import '../../../../core/utils/invoice_amount.dart';
 import '../../../../core/utils/document_saver.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_header.dart';
@@ -19,6 +20,7 @@ import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
+import '../../../customer/presentation/widgets/customer_balance_card.dart';
 import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../../../customer/domain/repositories/customer_repository.dart';
 import '../../../customer/presentation/controller/customer_controller.dart';
@@ -31,6 +33,7 @@ import '../controller/invoice_data.dart';
 import '../utils/invoice_pdf_builder.dart';
 import '../utils/invoice_template_builder.dart';
 import '../utils/verified_invoice_pdf.dart';
+import '../utils/compact_receipt_pdf.dart';
 import '../widgets/invoice_customer_picker.dart';
 import '../widgets/invoice_delivery_actions.dart';
 import '../widgets/new_item_name_dialog.dart';
@@ -115,12 +118,14 @@ class _InvoicePageState extends State<InvoicePage> {
   String? _selectedCustomerId;
   String? _recordedPaymentMethod;
   double? _recordedAmountPaid;
+  CompactReceiptData? _lastPurchaseReceipt;
   final List<_CreateInvoiceItem> _createInvoiceItems = [_CreateInvoiceItem()];
   bool _isLoading = true;
   bool _isCustomersLoading = false;
   bool _isCustomerDropdownOpen = false;
 
   String? _selectedPurchaseCustomer;
+  String? _selectedPurchaseCustomerId;
   bool _isPurchaseCustomerDropdownOpen = false;
   final TextEditingController _purchaseCustomerSearchCtrl =
       TextEditingController();
@@ -159,6 +164,7 @@ class _InvoicePageState extends State<InvoicePage> {
   /// scanned, not after.
   TradeInConsent? _tradeInConsent;
   bool _isSendingPurchase = false;
+  bool _purchasePayFromCash = true;
   double _availableCash = 0;
   bool _didApplyInitialDraft = false;
   File? _nidFrontImage;
@@ -183,14 +189,15 @@ class _InvoicePageState extends State<InvoicePage> {
   double get _totalAmount {
     double total = 0;
     for (final item in _createInvoiceItems) {
+      if (item.nameCtrl.text.trim().isEmpty) continue;
       final qty = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
       final price = double.tryParse(item.priceCtrl.text.trim()) ?? 0;
       final discount = double.tryParse(item.discountCtrl.text.trim()) ?? 0;
       final tax = double.tryParse(item.taxCtrl.text.trim()) ?? 0;
       final line = (qty * price) - discount + tax;
-      total += line < 0 ? 0 : line;
+      total += line < 0 ? 0 : invoiceMoney(line);
     }
-    return total;
+    return invoiceMoney(total);
   }
 
   List<String> get _purchaseCategoryOptions {
@@ -477,6 +484,7 @@ class _InvoicePageState extends State<InvoicePage> {
     _purchaseCustomerSearchCtrl.clear();
     setState(() {
       _selectedPurchaseCustomer = customerLabel(customer);
+      _selectedPurchaseCustomerId = customer.id;
       _applyCustomerDataTo(
         customer,
         firstName: _pFirstNameCtrl,
@@ -684,9 +692,7 @@ class _InvoicePageState extends State<InvoicePage> {
 
   /// Downloads a previously generated invoice from its Cloudinary URL and
   /// keeps a copy on the device, for the "Download" action in the registry.
-  Future<void> _downloadInvoiceFromUrl(
-    invoice_entity.Invoice invoice,
-  ) async {
+  Future<void> _downloadInvoiceFromUrl(invoice_entity.Invoice invoice) async {
     final url = invoice.pdfUrl;
     if (url == null || url.isEmpty) {
       showErrorSnackbar('No PDF is attached to this invoice');
@@ -1245,9 +1251,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 size: 17,
               ),
               label: Text(
-                approved
-                    ? 'Request consent again'
-                    : 'Request Customer Consent',
+                approved ? 'Request consent again' : 'Request Customer Consent',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -1274,6 +1278,38 @@ class _InvoicePageState extends State<InvoicePage> {
       return;
     }
 
+    for (final item in validItems) {
+      final quantity = int.tryParse(item.quantityCtrl.text.trim());
+      final price = double.tryParse(item.priceCtrl.text.trim());
+      final discount = double.tryParse(
+        item.discountCtrl.text.trim().isEmpty
+            ? '0'
+            : item.discountCtrl.text.trim(),
+      );
+      final tax = double.tryParse(
+        item.taxCtrl.text.trim().isEmpty ? '0' : item.taxCtrl.text.trim(),
+      );
+      if (quantity == null ||
+          quantity <= 0 ||
+          [
+            price,
+            discount,
+            tax,
+          ].any((value) => value == null || !value.isFinite || value < 0)) {
+        showErrorSnackbar('Check item quantities, prices, discounts and tax.');
+        return;
+      }
+    }
+
+    if (_recordedAmountPaid != null &&
+        (!_recordedAmountPaid!.isFinite ||
+            _recordedAmountPaid! < 0 ||
+            _recordedAmountPaid! > _totalAmount)) {
+      showErrorSnackbar(
+        'Amount paid must be between zero and the invoice total',
+      );
+      return;
+    }
     setState(() => _isSendingInvoice = true);
     try {
       var shopkeeperId = _profileCtrl.userId;
@@ -1315,16 +1351,13 @@ class _InvoicePageState extends State<InvoicePage> {
             name: code.isEmpty ? name : '$name\n$code',
             imei: imeis.join(', '),
             quantity: qty,
-            lineTotal: lineTotal < 0 ? 0 : lineTotal,
+            lineTotal: lineTotal < 0 ? 0 : invoiceMoney(lineTotal),
             isVerified: imeis.isNotEmpty,
           ),
         );
       }
 
-      final activeTemplate = _profileCtrl.invoiceTemplate.isNotEmpty &&
-              _profileCtrl.invoiceTemplate != 'default'
-          ? _profileCtrl.invoiceTemplate
-          : InvoiceTemplateSettings.currentTemplate.value;
+      final activeTemplate = InvoiceTemplateSettings.activeId;
 
       final pdfFile = await InvoiceTemplateBuilder.buildSalesInvoice(
         templateId: activeTemplate,
@@ -1344,10 +1377,12 @@ class _InvoicePageState extends State<InvoicePage> {
         paymentLabel: paymentType,
         isPaid:
             _recordedAmountPaid != null && _recordedAmountPaid! >= totalAmount,
+        amountPaid: _recordedAmountPaid,
         currencySymbol: _profileCtrl.currencySymbol,
         currencyCode: _profileCtrl.currencyCode,
         items: pdfItems,
         subtitle: 'SALES INVOICE',
+        servedBy: _profileCtrl.servedBy,
       );
 
       String customerId;
@@ -1372,6 +1407,16 @@ class _InvoicePageState extends State<InvoicePage> {
       payload.fields.addAll([
         MapEntry('shopkeeperId', shopkeeperId),
         MapEntry('type', 'Custom invoice'),
+        MapEntry(
+          'paymentStatus',
+          (_recordedAmountPaid ?? 0) >= totalAmount
+              ? 'paid'
+              : (_recordedAmountPaid ?? 0) > 0
+              ? 'partial'
+              : 'due',
+        ),
+        MapEntry('currency', _profileCtrl.currencyCode),
+        MapEntry('invoiceNumber', 'INV-${now.millisecondsSinceEpoch}'),
         MapEntry('totalAmount', totalAmount.toString()),
         MapEntry('paymentMethod', paymentType),
         MapEntry('invoiceTemplate', activeTemplate),
@@ -1664,6 +1709,11 @@ class _InvoicePageState extends State<InvoicePage> {
         ),
         const SizedBox(height: 14),
         _buildCustomerDropdown(),
+        if (_selectedCustomerId != null)
+          CustomerBalanceCard(
+            customerId: _selectedCustomerId!,
+            currencySymbol: _profileCtrl.currencySymbol,
+          ),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -1700,27 +1750,30 @@ class _InvoicePageState extends State<InvoicePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Invoice Items',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Invoice Items',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Add products and configure manual specifications',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add products and configure manual specifications',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 12),
             OutlinedButton(
               onPressed: () =>
                   setState(() => _createInvoiceItems.add(_CreateInvoiceItem())),
@@ -1933,10 +1986,15 @@ class _InvoicePageState extends State<InvoicePage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (item.imeiControllers.any((c) => c.text.trim().isNotEmpty)) ...[
+                  if (item.imeiControllers.any(
+                    (c) => c.text.trim().isNotEmpty,
+                  )) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(10),
@@ -1991,7 +2049,10 @@ class _InvoicePageState extends State<InvoicePage> {
                       ),
                       borderRadius: BorderRadius.circular(999),
                       child: Ink(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(999),
@@ -2002,7 +2063,11 @@ class _InvoicePageState extends State<InvoicePage> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 14),
+                            Icon(
+                              Icons.qr_code_scanner_rounded,
+                              color: AppColors.primary,
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Scan',
@@ -2178,9 +2243,7 @@ class _InvoicePageState extends State<InvoicePage> {
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.4),
-            ),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -3054,8 +3117,9 @@ class _InvoicePageState extends State<InvoicePage> {
     return lines;
   }
 
-  double get _purchaseGrandTotal =>
-      _purchaseLines.fold<double>(0, (sum, line) => sum + line.lineTotal);
+  double get _purchaseGrandTotal => invoiceMoney(
+    _purchaseLines.fold<double>(0, (sum, line) => sum + line.lineTotal),
+  );
 
   Widget _buildPurchaseInvoiceTab() {
     return Column(
@@ -3178,27 +3242,30 @@ class _InvoicePageState extends State<InvoicePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Purchase Items',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Purchase Items',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Configure specifications and accumulate tracking logs',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+                  SizedBox(height: 4),
+                  Text(
+                    'Configure specifications and accumulate tracking logs',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 12),
             OutlinedButton(
               onPressed: () =>
                   setState(() => _purchaseItems.add(_PurchaseItem())),
@@ -3305,7 +3372,7 @@ class _InvoicePageState extends State<InvoicePage> {
           ),
           SizedBox(height: 4),
           Text(
-            'Select how you would like to receive payment.',
+            'Select how you would like to pay the customer.',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           SizedBox(height: 14),
@@ -3313,12 +3380,16 @@ class _InvoicePageState extends State<InvoicePage> {
             icon: Icons.account_balance_wallet_outlined,
             title: 'Pay from Available Cash',
             subtitle: 'Deduct from available cash balance',
+            selected: _purchasePayFromCash,
+            onTap: () => setState(() => _purchasePayFromCash = true),
           ),
           SizedBox(height: 10),
           _buildPaymentMethodPreviewRow(
             icon: Icons.account_balance_outlined,
             title: 'Bank Transfer',
-            subtitle: 'Customer will transfer to your account',
+            subtitle: 'Pay the customer by bank transfer',
+            selected: !_purchasePayFromCash,
+            onTap: () => setState(() => _purchasePayFromCash = false),
           ),
           SizedBox(height: 16),
           AppButton(
@@ -3335,7 +3406,16 @@ class _InvoicePageState extends State<InvoicePage> {
                         builder: (_) => RecordPaymentPage(
                           invoiceTotal: _purchaseGrandTotal,
                           availableCash: _availableCash,
+                          initialCashSelected: _purchasePayFromCash,
+                          onPaymentMethodChanged: (cashSelected) {
+                            if (mounted) {
+                              setState(
+                                () => _purchasePayFromCash = cashSelected,
+                              );
+                            }
+                          },
                           onSubmitPayment: _createPurchaseInvoice,
+                          receiptData: () => _lastPurchaseReceipt,
                         ),
                       ),
                     );
@@ -3350,46 +3430,63 @@ class _InvoicePageState extends State<InvoicePage> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required bool selected,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.fieldBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.fieldBorder),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textSecondary, size: 18),
-          SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _isSendingPurchase ? null : onTap,
+        child: Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : AppColors.fieldBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.fieldBorder,
             ),
           ),
-          Icon(
-            Icons.radio_button_unchecked,
-            color: AppColors.textSecondary,
-            size: 18,
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.textSecondary, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+                size: 18,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -3574,10 +3671,15 @@ class _InvoicePageState extends State<InvoicePage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (item.imeiControllers.any((c) => c.text.trim().isNotEmpty)) ...[
+                  if (item.imeiControllers.any(
+                    (c) => c.text.trim().isNotEmpty,
+                  )) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(10),
@@ -3632,7 +3734,10 @@ class _InvoicePageState extends State<InvoicePage> {
                       ),
                       borderRadius: BorderRadius.circular(999),
                       child: Ink(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(999),
@@ -3643,7 +3748,11 @@ class _InvoicePageState extends State<InvoicePage> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 14),
+                            Icon(
+                              Icons.qr_code_scanner_rounded,
+                              color: AppColors.primary,
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Scan',
@@ -3990,7 +4099,10 @@ class _InvoicePageState extends State<InvoicePage> {
                     color: AppColors.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                  child: Icon(
+                    Icons.camera_alt_rounded,
+                    color: AppColors.primary,
+                  ),
                 ),
                 title: Text(
                   'Take Photo',
@@ -4001,7 +4113,10 @@ class _InvoicePageState extends State<InvoicePage> {
                 ),
                 subtitle: Text(
                   'Capture ID card using camera',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
               ),
@@ -4012,7 +4127,10 @@ class _InvoicePageState extends State<InvoicePage> {
                     color: AppColors.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                  child: Icon(
+                    Icons.photo_library_rounded,
+                    color: AppColors.primary,
+                  ),
                 ),
                 title: Text(
                   'Choose from Gallery',
@@ -4023,7 +4141,10 @@ class _InvoicePageState extends State<InvoicePage> {
                 ),
                 subtitle: Text(
                   'Select existing photo from device',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               ),
@@ -4050,10 +4171,7 @@ class _InvoicePageState extends State<InvoicePage> {
     }
 
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      imageQuality: 85,
-    );
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
     if (picked == null) return null;
     return File(picked.path);
   }
@@ -4176,15 +4294,9 @@ class _InvoicePageState extends State<InvoicePage> {
     );
   }
 
-  Widget _buildIdThumbnail({
-    required File imageFile,
-    required String label,
-  }) {
+  Widget _buildIdThumbnail({required File imageFile, required String label}) {
     return GestureDetector(
-      onTap: () => _showFullImagePreview(
-        file: imageFile,
-        title: label,
-      ),
+      onTap: () => _showFullImagePreview(file: imageFile, title: label),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
@@ -4196,10 +4308,7 @@ class _InvoicePageState extends State<InvoicePage> {
           children: [
             AspectRatio(
               aspectRatio: 16 / 10,
-              child: Image.file(
-                imageFile,
-                fit: BoxFit.cover,
-              ),
+              child: Image.file(imageFile, fit: BoxFit.cover),
             ),
             Container(
               width: double.infinity,
@@ -4324,12 +4433,16 @@ class _InvoicePageState extends State<InvoicePage> {
         _pIdNumberCtrl.text = nidNumber;
         showSuccessSnackbar('ID number extracted successfully.');
       } else {
-        showSuccessSnackbar('ID image attached. Enter ID number manually if unread.');
+        showSuccessSnackbar(
+          'ID image attached. Enter ID number manually if unread.',
+        );
       }
     } on InvoiceException catch (e) {
       showInfoSnackbar(e.message);
     } catch (_) {
-      showInfoSnackbar('ID image attached. Please enter the ID number manually.');
+      showInfoSnackbar(
+        'ID image attached. Please enter the ID number manually.',
+      );
     } finally {
       if (mounted) setState(() => _isExtractingNid = false);
     }
@@ -4352,13 +4465,22 @@ class _InvoicePageState extends State<InvoicePage> {
       final name = item.nameCtrl.text.trim();
       if (name.isEmpty) continue;
 
+      final quantity = int.tryParse(item.quantityCtrl.text.trim());
+      final price = double.tryParse(item.priceCtrl.text.trim());
+      if (quantity == null ||
+          quantity <= 0 ||
+          price == null ||
+          !price.isFinite ||
+          price < 0) {
+        showErrorSnackbar('Check the quantity and price for $name.');
+        return false;
+      }
       final imeis = item.imeiControllers
           .map((c) => c.text.trim())
           .where((v) => v.isNotEmpty)
           .length;
       if (imeis == 0) continue;
 
-      final quantity = int.tryParse(item.quantityCtrl.text.trim()) ?? 0;
       if (imeis != quantity) {
         showErrorSnackbar(
           '$name has $imeis IMEI/serial ${imeis == 1 ? 'number' : 'numbers'} '
@@ -4390,10 +4512,7 @@ class _InvoicePageState extends State<InvoicePage> {
 
       final pdfItems = _purchaseLines;
 
-      final activeTemplate = _profileCtrl.invoiceTemplate.isNotEmpty &&
-              _profileCtrl.invoiceTemplate != 'default'
-          ? _profileCtrl.invoiceTemplate
-          : InvoiceTemplateSettings.currentTemplate.value;
+      final activeTemplate = InvoiceTemplateSettings.activeId;
 
       final pdfFile = await InvoiceTemplateBuilder.buildPurchaseReceipt(
         templateId: activeTemplate,
@@ -4405,7 +4524,7 @@ class _InvoicePageState extends State<InvoicePage> {
             ? _profileCtrl.whatsappNumber
             : _profileCtrl.phone,
         shopEmail: _profileCtrl.email,
-        preparedBy: _profileCtrl.fullName,
+        preparedBy: _profileCtrl.servedBy,
         customerName: customerName,
         customerPhone: _pPhoneCtrl.text.trim(),
         customerEmail: _pEmailCtrl.text.trim(),
@@ -4420,9 +4539,19 @@ class _InvoicePageState extends State<InvoicePage> {
       payload.fields.addAll([
         MapEntry('shopkeeperId', shopkeeperId),
         MapEntry('type', 'purchase'),
+        MapEntry('paymentStatus', 'paid'),
+        MapEntry('amountPaid', grandTotal.toString()),
+        MapEntry('dueAmount', '0'),
+        MapEntry('currency', _profileCtrl.currencyCode),
+        MapEntry(
+          'invoiceNumber',
+          'PR-${now.millisecondsSinceEpoch.toString().substring(5)}',
+        ),
         MapEntry('totalAmount', grandTotal.toString()),
         MapEntry('paymentMethod', paymentMethod),
         MapEntry('invoiceTemplate', activeTemplate),
+        if (_selectedPurchaseCustomerId?.isNotEmpty ?? false)
+          MapEntry('customerInfo', _selectedPurchaseCustomerId!),
       ]);
       payload.files.add(
         MapEntry(
@@ -4458,6 +4587,32 @@ class _InvoicePageState extends State<InvoicePage> {
       }
 
       await _invoiceRepo.createInvoice(payload);
+      _lastPurchaseReceipt = CompactReceiptData(
+        reference: 'PR-${now.millisecondsSinceEpoch.toString().substring(5)}',
+        title: 'Purchase Receipt',
+        shopName: _profileCtrl.shopName,
+        shopAddress: _profileCtrl.shopAddress,
+        shopPhone: _profileCtrl.phone,
+        customerName: customerName,
+        customerPhone: _pPhoneCtrl.text.trim(),
+        customerEmail: _pEmailCtrl.text.trim(),
+        currencyCode: _profileCtrl.currencyCode,
+        servedBy: _profileCtrl.servedBy,
+        date: now,
+        paymentMethod: paymentMethod,
+        total: grandTotal,
+        paid: grandTotal,
+        due: 0,
+        items: [
+          for (final item in pdfItems)
+            VerifiedInvoiceItem(
+              name: item.name,
+              imei: item.imeiSerial,
+              quantity: item.quantity,
+              lineTotal: item.lineTotal,
+            ),
+        ],
+      );
       final saved = await _saveInvoiceCopy(pdfFile, 'purchase_receipt');
       if (!mounted) return null;
       showSuccessSnackbar(
@@ -4469,6 +4624,8 @@ class _InvoicePageState extends State<InvoicePage> {
       _fetchViewInvoices();
       setState(() {
         _selectedPurchaseCustomer = null;
+        _selectedPurchaseCustomerId = null;
+        _purchasePayFromCash = true;
         _pFirstNameCtrl.clear();
         _pLastNameCtrl.clear();
         _pEmailCtrl.clear();
@@ -4710,10 +4867,7 @@ class _InvoicePageState extends State<InvoicePage> {
         footerNote: 'Delivery invoice generated from iMoScan.',
       );
 
-      final activeTemplate = _profileCtrl.invoiceTemplate.isNotEmpty &&
-              _profileCtrl.invoiceTemplate != 'default'
-          ? _profileCtrl.invoiceTemplate
-          : InvoiceTemplateSettings.currentTemplate.value;
+      final activeTemplate = InvoiceTemplateSettings.activeId;
 
       final payload = FormData();
       payload.fields.addAll([
@@ -4813,11 +4967,7 @@ class _InvoicePageState extends State<InvoicePage> {
       children: [
         Row(
           children: [
-            Icon(
-              Icons.folder_copy_rounded,
-              color: AppColors.primary,
-              size: 19,
-            ),
+            Icon(Icons.folder_copy_rounded, color: AppColors.primary, size: 19),
             const SizedBox(width: 8),
             Text(
               'Billing History',
@@ -4890,10 +5040,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: _registryAmber,
                   borderRadius: BorderRadius.circular(999),
@@ -4986,15 +5133,24 @@ class _InvoicePageState extends State<InvoicePage> {
                 deleteAfter: inv.idImageDeleteAfter,
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.badge_outlined, size: 16, color: AppColors.primary),
+                    Icon(
+                      Icons.badge_outlined,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -5022,7 +5178,8 @@ class _InvoicePageState extends State<InvoicePage> {
                 ),
               ),
             ),
-          ] else if (inv.isIdImageDeleted || (inv.idImageDeleteAfter != null && inv.isIdImageExpired)) ...[
+          ] else if (inv.isIdImageDeleted ||
+              (inv.idImageDeleteAfter != null && inv.isIdImageExpired)) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -5033,7 +5190,11 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.auto_delete_outlined, size: 15, color: AppColors.textSecondary),
+                  Icon(
+                    Icons.auto_delete_outlined,
+                    size: 15,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -5104,10 +5265,17 @@ class _InvoicePageState extends State<InvoicePage> {
                   icon: Icons.print_outlined,
                   onTap: pdfUrl == null
                       ? null
-                      : () => shareOriginalInvoicePdf(
+                      : () => printOriginalInvoicePdf(
                           context,
                           pdfUrl: pdfUrl,
                           invoiceRef: inv.reference,
+                          receipt: CompactReceiptData.fromInvoice(
+                            inv,
+                            shopName: _profileCtrl.shopName,
+                            shopAddress: _profileCtrl.shopAddress,
+                            shopPhone: _profileCtrl.phone,
+                            currencyCode: _profileCtrl.currencyCode,
+                          ),
                         ),
                 ),
               ),
@@ -5126,13 +5294,14 @@ class _InvoicePageState extends State<InvoicePage> {
                               '${_profileCtrl.currencySymbol}${(amount ?? 0).toStringAsFixed(2)}',
                           customerId: inv.customerId ?? '',
                           customerEmail: inv.customerEmail ?? '',
+                          trackingUrl: inv.trackingUrl,
                         ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _registryActionButton(
-                  label: 'Message',
+                  label: 'SMS',
                   icon: Icons.sms_outlined,
                   onTap: pdfUrl == null
                       ? null
@@ -5141,7 +5310,38 @@ class _InvoicePageState extends State<InvoicePage> {
                           pdfUrl: pdfUrl,
                           invoiceRef: inv.reference,
                           customerPhone: inv.customerPhone ?? '',
+                          shopName: _profileCtrl.shopName,
+                          trackingUrl: inv.trackingUrl,
                         ),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _registryActionButton(
+                  label: 'WhatsApp',
+                  icon: Icons.chat_outlined,
+                  onTap: () => shareInvoiceOnWhatsApp(
+                    context,
+                    pdfUrl: pdfUrl,
+                    invoiceRef: inv.reference,
+                    trackingUrl: inv.trackingUrl,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _registryActionButton(
+                  label: 'ScorePlus',
+                  icon: Icons.star_outline,
+                  onTap: () => showScorePlus(
+                    context,
+                    invoiceId: inv.id,
+                    email: inv.customerEmail ?? '',
+                    phone: inv.customerPhone ?? '',
+                  ),
                 ),
               ),
             ],
@@ -5171,9 +5371,7 @@ class _InvoicePageState extends State<InvoicePage> {
         child: Ink(
           height: 38,
           decoration: BoxDecoration(
-            color: isDisabled
-                ? AppColors.fieldBackground
-                : background,
+            color: isDisabled ? AppColors.fieldBackground : background,
             borderRadius: BorderRadius.circular(11),
             border: Border.all(
               color: isDisabled
@@ -5396,11 +5594,19 @@ class _InvoicePageState extends State<InvoicePage> {
                   AppButton(
                     label: 'Save',
                     onPressed: () {
+                      final parsed = double.tryParse(amountCtrl.text.trim());
+                      if (parsed == null ||
+                          !parsed.isFinite ||
+                          parsed < 0 ||
+                          parsed > _totalAmount) {
+                        showErrorSnackbar(
+                          'Amount paid must be between zero and the invoice total',
+                        );
+                        return;
+                      }
                       setState(() {
                         _recordedPaymentMethod = method;
-                        _recordedAmountPaid = double.tryParse(
-                          amountCtrl.text.trim(),
-                        );
+                        _recordedAmountPaid = invoiceMoney(parsed);
                       });
                       Navigator.pop(sheetContext);
                     },

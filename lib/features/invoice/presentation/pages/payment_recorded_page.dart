@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import '../utils/compact_receipt_pdf.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../../core/widgets/app_success_tick_animation.dart';
@@ -10,6 +13,7 @@ import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 
 class PaymentRecordedPage extends StatefulWidget {
+  final CompactReceiptData? receiptData;
   final File receiptFile;
   final String paymentMethod;
   final double amountPaid;
@@ -18,6 +22,7 @@ class PaymentRecordedPage extends StatefulWidget {
   const PaymentRecordedPage({
     super.key,
     required this.receiptFile,
+    this.receiptData,
     required this.paymentMethod,
     required this.amountPaid,
     required this.cashRemaining,
@@ -120,14 +125,45 @@ class _PaymentRecordedPageState extends State<PaymentRecordedPage> {
                   },
                 ),
                 const SizedBox(height: 10),
+                if (widget.receiptData != null) ...[
+                  _ShareOptionTile(
+                    icon: Icons.receipt_long,
+                    title: 'Print Receipt · 80 mm',
+                    subtitle: 'Compact purchase receipt',
+                    onTap: () async {
+                      Navigator.pop(sheetContext);
+                      try {
+                        final bytes = await CompactReceiptPdf.build(
+                          widget.receiptData!,
+                        );
+                        await Printing.layoutPdf(
+                          name: widget.receiptData!.reference,
+                          format: PdfPageFormat.roll80,
+                          dynamicLayout: false,
+                          onLayout: (_) async => bytes,
+                        );
+                      } catch (_) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Could not print the receipt'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 _ShareOptionTile(
                   icon: Icons.print_outlined,
                   title: 'Print Paper',
-                  subtitle:
-                      'Use the system share sheet to print the PDF receipt',
+                  subtitle: 'Print the full invoice PDF',
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _shareReceipt(subjectHint: 'Print receipt');
+                    Printing.layoutPdf(
+                      onLayout: (_) => widget.receiptFile.readAsBytes(),
+                    );
                   },
                 ),
               ],

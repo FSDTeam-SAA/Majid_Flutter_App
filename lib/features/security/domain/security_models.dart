@@ -5,7 +5,10 @@ enum TwoFactorMethod {
     description: 'A new 6-digit code every 30 seconds',
   ),
   email(label: 'Email', description: 'Send a code to your registered email'),
-  sms(label: 'Text message', description: 'Send a code to your registered number');
+  sms(
+    label: 'Text message',
+    description: 'Send a code to your registered number',
+  );
 
   final String label;
   final String description;
@@ -117,6 +120,7 @@ class TwoFactorSettings {
 
   /// Present only once the authenticator option has been set up.
   final String? authenticatorSecret;
+  final bool hasAuthenticator;
   final bool emailVerified;
   final bool phoneVerified;
 
@@ -124,20 +128,23 @@ class TwoFactorSettings {
     this.enabled = false,
     this.method = TwoFactorMethod.email,
     this.authenticatorSecret,
+    this.hasAuthenticator = false,
     this.emailVerified = false,
     this.phoneVerified = false,
   });
 
-  bool get isConfirmed => emailVerified || phoneVerified;
+  bool get isConfirmed => emailVerified || phoneVerified || hasAuthenticator;
 
   TwoFactorSettings copyWith({
     bool? enabled,
     TwoFactorMethod? method,
     String? authenticatorSecret,
+    bool? hasAuthenticator,
     bool clearAuthenticatorSecret = false,
     bool? emailVerified,
     bool? phoneVerified,
   }) => TwoFactorSettings(
+    hasAuthenticator: hasAuthenticator ?? this.hasAuthenticator,
     enabled: enabled ?? this.enabled,
     method: method ?? this.method,
     authenticatorSecret: clearAuthenticatorSecret
@@ -150,7 +157,7 @@ class TwoFactorSettings {
   Map<String, dynamic> toJson() => {
     'enabled': enabled,
     'method': method.name,
-    'authenticatorSecret': authenticatorSecret,
+    'hasAuthenticator': hasAuthenticator,
     'emailVerified': emailVerified,
     'phoneVerified': phoneVerified,
   };
@@ -162,7 +169,7 @@ class TwoFactorSettings {
           (value) => value.name == json['method'],
           orElse: () => TwoFactorMethod.email,
         ),
-        authenticatorSecret: json['authenticatorSecret']?.toString(),
+        hasAuthenticator: json['hasAuthenticator'] == true,
         emailVerified: json['emailVerified'] == true,
         phoneVerified: json['phoneVerified'] == true,
       );

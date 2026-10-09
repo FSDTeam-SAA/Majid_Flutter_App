@@ -69,7 +69,6 @@ class StaffController extends GetxController {
     required String lastName,
     required String email,
     required String phone,
-    required String password,
   }) async {
     isCreating.value = true;
     try {
@@ -80,7 +79,6 @@ class StaffController extends GetxController {
         lastName: lastName,
         email: email,
         phone: phone,
-        password: password,
       );
       staffList.add(staff);
       return true;

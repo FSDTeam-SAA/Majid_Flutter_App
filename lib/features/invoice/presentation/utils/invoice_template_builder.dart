@@ -5,9 +5,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../../../core/utils/invoice_template_settings.dart';
+import '../../../../core/utils/invoice_amount.dart';
 import 'invoice_pdf_builder.dart' show InvoicePdfItem;
 import 'purchase_receipt_pdf.dart';
 import 'verified_invoice_pdf.dart';
+import 'invoice_tracking_footer.dart';
 
 /// Central PDF orchestrator for invoices.
 ///
@@ -30,14 +32,18 @@ class InvoiceTemplateBuilder {
     required String customerAddress,
     required String paymentLabel,
     required bool isPaid,
+    double? amountPaid,
     required String currencySymbol,
     String? currencyCode,
     required List<VerifiedInvoiceItem> items,
     String subtitle = 'SALES INVOICE',
     String? templateId,
+    String trackingUrl = '',
+    String servedBy = '',
   }) async {
-    final effectiveTemplate =
-        templateId ?? InvoiceTemplateSettings.currentTemplate.value;
+    final effectiveTemplate = InvoiceTemplateSettings.getTemplate(
+      templateId,
+    ).id;
     currencySymbol = safeCurrency(currencySymbol, currencyCode);
     shopName = sanitizeText(shopName);
     shopAddress = sanitizeText(shopAddress ?? '');
@@ -53,7 +59,7 @@ class InvoiceTemplateBuilder {
             name: sanitizeText(item.name),
             imei: sanitizeText(item.imei),
             quantity: item.quantity,
-            lineTotal: item.lineTotal,
+            lineTotal: invoiceMoney(item.lineTotal),
             isVerified: item.isVerified,
           ),
         )
@@ -74,17 +80,41 @@ class InvoiceTemplateBuilder {
         customerAddress: customerAddress,
         paymentLabel: paymentLabel,
         isPaid: isPaid,
+        amountPaid: amountPaid,
         currencySymbol: currencySymbol,
         items: items,
         subtitle: subtitle,
+        trackingUrl: trackingUrl,
+        servedBy: servedBy,
       );
     }
 
-    final totalAmount = items.fold<double>(
-      0,
-      (sum, item) => sum + (item.quantity * item.lineTotal),
+    final totalAmount = invoiceMoney(
+      items.fold<double>(0, (sum, item) => sum + item.lineTotal),
     );
+    if (!totalAmount.isFinite ||
+        totalAmount < 0 ||
+        items.any(
+          (item) =>
+              item.quantity <= 0 ||
+              !item.lineTotal.isFinite ||
+              item.lineTotal < 0,
+        )) {
+      throw const FormatException('Invalid invoice items');
+    }
 
+    final paidAmount = invoiceMoney(amountPaid ?? (isPaid ? totalAmount : 0));
+    if (!paidAmount.isFinite || paidAmount < 0 || paidAmount > totalAmount) {
+      throw const FormatException('Invalid amount paid');
+    }
+    final balanceAmount = invoiceMoney(
+      (totalAmount - paidAmount).clamp(0, totalAmount).toDouble(),
+    );
+    final paymentStatus = balanceAmount == 0
+        ? 'PAID'
+        : paidAmount > 0
+        ? 'PART PAID'
+        : 'DUE';
     final pdf = pw.Document();
 
     // 1. CLASSIC EDITORIAL (Traditional - Ref 1)
@@ -94,6 +124,12 @@ class InvoiceTemplateBuilder {
 
       pdf.addPage(
         pw.MultiPage(
+          footer: (_) => invoiceTrackingFooter(
+            trackingUrl: trackingUrl,
+            servedBy: servedBy,
+            paymentSummary:
+                'Paid: ${_fmt(paidAmount, currencySymbol)} | Balance due: ${_fmt(balanceAmount, currencySymbol)}',
+          ),
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(36),
           theme: pw.ThemeData.withFont(
@@ -109,11 +145,15 @@ class InvoiceTemplateBuilder {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Invoice no. $invoiceNumber',
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      'Invoice no. $invoiceNumber',
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
                     pw.SizedBox(height: 2),
-                    pw.Text(_formatDate(createdAt),
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      _formatDate(createdAt),
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
                   ],
                 ),
                 pw.Column(
@@ -128,9 +168,13 @@ class InvoiceTemplateBuilder {
                       ),
                     ),
                     if (shopAddress != null && shopAddress.isNotEmpty)
-                      pw.Text(shopAddress,
-                          style: const pw.TextStyle(
-                              fontSize: 9, color: PdfColors.grey700)),
+                      pw.Text(
+                        shopAddress,
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
                   ],
                 ),
               ],
@@ -153,9 +197,13 @@ class InvoiceTemplateBuilder {
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
             ),
             if (customerPhone.isNotEmpty)
-              pw.Text('Phone: $customerPhone',
-                  style: const pw.TextStyle(
-                      fontSize: 9, color: PdfColors.grey700)),
+              pw.Text(
+                'Phone: $customerPhone',
+                style: const pw.TextStyle(
+                  fontSize: 9,
+                  color: PdfColors.grey700,
+                ),
+              ),
             pw.SizedBox(height: 16),
             pw.Text(
               subtitle,
@@ -178,34 +226,50 @@ class InvoiceTemplateBuilder {
                 children: [
                   pw.SizedBox(
                     width: 35,
-                    child: pw.Text('Qty',
-                        style: pw.TextStyle(
-                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Qty',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                   pw.Expanded(
-                    child: pw.Text('Item description',
-                        style: pw.TextStyle(
-                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Item description',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 80,
-                    child: pw.Text('Unit price',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Unit price',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 80,
-                    child: pw.Text('Total',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Total',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             ...items.map((item) {
-              final lineSubtotal = item.quantity * item.lineTotal;
+              final lineSubtotal = item.lineTotal;
               return pw.Container(
                 padding: const pw.EdgeInsets.symmetric(vertical: 8),
                 decoration: const pw.BoxDecoration(
@@ -218,26 +282,39 @@ class InvoiceTemplateBuilder {
                   children: [
                     pw.SizedBox(
                       width: 35,
-                      child: pw.Text('${item.quantity}',
-                          style: const pw.TextStyle(fontSize: 9)),
+                      child: pw.Text(
+                        '${item.quantity}',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
                     ),
                     pw.Expanded(
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(item.name,
-                              style: const pw.TextStyle(fontSize: 9.5)),
+                          pw.Text(
+                            item.name,
+                            style: const pw.TextStyle(fontSize: 9.5),
+                          ),
                           if (item.imei.isNotEmpty)
-                            pw.Text('IMEI: ${item.imei}',
-                                style: const pw.TextStyle(
-                                    fontSize: 8, color: PdfColors.grey600)),
+                            pw.Text(
+                              'IMEI: ${item.imei}',
+                              style: const pw.TextStyle(
+                                fontSize: 8,
+                                color: PdfColors.grey600,
+                              ),
+                            ),
                         ],
                       ),
                     ),
                     pw.SizedBox(
                       width: 80,
                       child: pw.Text(
-                        _fmt(item.lineTotal, currencySymbol),
+                        _fmt(
+                          item.quantity > 0
+                              ? item.lineTotal / item.quantity
+                              : 0,
+                          currencySymbol,
+                        ),
                         textAlign: pw.TextAlign.right,
                         style: const pw.TextStyle(fontSize: 9),
                       ),
@@ -262,14 +339,24 @@ class InvoiceTemplateBuilder {
                 child: pw.Column(
                   children: [
                     _editorialAmountRow(
-                        'Subtotal', totalAmount, currencySymbol),
-                    _editorialAmountRow('Total', totalAmount, currencySymbol,
-                        bold: true),
+                      'Subtotal',
+                      totalAmount,
+                      currencySymbol,
+                    ),
                     _editorialAmountRow(
-                        'Paid', isPaid ? totalAmount : 0, currencySymbol),
-                    _editorialAmountRow('Balance due',
-                        isPaid ? 0 : totalAmount, currencySymbol,
-                        color: burgundy, bold: true),
+                      'Total',
+                      totalAmount,
+                      currencySymbol,
+                      bold: true,
+                    ),
+                    _editorialAmountRow('Paid', paidAmount, currencySymbol),
+                    _editorialAmountRow(
+                      'Balance due',
+                      balanceAmount,
+                      currencySymbol,
+                      color: burgundy,
+                      bold: true,
+                    ),
                   ],
                 ),
               ),
@@ -280,13 +367,15 @@ class InvoiceTemplateBuilder {
               children: [
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 6),
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   decoration: pw.BoxDecoration(
                     color: burgundy,
                     borderRadius: pw.BorderRadius.circular(4),
                   ),
                   child: pw.Text(
-                    isPaid ? 'PAID' : 'DUE',
+                    paymentStatus,
                     style: pw.TextStyle(
                       color: PdfColors.white,
                       fontSize: 12,
@@ -299,11 +388,17 @@ class InvoiceTemplateBuilder {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text('|||| ||| ||||||| ||||',
-                        style: const pw.TextStyle(fontSize: 16)),
-                    pw.Text(invoiceNumber,
-                        style: const pw.TextStyle(
-                            fontSize: 7, color: PdfColors.grey600)),
+                    pw.Text(
+                      '|||| ||| ||||||| ||||',
+                      style: const pw.TextStyle(fontSize: 16),
+                    ),
+                    pw.Text(
+                      invoiceNumber,
+                      style: const pw.TextStyle(
+                        fontSize: 7,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -322,19 +417,30 @@ class InvoiceTemplateBuilder {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Payment: $paymentLabel',
-                          style: const pw.TextStyle(
-                              fontSize: 8, color: PdfColors.grey700)),
-                      pw.Text('Thank you',
-                          style: pw.TextStyle(
-                              fontSize: 18,
-                              fontWeight: pw.FontWeight.bold,
-                              color: burgundy)),
+                      pw.Text(
+                        'Payment: $paymentLabel',
+                        style: const pw.TextStyle(
+                          fontSize: 8,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                      pw.Text(
+                        'Thank you',
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: burgundy,
+                        ),
+                      ),
                     ],
                   ),
-                  pw.Text('Powered by $shopName',
-                      style: const pw.TextStyle(
-                          fontSize: 8, color: PdfColors.grey600)),
+                  pw.Text(
+                    'Powered by $shopName',
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -350,6 +456,12 @@ class InvoiceTemplateBuilder {
 
       pdf.addPage(
         pw.MultiPage(
+          footer: (_) => invoiceTrackingFooter(
+            trackingUrl: trackingUrl,
+            servedBy: servedBy,
+            paymentSummary:
+                'Paid: ${_fmt(paidAmount, currencySymbol)} | Balance due: ${_fmt(balanceAmount, currencySymbol)}',
+          ),
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(20),
           build: (context) => [
@@ -391,9 +503,14 @@ class InvoiceTemplateBuilder {
                     padding: const pw.EdgeInsets.symmetric(vertical: 8),
                     decoration: const pw.BoxDecoration(
                       border: pw.Border(
-                        top: pw.BorderSide(color: PdfColors.grey600, width: 0.5),
-                        bottom:
-                            pw.BorderSide(color: PdfColors.grey600, width: 0.5),
+                        top: pw.BorderSide(
+                          color: PdfColors.grey600,
+                          width: 0.5,
+                        ),
+                        bottom: pw.BorderSide(
+                          color: PdfColors.grey600,
+                          width: 0.5,
+                        ),
                       ),
                     ),
                     child: pw.Row(
@@ -403,12 +520,17 @@ class InvoiceTemplateBuilder {
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text('DATE ISSUED',
-                                  style: pw.TextStyle(
-                                      fontSize: 7.5,
-                                      fontWeight: pw.FontWeight.bold)),
-                              pw.Text(_formatDate(createdAt),
-                                  style: const pw.TextStyle(fontSize: 8.5)),
+                              pw.Text(
+                                'DATE ISSUED',
+                                style: pw.TextStyle(
+                                  fontSize: 7.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                              pw.Text(
+                                _formatDate(createdAt),
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
                             ],
                           ),
                         ),
@@ -416,12 +538,17 @@ class InvoiceTemplateBuilder {
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text('INVOICE #',
-                                  style: pw.TextStyle(
-                                      fontSize: 7.5,
-                                      fontWeight: pw.FontWeight.bold)),
-                              pw.Text(invoiceNumber,
-                                  style: const pw.TextStyle(fontSize: 8.5)),
+                              pw.Text(
+                                'INVOICE #',
+                                style: pw.TextStyle(
+                                  fontSize: 7.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                              pw.Text(
+                                invoiceNumber,
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
                             ],
                           ),
                         ),
@@ -429,12 +556,17 @@ class InvoiceTemplateBuilder {
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text('ISSUED TO',
-                                  style: pw.TextStyle(
-                                      fontSize: 7.5,
-                                      fontWeight: pw.FontWeight.bold)),
-                              pw.Text(customerName,
-                                  style: const pw.TextStyle(fontSize: 8.5)),
+                              pw.Text(
+                                'ISSUED TO',
+                                style: pw.TextStyle(
+                                  fontSize: 7.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                              pw.Text(
+                                customerName,
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
                             ],
                           ),
                         ),
@@ -453,69 +585,100 @@ class InvoiceTemplateBuilder {
                       children: [
                         pw.SizedBox(
                           width: 35,
-                          child: pw.Text('QTY',
-                              style: pw.TextStyle(
-                                  fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          child: pw.Text(
+                            'QTY',
+                            style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                         ),
                         pw.Expanded(
-                          child: pw.Text('ITEM / DEVICE',
-                              style: pw.TextStyle(
-                                  fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          child: pw.Text(
+                            'ITEM / DEVICE',
+                            style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                         ),
                         pw.SizedBox(
                           width: 80,
-                          child: pw.Text('UNIT PRICE',
-                              textAlign: pw.TextAlign.right,
-                              style: pw.TextStyle(
-                                  fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          child: pw.Text(
+                            'UNIT PRICE',
+                            textAlign: pw.TextAlign.right,
+                            style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                         ),
                         pw.SizedBox(
                           width: 80,
-                          child: pw.Text('TOTAL',
-                              textAlign: pw.TextAlign.right,
-                              style: pw.TextStyle(
-                                  fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          child: pw.Text(
+                            'TOTAL',
+                            textAlign: pw.TextAlign.right,
+                            style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
                   ...items.map((item) {
-                    final sub = item.quantity * item.lineTotal;
+                    final sub = item.lineTotal;
                     return pw.Container(
                       padding: const pw.EdgeInsets.symmetric(vertical: 8),
                       decoration: const pw.BoxDecoration(
                         border: pw.Border(
                           bottom: pw.BorderSide(
-                              color: PdfColors.grey300, width: 0.5),
+                            color: PdfColors.grey300,
+                            width: 0.5,
+                          ),
                         ),
                       ),
                       child: pw.Row(
                         children: [
                           pw.SizedBox(
                             width: 35,
-                            child: pw.Text('${item.quantity}',
-                                style: const pw.TextStyle(fontSize: 9)),
+                            child: pw.Text(
+                              '${item.quantity}',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
                           ),
                           pw.Expanded(
                             child: pw.Column(
                               crossAxisAlignment: pw.CrossAxisAlignment.start,
                               children: [
-                                pw.Text(item.name,
-                                    style: pw.TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: pw.FontWeight.bold)),
+                                pw.Text(
+                                  item.name,
+                                  style: pw.TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                ),
                                 if (item.imei.isNotEmpty)
-                                  pw.Text('IMEI: ${item.imei}',
-                                      style: const pw.TextStyle(
-                                          fontSize: 7.5,
-                                          color: PdfColors.grey600)),
+                                  pw.Text(
+                                    'IMEI: ${item.imei}',
+                                    style: const pw.TextStyle(
+                                      fontSize: 7.5,
+                                      color: PdfColors.grey600,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                           pw.SizedBox(
                             width: 80,
                             child: pw.Text(
-                              _fmt(item.lineTotal, currencySymbol),
+                              _fmt(
+                                item.quantity > 0
+                                    ? item.lineTotal / item.quantity
+                                    : 0,
+                                currencySymbol,
+                              ),
                               textAlign: pw.TextAlign.right,
                               style: const pw.TextStyle(fontSize: 9),
                             ),
@@ -543,16 +706,22 @@ class InvoiceTemplateBuilder {
                             mainAxisAlignment:
                                 pw.MainAxisAlignment.spaceBetween,
                             children: [
-                              pw.Text('Subtotal',
-                                  style: const pw.TextStyle(fontSize: 8.5)),
-                              pw.Text(_fmt(totalAmount, currencySymbol),
-                                  style: const pw.TextStyle(fontSize: 8.5)),
+                              pw.Text(
+                                'Subtotal',
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
+                              pw.Text(
+                                _fmt(totalAmount, currencySymbol),
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
                             ],
                           ),
                           pw.SizedBox(height: 4),
                           pw.Container(
                             padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 3),
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
                             decoration: pw.BoxDecoration(
                               color: limePill,
                               borderRadius: pw.BorderRadius.circular(3),
@@ -561,14 +730,20 @@ class InvoiceTemplateBuilder {
                               mainAxisAlignment:
                                   pw.MainAxisAlignment.spaceBetween,
                               children: [
-                                pw.Text('Total',
-                                    style: pw.TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: pw.FontWeight.bold)),
-                                pw.Text(_fmt(totalAmount, currencySymbol),
-                                    style: pw.TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: pw.FontWeight.bold)),
+                                pw.Text(
+                                  'Total',
+                                  style: pw.TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                ),
+                                pw.Text(
+                                  _fmt(totalAmount, currencySymbol),
+                                  style: pw.TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -577,11 +752,14 @@ class InvoiceTemplateBuilder {
                             mainAxisAlignment:
                                 pw.MainAxisAlignment.spaceBetween,
                             children: [
-                              pw.Text('Balance due',
-                                  style: const pw.TextStyle(fontSize: 8.5)),
                               pw.Text(
-                                  _fmt(isPaid ? 0 : totalAmount, currencySymbol),
-                                  style: const pw.TextStyle(fontSize: 8.5)),
+                                'Balance due',
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
+                              pw.Text(
+                                _fmt(balanceAmount, currencySymbol),
+                                style: const pw.TextStyle(fontSize: 8.5),
+                              ),
                             ],
                           ),
                         ],
@@ -608,9 +786,13 @@ class InvoiceTemplateBuilder {
                             ),
                           ),
                           pw.SizedBox(height: 4),
-                          pw.Text('Powered by $shopName',
-                              style: const pw.TextStyle(
-                                  fontSize: 8, color: PdfColors.grey600)),
+                          pw.Text(
+                            'Powered by $shopName',
+                            style: const pw.TextStyle(
+                              fontSize: 8,
+                              color: PdfColors.grey600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -629,6 +811,12 @@ class InvoiceTemplateBuilder {
 
       pdf.addPage(
         pw.MultiPage(
+          footer: (_) => invoiceTrackingFooter(
+            trackingUrl: trackingUrl,
+            servedBy: servedBy,
+            paymentSummary:
+                'Paid: ${_fmt(paidAmount, currencySymbol)} | Balance due: ${_fmt(balanceAmount, currencySymbol)}',
+          ),
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(24),
           build: (context) => [
@@ -641,19 +829,30 @@ class InvoiceTemplateBuilder {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text(shopName,
-                          style: pw.TextStyle(
-                              fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('TECH SOLUTIONS & SALES',
-                          style: pw.TextStyle(
-                              fontSize: 7, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                        shopName,
+                        style: pw.TextStyle(
+                          fontSize: 20,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'TECH SOLUTIONS & SALES',
+                        style: pw.TextStyle(
+                          fontSize: 7,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
-                  pw.Text('INVOICE',
-                      style: pw.TextStyle(
-                          fontSize: 28,
-                          fontWeight: pw.FontWeight.bold,
-                          letterSpacing: 1)),
+                  pw.Text(
+                    'INVOICE',
+                    style: pw.TextStyle(
+                      fontSize: 28,
+                      fontWeight: pw.FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -671,34 +870,58 @@ class InvoiceTemplateBuilder {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('INVOICE #',
-                          style: const pw.TextStyle(
-                              fontSize: 7.5, color: PdfColors.grey600)),
-                      pw.Text(invoiceNumber,
-                          style: pw.TextStyle(
-                              fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                        'INVOICE #',
+                        style: const pw.TextStyle(
+                          fontSize: 7.5,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                      pw.Text(
+                        invoiceNumber,
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('CUSTOMER',
-                          style: const pw.TextStyle(
-                              fontSize: 7.5, color: PdfColors.grey600)),
-                      pw.Text(customerName,
-                          style: pw.TextStyle(
-                              fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                        'CUSTOMER',
+                        style: const pw.TextStyle(
+                          fontSize: 7.5,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                      pw.Text(
+                        customerName,
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('DATE',
-                          style: const pw.TextStyle(
-                              fontSize: 7.5, color: PdfColors.grey600)),
-                      pw.Text(_formatDate(createdAt),
-                          style: pw.TextStyle(
-                              fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                        'DATE',
+                        style: const pw.TextStyle(
+                          fontSize: 7.5,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                      pw.Text(
+                        _formatDate(createdAt),
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -717,36 +940,52 @@ class InvoiceTemplateBuilder {
                   pw.Row(
                     children: [
                       pw.Expanded(
-                        child: pw.Text('DESCRIPTION',
-                            style: pw.TextStyle(
-                                fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text(
+                          'DESCRIPTION',
+                          style: pw.TextStyle(
+                            fontSize: 8,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                       pw.SizedBox(
                         width: 35,
-                        child: pw.Text('QTY',
-                            textAlign: pw.TextAlign.center,
-                            style: pw.TextStyle(
-                                fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text(
+                          'QTY',
+                          textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(
+                            fontSize: 8,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                       pw.SizedBox(
                         width: 75,
-                        child: pw.Text('UNIT',
-                            textAlign: pw.TextAlign.right,
-                            style: pw.TextStyle(
-                                fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text(
+                          'UNIT',
+                          textAlign: pw.TextAlign.right,
+                          style: pw.TextStyle(
+                            fontSize: 8,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                       pw.SizedBox(
                         width: 75,
-                        child: pw.Text('TOTAL',
-                            textAlign: pw.TextAlign.right,
-                            style: pw.TextStyle(
-                                fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text(
+                          'TOTAL',
+                          textAlign: pw.TextAlign.right,
+                          style: pw.TextStyle(
+                            fontSize: 8,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   pw.Divider(color: PdfColors.grey300),
                   ...items.map((item) {
-                    final sub = item.quantity * item.lineTotal;
+                    final sub = item.lineTotal;
                     return pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(vertical: 4),
                       child: pw.Row(
@@ -755,37 +994,55 @@ class InvoiceTemplateBuilder {
                             child: pw.Column(
                               crossAxisAlignment: pw.CrossAxisAlignment.start,
                               children: [
-                                pw.Text(item.name,
-                                    style: pw.TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: pw.FontWeight.bold)),
+                                pw.Text(
+                                  item.name,
+                                  style: pw.TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                ),
                                 if (item.imei.isNotEmpty)
-                                  pw.Text('Serial: ${item.imei}',
-                                      style: const pw.TextStyle(
-                                          fontSize: 7.5,
-                                          color: PdfColors.grey600)),
+                                  pw.Text(
+                                    'Serial: ${item.imei}',
+                                    style: const pw.TextStyle(
+                                      fontSize: 7.5,
+                                      color: PdfColors.grey600,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                           pw.SizedBox(
                             width: 35,
-                            child: pw.Text('${item.quantity}',
-                                textAlign: pw.TextAlign.center,
-                                style: const pw.TextStyle(fontSize: 8.5)),
+                            child: pw.Text(
+                              '${item.quantity}',
+                              textAlign: pw.TextAlign.center,
+                              style: const pw.TextStyle(fontSize: 8.5),
+                            ),
                           ),
                           pw.SizedBox(
                             width: 75,
-                            child: pw.Text(_fmt(item.lineTotal, currencySymbol),
-                                textAlign: pw.TextAlign.right,
-                                style: const pw.TextStyle(fontSize: 8.5)),
+                            child: pw.Text(
+                              _fmt(
+                                item.quantity > 0
+                                    ? item.lineTotal / item.quantity
+                                    : 0,
+                                currencySymbol,
+                              ),
+                              textAlign: pw.TextAlign.right,
+                              style: const pw.TextStyle(fontSize: 8.5),
+                            ),
                           ),
                           pw.SizedBox(
                             width: 75,
-                            child: pw.Text(_fmt(sub, currencySymbol),
-                                textAlign: pw.TextAlign.right,
-                                style: pw.TextStyle(
-                                    fontSize: 8.5,
-                                    fontWeight: pw.FontWeight.bold)),
+                            child: pw.Text(
+                              _fmt(sub, currencySymbol),
+                              textAlign: pw.TextAlign.right,
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -804,12 +1061,20 @@ class InvoiceTemplateBuilder {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('TOTAL AMOUNT',
-                      style: pw.TextStyle(
-                          fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(_fmt(totalAmount, currencySymbol),
-                      style: pw.TextStyle(
-                          fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(
+                    'TOTAL AMOUNT',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    _fmt(totalAmount, currencySymbol),
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -825,7 +1090,7 @@ class InvoiceTemplateBuilder {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    isPaid ? 'STATUS: FULLY PAID' : 'STATUS: PART PAID',
+                    'STATUS: $paymentStatus',
                     style: pw.TextStyle(
                       fontSize: 9,
                       fontWeight: pw.FontWeight.bold,
@@ -833,9 +1098,11 @@ class InvoiceTemplateBuilder {
                     ),
                   ),
                   pw.Text(
-                    'Balance: ${_fmt(isPaid ? 0 : totalAmount, currencySymbol)}',
+                    'Balance: ${_fmt(balanceAmount, currencySymbol)}',
                     style: pw.TextStyle(
-                        fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -847,12 +1114,20 @@ class InvoiceTemplateBuilder {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Thank you for shopping with us.',
-                      style: pw.TextStyle(
-                          fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Powered by $shopName',
-                      style: pw.TextStyle(
-                          fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(
+                    'Thank you for shopping with us.',
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    'Powered by $shopName',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -866,6 +1141,12 @@ class InvoiceTemplateBuilder {
 
       pdf.addPage(
         pw.MultiPage(
+          footer: (_) => invoiceTrackingFooter(
+            trackingUrl: trackingUrl,
+            servedBy: servedBy,
+            paymentSummary:
+                'Paid: ${_fmt(paidAmount, currencySymbol)} | Balance due: ${_fmt(balanceAmount, currencySymbol)}',
+          ),
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           build: (context) => [
@@ -875,38 +1156,58 @@ class InvoiceTemplateBuilder {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Invoice',
-                        style: pw.TextStyle(
-                            fontSize: 28, fontWeight: pw.FontWeight.bold)),
-                    pw.Text('No. $invoiceNumber',
-                        style: const pw.TextStyle(
-                            fontSize: 11, color: PdfColors.grey700)),
+                    pw.Text(
+                      'Invoice',
+                      style: pw.TextStyle(
+                        fontSize: 28,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'No. $invoiceNumber',
+                      style: const pw.TextStyle(
+                        fontSize: 11,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
                   ],
                 ),
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text(shopName,
-                        style: pw.TextStyle(
-                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                    pw.Text('SALES | SUPPORT',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: PdfColors.grey600)),
+                    pw.Text(
+                      shopName,
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'SALES | SUPPORT',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
             pw.SizedBox(height: 16),
-            pw.Text('Invoice to: $customerName',
-                style:
-                    pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-            pw.Text('Date: ${_formatDate(createdAt)}',
-                style: const pw.TextStyle(
-                    fontSize: 9, color: PdfColors.grey600)),
+            pw.Text(
+              'Invoice to: $customerName',
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Date: ${_formatDate(createdAt)}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
             pw.SizedBox(height: 16),
             pw.Container(
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 6,
+              ),
               decoration: pw.BoxDecoration(
                 color: sage,
                 borderRadius: pw.BorderRadius.circular(3),
@@ -914,47 +1215,61 @@ class InvoiceTemplateBuilder {
               child: pw.Row(
                 children: [
                   pw.Expanded(
-                    child: pw.Text('Description',
-                        style: pw.TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.white)),
+                    child: pw.Text(
+                      'Description',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 35,
-                    child: pw.Text('Qty',
-                        textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.white)),
+                    child: pw.Text(
+                      'Qty',
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 75,
-                    child: pw.Text('Price',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.white)),
+                    child: pw.Text(
+                      'Price',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 75,
-                    child: pw.Text('Total',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.white)),
+                    child: pw.Text(
+                      'Total',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             ...items.map((item) {
-              final sub = item.quantity * item.lineTotal;
+              final sub = item.lineTotal;
               return pw.Container(
                 padding: const pw.EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: const pw.BoxDecoration(
                   border: pw.Border(
                     bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
@@ -966,33 +1281,52 @@ class InvoiceTemplateBuilder {
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(item.name,
-                              style: pw.TextStyle(
-                                  fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(
+                            item.name,
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                           if (item.imei.isNotEmpty)
-                            pw.Text('IMEI: ${item.imei}',
-                                style: const pw.TextStyle(
-                                    fontSize: 7.5, color: PdfColors.grey600)),
+                            pw.Text(
+                              'IMEI: ${item.imei}',
+                              style: const pw.TextStyle(
+                                fontSize: 7.5,
+                                color: PdfColors.grey600,
+                              ),
+                            ),
                         ],
                       ),
                     ),
                     pw.SizedBox(
                       width: 35,
-                      child: pw.Text('${item.quantity}',
-                          textAlign: pw.TextAlign.center,
-                          style: const pw.TextStyle(fontSize: 8.5)),
+                      child: pw.Text(
+                        '${item.quantity}',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
                     ),
                     pw.SizedBox(
                       width: 75,
-                      child: pw.Text(_fmt(item.lineTotal, currencySymbol),
-                          textAlign: pw.TextAlign.right,
-                          style: const pw.TextStyle(fontSize: 8.5)),
+                      child: pw.Text(
+                        _fmt(
+                          item.quantity > 0
+                              ? item.lineTotal / item.quantity
+                              : 0,
+                          currencySymbol,
+                        ),
+                        textAlign: pw.TextAlign.right,
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
                     ),
                     pw.SizedBox(
                       width: 75,
-                      child: pw.Text(_fmt(sub, currencySymbol),
-                          textAlign: pw.TextAlign.right,
-                          style: const pw.TextStyle(fontSize: 8.5)),
+                      child: pw.Text(
+                        _fmt(sub, currencySymbol),
+                        textAlign: pw.TextAlign.right,
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
                     ),
                   ],
                 ),
@@ -1005,13 +1339,15 @@ class InvoiceTemplateBuilder {
               children: [
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 5),
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
                   decoration: pw.BoxDecoration(
                     color: PdfColors.green700,
                     borderRadius: pw.BorderRadius.circular(4),
                   ),
                   child: pw.Text(
-                    isPaid ? 'PAID' : 'BALANCE DUE',
+                    paymentStatus,
                     style: pw.TextStyle(
                       color: PdfColors.white,
                       fontSize: 9,
@@ -1026,25 +1362,34 @@ class InvoiceTemplateBuilder {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Total:',
-                              style: pw.TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: pw.FontWeight.bold)),
-                          pw.Text(_fmt(totalAmount, currencySymbol),
-                              style: pw.TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: pw.FontWeight.bold)),
+                          pw.Text(
+                            'Total:',
+                            style: pw.TextStyle(
+                              fontSize: 10,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.Text(
+                            _fmt(totalAmount, currencySymbol),
+                            style: pw.TextStyle(
+                              fontSize: 10,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                       pw.SizedBox(height: 3),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Balance due:',
-                              style: const pw.TextStyle(fontSize: 9)),
                           pw.Text(
-                              _fmt(isPaid ? 0 : totalAmount, currencySymbol),
-                              style: const pw.TextStyle(fontSize: 9)),
+                            'Balance due:',
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
+                          pw.Text(
+                            _fmt(balanceAmount, currencySymbol),
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
                         ],
                       ),
                     ],
@@ -1063,14 +1408,21 @@ class InvoiceTemplateBuilder {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('We buy your phone for cash or trade-in.',
-                      style: pw.TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.green900)),
-                  pw.Text('Ask us for a quote at our counter.',
-                      style: const pw.TextStyle(
-                          fontSize: 8, color: PdfColors.green800)),
+                  pw.Text(
+                    'We buy your phone for cash or trade-in.',
+                    style: pw.TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.green900,
+                    ),
+                  ),
+                  pw.Text(
+                    'Ask us for a quote at our counter.',
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.green800,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1082,18 +1434,32 @@ class InvoiceTemplateBuilder {
     else {
       pdf.addPage(
         pw.MultiPage(
+          footer: (_) => invoiceTrackingFooter(
+            trackingUrl: trackingUrl,
+            servedBy: servedBy,
+            paymentSummary:
+                'Paid: ${_fmt(paidAmount, currencySymbol)} | Balance due: ${_fmt(balanceAmount, currencySymbol)}',
+          ),
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           build: (context) => [
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(shopName,
-                    style: pw.TextStyle(
-                        fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                pw.Text('Invoice no. $invoiceNumber',
-                    style: const pw.TextStyle(
-                        fontSize: 9, color: PdfColors.grey700)),
+                pw.Text(
+                  shopName,
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Invoice no. $invoiceNumber',
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: PdfColors.grey700,
+                  ),
+                ),
               ],
             ),
             pw.SizedBox(height: 12),
@@ -1103,12 +1469,18 @@ class InvoiceTemplateBuilder {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('BILL TO:',
-                        style: const pw.TextStyle(
-                            fontSize: 7.5, color: PdfColors.grey600)),
+                    pw.Text(
+                      'BILL TO:',
+                      style: const pw.TextStyle(
+                        fontSize: 7.5,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
                     pw.Container(
                       padding: const pw.EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: pw.BoxDecoration(
                         color: PdfColor.fromInt(0xFFD9F99D),
                         borderRadius: pw.BorderRadius.circular(4),
@@ -1116,18 +1488,22 @@ class InvoiceTemplateBuilder {
                       child: pw.Text(
                         customerName,
                         style: pw.TextStyle(
-                            fontSize: 10,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColor.fromInt(0xFF1A2E05)),
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColor.fromInt(0xFF1A2E05),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                pw.Text('INVOICE',
-                    style: pw.TextStyle(
-                        fontSize: 32,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 2)),
+                pw.Text(
+                  'INVOICE',
+                  style: pw.TextStyle(
+                    fontSize: 32,
+                    fontWeight: pw.FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
               ],
             ),
             pw.SizedBox(height: 16),
@@ -1137,68 +1513,104 @@ class InvoiceTemplateBuilder {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Invoice total',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: PdfColors.grey600)),
-                    pw.Text(_fmt(totalAmount, currencySymbol),
-                        style: pw.TextStyle(
-                            fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(
+                      'Invoice total',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
+                    pw.Text(
+                      _fmt(totalAmount, currencySymbol),
+                      style: pw.TextStyle(
+                        fontSize: 22,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('Issue date: ${_formatDate(createdAt)}',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: PdfColors.grey700)),
-                    pw.Text('Payment: $paymentLabel',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: PdfColors.grey700)),
+                    pw.Text(
+                      'Issue date: ${_formatDate(createdAt)}',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.Text(
+                      'Payment: $paymentLabel',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
             pw.SizedBox(height: 14),
             pw.Container(
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 6,
+              ),
               color: PdfColor.fromInt(0xFFF1F5F9),
               child: pw.Row(
                 children: [
                   pw.Expanded(
-                    child: pw.Text('Item',
-                        style: pw.TextStyle(
-                            fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Item',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 35,
-                    child: pw.Text('Qty',
-                        textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(
-                            fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Qty',
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 75,
-                    child: pw.Text('Price',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                            fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Price',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                   pw.SizedBox(
                     width: 75,
-                    child: pw.Text('Total',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                            fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                    child: pw.Text(
+                      'Total',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             ...items.map((item) {
-              final sub = item.quantity * item.lineTotal;
+              final sub = item.lineTotal;
               return pw.Container(
                 padding: const pw.EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: const pw.BoxDecoration(
                   border: pw.Border(
                     bottom: pw.BorderSide(color: PdfColors.grey200, width: 0.5),
@@ -1210,33 +1622,52 @@ class InvoiceTemplateBuilder {
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(item.name,
-                              style: pw.TextStyle(
-                                  fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(
+                            item.name,
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                           if (item.imei.isNotEmpty)
-                            pw.Text('IMEI: ${item.imei}',
-                                style: const pw.TextStyle(
-                                    fontSize: 7.5, color: PdfColors.grey600)),
+                            pw.Text(
+                              'IMEI: ${item.imei}',
+                              style: const pw.TextStyle(
+                                fontSize: 7.5,
+                                color: PdfColors.grey600,
+                              ),
+                            ),
                         ],
                       ),
                     ),
                     pw.SizedBox(
                       width: 35,
-                      child: pw.Text('${item.quantity}',
-                          textAlign: pw.TextAlign.center,
-                          style: const pw.TextStyle(fontSize: 8.5)),
+                      child: pw.Text(
+                        '${item.quantity}',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
                     ),
                     pw.SizedBox(
                       width: 75,
-                      child: pw.Text(_fmt(item.lineTotal, currencySymbol),
-                          textAlign: pw.TextAlign.right,
-                          style: const pw.TextStyle(fontSize: 8.5)),
+                      child: pw.Text(
+                        _fmt(
+                          item.quantity > 0
+                              ? item.lineTotal / item.quantity
+                              : 0,
+                          currencySymbol,
+                        ),
+                        textAlign: pw.TextAlign.right,
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
                     ),
                     pw.SizedBox(
                       width: 75,
-                      child: pw.Text(_fmt(sub, currencySymbol),
-                          textAlign: pw.TextAlign.right,
-                          style: const pw.TextStyle(fontSize: 8.5)),
+                      child: pw.Text(
+                        _fmt(sub, currencySymbol),
+                        textAlign: pw.TextAlign.right,
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
                     ),
                   ],
                 ),
@@ -1247,7 +1678,9 @@ class InvoiceTemplateBuilder {
               alignment: pw.Alignment.centerRight,
               child: pw.Container(
                 padding: const pw.EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: pw.BoxDecoration(
                   color: PdfColor.fromInt(0xFFD9F99D),
                   borderRadius: pw.BorderRadius.circular(6),
@@ -1263,9 +1696,10 @@ class InvoiceTemplateBuilder {
               ),
             ),
             pw.Spacer(),
-            pw.Text('Thank you for shopping with us.',
-                style: const pw.TextStyle(
-                    fontSize: 8, color: PdfColors.grey600)),
+            pw.Text(
+              'Thank you for shopping with us.',
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+            ),
           ],
         ),
       );
@@ -1296,8 +1730,9 @@ class InvoiceTemplateBuilder {
     required String currencyCode,
     String? templateId,
   }) async {
-    final effectiveTemplate =
-        templateId ?? InvoiceTemplateSettings.currentTemplate.value;
+    final effectiveTemplate = InvoiceTemplateSettings.getTemplate(
+      templateId,
+    ).id;
 
     // Default theme -> keep exact original layout
     if (effectiveTemplate == 'default') {
@@ -1326,7 +1761,7 @@ class InvoiceTemplateBuilder {
           (item) => VerifiedInvoiceItem(
             name: item.name,
             quantity: item.quantity,
-            lineTotal: item.unitPrice,
+            lineTotal: item.unitPrice * item.quantity,
             imei: item.imeiSerial,
           ),
         )
@@ -1334,7 +1769,8 @@ class InvoiceTemplateBuilder {
 
     return buildSalesInvoice(
       fileName: '${fileNamePrefix}_${createdAt.millisecondsSinceEpoch}.pdf',
-      invoiceNumber: 'PR-${createdAt.millisecondsSinceEpoch.toString().substring(5)}',
+      invoiceNumber:
+          'PR-${createdAt.millisecondsSinceEpoch.toString().substring(5)}',
       createdAt: createdAt,
       shopName: shopName,
       shopEmail: shopEmail,
@@ -1350,6 +1786,7 @@ class InvoiceTemplateBuilder {
       currencyCode: currencyCode,
       items: mappedItems,
       subtitle: 'PURCHASE RECEIPT',
+      servedBy: preparedBy,
       templateId: effectiveTemplate,
     );
   }
@@ -1404,7 +1841,7 @@ class InvoiceTemplateBuilder {
       'September',
       'October',
       'November',
-      'December'
+      'December',
     ];
     if (m >= 1 && m <= 12) return months[m - 1];
     return '';

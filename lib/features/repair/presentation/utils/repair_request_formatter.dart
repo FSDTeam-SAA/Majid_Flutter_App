@@ -22,6 +22,8 @@ RepairItem repairItemFromJson(Map<String, dynamic> item) {
 String formatRepairStatus(String? status) {
   return switch (status) {
     'completed' => 'Completed',
+    'collected' => 'Collected',
+    'unable-to-repair' => 'Unable to Repair',
     'waiting-for-parts' => 'Waiting for Parts',
     'quote_sent' || 'quote-sent' => 'Quote Sent',
     'approved' => 'Approved',
@@ -59,3 +61,15 @@ String formatRepairDate(String? value) {
 
   return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year}';
 }
+
+/// Include identifiers and customer contacts, not only the card's display label.
+bool repairMatchesQuery(RepairItem item, String query) => [
+  item.name,
+  item.brand,
+  item.imei,
+  item.issueDesc,
+  item.status,
+  item.raw['_id'],
+  item.raw['email'],
+  item.raw['phoneNumber'],
+].join(' ').toLowerCase().contains(query.trim().toLowerCase());

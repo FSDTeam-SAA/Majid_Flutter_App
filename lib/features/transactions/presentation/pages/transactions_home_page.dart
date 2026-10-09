@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../../core/network/api_service/commerce_events.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
@@ -15,7 +16,8 @@ import '../widgets/transaction_colors.dart';
 import '../widgets/transaction_tile.dart';
 import 'cash_management_page.dart';
 import 'end_of_day_report_page.dart';
-import 'reports_page.dart';
+import 'all_transactions_page.dart';
+import '../utils/invoice_transaction.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
@@ -56,6 +58,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
 
   @override
   void dispose() {
+    CommerceEvents.revision.removeListener(_loadLiveData);
     _midnightTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
@@ -68,6 +71,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
     _invoiceRepo = InvoiceRepositoryImpl(ApiClient(baseUrl));
     _profileCtrl = Get.find<ProfileController>();
     _loadLiveData();
+    CommerceEvents.revision.addListener(_loadLiveData);
     _scheduleMidnightRefresh();
   }
 
@@ -387,54 +391,7 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
     final sorted = List<Invoice>.from(invoices)
       ..sort((a, b) => _invoiceDate(b).compareTo(_invoiceDate(a)));
 
-    return sorted
-        .where((invoice) => _invoiceAmount(invoice).abs() > 0)
-        .take(8)
-        .map(
-          (invoice) => TransactionEntry(
-            title: _transactionTitle(invoice),
-            subtitle: _transactionSubtitle(invoice),
-            time: _formatClock(_invoiceDate(invoice)),
-            amount: _isExpenseInvoice(invoice) || _isRefundInvoice(invoice)
-                ? -_invoiceAmount(invoice).abs()
-                : _invoiceAmount(invoice).abs(),
-            kind: _transactionKind(invoice),
-            method: (invoice.paymentMethod ?? '').trim(),
-            invoiceId: invoice.id,
-            invoiceRef: invoice.reference,
-            date: _invoiceDate(invoice),
-            customerName: invoice.customerName.trim().toUpperCase() == 'N/A'
-                ? ''
-                : invoice.customerName.trim(),
-            customerId: invoice.customerId ?? '',
-            customerEmail: invoice.customerEmail ?? '',
-            customerPhone: invoice.customerPhone ?? '',
-            pdfUrl: invoice.pdfUrl,
-            isPaid: (invoice.paymentStatus ?? '').trim().toLowerCase() != 'due',
-          ),
-        )
-        .toList();
-  }
-
-  TransactionKind _transactionKind(Invoice invoice) {
-    if (_isExpenseInvoice(invoice)) return TransactionKind.expense;
-    if (_isRefundInvoice(invoice)) return TransactionKind.refund;
-    if (_isCardLike(invoice)) return TransactionKind.cardReceived;
-    return TransactionKind.cashReceived;
-  }
-
-  String _transactionTitle(Invoice invoice) {
-    if (_isExpenseInvoice(invoice)) return 'Inventory Purchase';
-    if (_isRefundInvoice(invoice)) return 'Refund Issued';
-    if (_isCardLike(invoice)) return 'Card Payment Received';
-    return 'Cash Received';
-  }
-
-  String _transactionSubtitle(Invoice invoice) {
-    final rawCustomer = invoice.customerName.trim();
-    final isMissing = rawCustomer.isEmpty || rawCustomer.toUpperCase() == 'N/A';
-    final customer = isMissing ? 'Walk-in customer' : rawCustomer;
-    return '$customer • ${invoice.classification}';
+    return sorted.take(8).map(transactionFromInvoice).toList();
   }
 
   double _invoiceAmount(Invoice invoice) {
@@ -570,13 +527,6 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
       widgets.add(TransactionTile(entry: entry));
     }
     return widgets;
-  }
-
-  String _formatClock(DateTime value) {
-    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
-    final minute = value.minute.toString().padLeft(2, '0');
-    final suffix = value.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $suffix';
   }
 
   @override
@@ -737,7 +687,9 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                       accent: TransactionColors.blue,
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ReportsPage()),
+                        MaterialPageRoute(
+                          builder: (_) => const AllTransactionsPage(),
+                        ),
                       ),
                     ),
                   ),
@@ -751,7 +703,9 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                       accent: TransactionColors.coral,
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ReportsPage()),
+                        MaterialPageRoute(
+                          builder: (_) => const AllTransactionsPage(),
+                        ),
                       ),
                     ),
                   ),
@@ -772,7 +726,9 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReportsPage()),
+                      MaterialPageRoute(
+                        builder: (_) => const AllTransactionsPage(),
+                      ),
                     ),
                     child: Text(
                       'View all',
@@ -849,12 +805,19 @@ class _TransactionsHomePageState extends State<TransactionsHomePage> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'View all',
-                          style: TextStyle(
-                            color: tone,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                        TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AllTransactionsPage(),
+                            ),
+                          ),
+                          child: Text(
+                            'View all',
+                            style: TextStyle(
+                              color: tone,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],

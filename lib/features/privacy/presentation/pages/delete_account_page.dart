@@ -47,10 +47,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
       setState(() => _hasExported = true);
       showSuccessSnackbar('Saved to ${personal.locationLabel}');
-      await Share.shareXFiles(
-        [XFile(personal.file.path), XFile(business.file.path)],
-        text: 'imoscan data export',
-      );
+      await Share.shareXFiles([
+        XFile(personal.file.path),
+        XFile(business.file.path),
+      ], text: 'imoscan data export');
     } catch (e) {
       if (mounted) showErrorSnackbar('Could not build the export: $e');
     } finally {
@@ -77,10 +77,14 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         );
         return false;
       }
-      await security.sendChallenge(
+      final dispatched = await security.sendChallenge(
         method: settings.method,
         destination: destination,
       );
+      if (!dispatched.sent) {
+        showErrorSnackbar('Could not send a verification code. Please retry.');
+        return false;
+      }
       message = 'Enter the 6-digit code sent to $destination.';
     }
 

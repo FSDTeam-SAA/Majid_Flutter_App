@@ -19,7 +19,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>majid_flutter_app</string>
+	<string>Imoscan</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -38,13 +38,13 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>imoscan uses the camera to scan IMEI numbers and barcodes, capture an identity document for a trade-in, and record repair evidence.</string>
+	<string>Imoscan uses your camera to scan device IMEI barcodes and capture customer identity-document photos for trade-in paperwork. For example, scan a device barcode to fill its IMEI before requesting a device check.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>imoscan uses the system photo picker so you can add selected repair or trade-in images. Only the photos you choose are shared with the app.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>imoscan saves invoices, receipts and device certificates you generate to your photo library.</string>
+	<string>Imoscan uses photos you select to extract an IMEI or serial number, attach a customer identity document or payment image, and update your profile photo or invoice logo. For example, select a device-label photo to extract its IMEI.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>imoscan uses your location only while the app is open, for delivery and live order tracking. It is never tracked in the background.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>imoscan uses your location only while the app is open, for delivery and live order tracking. It never collects your location in the background.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>imoscan uses Bluetooth to connect to your receipt printer and barcode scanner.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

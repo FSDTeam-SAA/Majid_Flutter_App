@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
-import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/gradient_scaffold.dart';
 import '../../../scan/presentation/pages/barcode_scanner_page.dart';
 import '../../domain/entities/category.dart';
@@ -10,7 +9,6 @@ import '../controller/stock_controller.dart';
 import '../theme/checkout_tokens.dart';
 import '../widgets/checkout_icon_button.dart';
 import '../widgets/checkout_search_field.dart';
-import 'add_category_sheet.dart';
 import 'category_stock_page.dart';
 
 /// Entry point of the Stock section: displays categories same as website,
@@ -65,49 +63,6 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
     );
   }
 
-  Future<void> _confirmDeleteCategory(Category category) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Category',
-          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${category.name}"? This action cannot be undone.',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFFF4444), fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final success = await _stockCtrl.deleteCategory(category.id);
-      if (mounted) {
-        if (success) {
-          showSuccessSnackbar('Category deleted successfully');
-        } else {
-          showErrorSnackbar(
-            _stockCtrl.errorMessage.value.isNotEmpty
-                ? _stockCtrl.errorMessage.value
-                : 'Failed to delete category',
-          );
-        }
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
@@ -158,7 +113,6 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
               ],
             ),
           ),
-
 
           // Search Field
           Padding(
@@ -225,7 +179,7 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Create a category to organize inventory items.',
+                              'Manage product categories on the website.',
                               textAlign: TextAlign.center,
                               style: CheckoutTokens.text(
                                 size: 13,
@@ -260,13 +214,6 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
                                 ),
                               ),
                             ),
-                            onEdit: () => showAddCategorySheet(
-                              context,
-                              existingId: category.id,
-                              existingName: category.name,
-                              existingImageUrl: category.imageUrl,
-                            ),
-                            onDelete: () => _confirmDeleteCategory(category),
                           );
                         },
                       ),
@@ -304,15 +251,8 @@ class _StockCategoriesPageState extends State<StockCategoriesPage> {
 class _WebsiteCategoryCard extends StatelessWidget {
   final Category category;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
 
-  const _WebsiteCategoryCard({
-    required this.category,
-    required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _WebsiteCategoryCard({required this.category, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -359,95 +299,6 @@ class _WebsiteCategoryCard extends StatelessWidget {
                                 ),
                               )
                             : _buildFolderPlaceholder(),
-                      ),
-                    ),
-                    // Top-right 3-dots menu (Edit & Delete)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        icon: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: (AppColors.isDark
-                                    ? Colors.black
-                                    : Colors.white)
-                                .withValues(alpha: 0.85),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.more_vert_rounded,
-                            size: 16,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        color: AppColors.cardBackground,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(color: CheckoutTokens.border),
-                        ),
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            onEdit();
-                          } else if (value == 'delete') {
-                            onDelete();
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'edit',
-                            height: 38,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.edit_outlined,
-                                  size: 16,
-                                  color: AppColors.textPrimary,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'Edit Category',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            height: 38,
-                            child: Row(
-                              children: const [
-                                Icon(
-                                  Icons.delete_outline_rounded,
-                                  size: 16,
-                                  color: Color(0xFFFF4444),
-                                ),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Delete',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFFFF4444),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ],
