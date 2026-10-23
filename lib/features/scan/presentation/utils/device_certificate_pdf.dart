@@ -148,7 +148,9 @@ abstract final class DeviceCertificatePdf {
           top: 0,
           child: pw.BarcodeWidget(
             barcode: Barcode.qrCode(),
-            data: imei.trim().isEmpty ? 'imoscan' : imei.trim(),
+            data: imei.trim().isEmpty
+                ? 'https://imoscan.com'
+                : 'https://imoscan.com/report/${imei.trim()}',
             width: 74,
             height: 74,
             drawText: false,
