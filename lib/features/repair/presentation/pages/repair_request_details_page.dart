@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/api_service/api_client.dart';
@@ -1420,7 +1421,36 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     return GradientScaffold(
       child: Column(
         children: [
-          AppHeader(title: 'Repair Request Details'),
+          AppHeader(
+            title: 'Repair Request Details',
+            trailing: PopupMenuButton<String>(
+              icon: Icon(Icons.more_horiz_rounded, color: AppColors.textPrimary),
+              color: AppColors.cardBackground,
+              onSelected: (val) {
+                if (val == 'receipt') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ReceiptPage(repair: _repair)),
+                  );
+                } else if (val == 'status') {
+                  _showStatusChangeModal();
+                } else if (val == 'edit') {
+                  _showEditJobDialog();
+                } else if (val == 'add_issue') {
+                  _showAddIssueDialog();
+                } else if (val == 'add_photos') {
+                  _showAddPhotosDialog();
+                }
+              },
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit Job')),
+                const PopupMenuItem(value: 'add_issue', child: Text('Add Issue')),
+                const PopupMenuItem(value: 'add_photos', child: Text('Add Photos')),
+                const PopupMenuItem(value: 'status', child: Text('Change Status')),
+                const PopupMenuItem(value: 'receipt', child: Text('Make a Receipt')),
+              ],
+            ),
+          ),
           Expanded(
             child: _isUpdating
                 ? Center(
@@ -1432,33 +1462,37 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
                     onRefresh: _refreshRepair,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: 14),
-                          _buildDeviceAndInfoCard(),
-                          SizedBox(height: 20),
+                          const SizedBox(height: 14),
+                          _buildTopDeviceHeaderCard(),
+                          const SizedBox(height: 16),
+                          _buildCustomerDetailsWithShortcuts(),
+                          const SizedBox(height: 16),
+                          _buildQuickActionsBar(),
+                          const SizedBox(height: 20),
+                          _buildIssuesSection(),
+                          const SizedBox(height: 20),
+                          _buildEvidencePhotosSection(),
+                          const SizedBox(height: 20),
                           TimelineWidget(steps: _buildTimelineSteps()),
-                          SizedBox(height: 20),
-                          _buildActions(context),
                           if (_hasWaitingForPartsDetails) ...[
-                            SizedBox(height: 20),
+                            const SizedBox(height: 20),
                             _buildWaitingForPartsCard(),
                           ],
                           if (_isCompleted) ...[
-                            SizedBox(height: 20),
+                            const SizedBox(height: 20),
                             _buildCompletionContactCard(),
                           ],
                           if (_repair['status']?.toString() == 'rejected') ...[
-                            SizedBox(height: 20),
+                            const SizedBox(height: 20),
                             _buildRejectedStatusCard(),
                           ],
-                          SizedBox(height: 20),
-                          _buildIssueDescriptionCard(),
-                          SizedBox(height: 20),
-                          _buildCustomerDetails(),
-                          SizedBox(height: 30),
+                          const SizedBox(height: 20),
+                          _buildVerifyAndCompleteSection(),
+                          const SizedBox(height: 30),
                         ],
                       ),
                     ),
@@ -1469,46 +1503,1144 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  List<TimelineStep> _buildTimelineSteps() =>
-      buildRepairTimeline(_repair['status']?.toString() ?? '');
+  // --- NEW HEADER & CARDS MATCHING DEVELOPER NOTES 1/2 & 2/2 ---
 
-  Widget _buildIssueDescriptionCard() {
+  Widget _buildTopDeviceHeaderCard() {
+    final status = _formatStatus(_repair['status']?.toString());
+    final rawPrice = (_repair['price'] as num?)?.toDouble() ?? 0.0;
+    final deviceModel = _repair['deviceModel']?.toString() ?? 'Device';
+    final reqId = _repair['_id']?.toString() ?? '';
+    final shortId = reqId.length > 8 ? reqId.substring(reqId.length - 8) : reqId;
+
     return AppCard(
       padding: const EdgeInsets.all(16),
       borderRadius: 16,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            'Issue Description',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+            ),
+            child: Icon(
+              Icons.phone_iphone_rounded,
+              size: 32,
+              color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.fieldBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.fieldBorder),
-            ),
-            child: Text(
-              _repair['description']?.toString() ?? 'No description provided',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        deviceModel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Job #REP-$shortId',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      'Booked price ',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '£${rawPrice.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildCustomerDetailsWithShortcuts() {
+    final phone = _customerPhone;
+    final email = _customerEmail;
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_outline_rounded, color: AppColors.textSecondary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _customerName,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Phone row with Call and SMS inline
+          Row(
+            children: [
+              Icon(Icons.phone_outlined, color: AppColors.textSecondary, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  phone.isNotEmpty ? phone : 'No phone number',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (phone.isNotEmpty) ...[
+                _buildSmallActionBtn(
+                  icon: Icons.call,
+                  label: 'Call',
+                  color: const Color(0xFF10B981),
+                  onTap: () => _launchUri(
+                    Uri.parse('tel:$phone'),
+                    successLabel: 'phone dialer',
+                  ),
+                ),
+                const SizedBox(width: 6),
+                _buildSmallActionBtn(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'SMS',
+                  color: const Color(0xFF10B981),
+                  onTap: () => _sendBySms('Hello $_customerName, regarding your repair...'),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Email row with Email action inline
+          Row(
+            children: [
+              Icon(Icons.mail_outline_rounded, color: AppColors.textSecondary, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  email.isNotEmpty ? email : 'No email address',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (email.isNotEmpty)
+                _buildSmallActionBtn(
+                  icon: Icons.email_outlined,
+                  label: '',
+                  color: const Color(0xFF10B981),
+                  onTap: () => _sendByEmail(
+                    'Hello $_customerName,\n\nRegarding your device repair ($deviceModelName)...',
+                    subject: 'Update on your repair - $_shopName',
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallActionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: label.isNotEmpty ? 10 : 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 14),
+              if (label.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String get deviceModelName => _repair['deviceModel']?.toString() ?? 'Device';
+
+  Widget _buildQuickActionsBar() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildQuickActionBtn(
+            icon: Icons.edit_outlined,
+            label: 'Edit job',
+            onTap: _showEditJobDialog,
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionBtn(
+            icon: Icons.add_circle_outline_rounded,
+            label: 'Add issue',
+            onTap: _showAddIssueDialog,
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionBtn(
+            icon: Icons.camera_alt_outlined,
+            label: 'Add photos',
+            onTap: _showAddPhotosDialog,
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionBtn(
+            icon: Icons.checklist_rounded,
+            label: 'Status',
+            onTap: _showStatusChangeModal,
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionBtn(
+            icon: Icons.receipt_long_rounded,
+            label: 'Receipt',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ReceiptPage(repair: _repair)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionBtn({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.fieldBorder),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- ISSUES CHECKLIST WITH FIXED AND TESTED TOGGLES (DEVELOPER NOTE 2/2) ---
+
+  List<String> get _parsedIssues {
+    final rawDesc = _repair['description']?.toString() ?? '';
+    final lines = rawDesc
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    return lines.isEmpty ? ['No issues listed'] : lines;
+  }
+
+  final Map<int, bool> _fixedIssues = {};
+  final Map<int, bool> _testedIssues = {};
+  bool _confirmChecklistAllFixed = false;
+
+  Widget _buildIssuesSection() {
+    final issues = _parsedIssues;
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Issues (${issues.length})',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              InkWell(
+                onTap: _showAddIssueDialog,
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(Icons.add, color: AppColors.primary, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Add issue',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...issues.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final issue = entry.value;
+            final isFixed = _fixedIssues[idx] ?? false;
+            final isTested = _testedIssues[idx] ?? false;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.fieldBackground,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.fieldBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          issue,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _showEditSingleIssueDialog(idx, issue),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      // Fixed checkbox
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _fixedIssues[idx] = !isFixed;
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: isFixed,
+                              activeColor: AppColors.primary,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (v) {
+                                setState(() {
+                                  _fixedIssues[idx] = v ?? false;
+                                });
+                              },
+                            ),
+                            Text(
+                              'Fixed',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Tested checkbox
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _testedIssues[idx] = !isTested;
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: isTested,
+                              activeColor: AppColors.primary,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (v) {
+                                setState(() {
+                                  _testedIssues[idx] = v ?? false;
+                                });
+                              },
+                            ),
+                            Text(
+                              'Tested',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // --- EVIDENCE PHOTOS SECTION (BEFORE / DURING / AFTER) ---
+
+  List<String> get _evidenceImages {
+    final List<String> list = [];
+    final direct = _repair['images'];
+    if (direct is List) {
+      for (final item in direct) {
+        if (item is Map && item['url'] != null) {
+          list.add(item['url'].toString());
+        } else if (item is String) {
+          list.add(item);
+        }
+      }
+    }
+    final notes = _repair['shopkeeperNotes'];
+    if (notes is List) {
+      for (final n in notes) {
+        if (n is Map && n['images'] is List) {
+          for (final img in (n['images'] as List)) {
+            if (img is Map && img['url'] != null) {
+              list.add(img['url'].toString());
+            }
+          }
+        }
+      }
+    }
+    return list;
+  }
+
+  Widget _buildEvidencePhotosSection() {
+    final images = _evidenceImages;
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Job evidence',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              InkWell(
+                onTap: _showAddPhotosDialog,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Upload',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (images.isNotEmpty) ...[
+            SizedBox(
+              height: 100,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: images.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 10),
+                itemBuilder: (ctx, i) {
+                  final label = i == 0
+                      ? 'Before'
+                      : i == 1
+                          ? 'During'
+                          : 'After';
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          images[i],
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 80,
+                            height: 80,
+                            color: AppColors.fieldBackground,
+                            child: const Icon(Icons.broken_image),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ] else ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              decoration: BoxDecoration(
+                color: AppColors.fieldBackground,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.fieldBorder),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.photo_outlined, color: AppColors.textSecondary, size: 28),
+                  const SizedBox(height: 6),
+                  Text(
+                    'No photos attached yet',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickAndUploadPhoto(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                  label: const Text('Take photo'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: BorderSide(color: AppColors.fieldBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickAndUploadPhoto(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                  label: const Text('Upload'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: BorderSide(color: AppColors.fieldBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Technician can add evidence at any time and link photos to an issue.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- COMPLETE REPAIR FLOW WITH VERIFICATION (DEVELOPER NOTE 2/2) ---
+
+  Widget _buildVerifyAndCompleteSection() {
+    final issues = _parsedIssues;
+    final totalIssues = issues.length;
+    int verifiedCount = 0;
+    for (int i = 0; i < totalIssues; i++) {
+      if ((_fixedIssues[i] ?? false) && (_testedIssues[i] ?? false)) {
+        verifiedCount++;
+      }
+    }
+    final allVerified = totalIssues > 0 && verifiedCount == totalIssues;
+    final canComplete = allVerified && _confirmChecklistAllFixed;
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Verify & Complete',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '$verifiedCount of $totalIssues issues verified',
+                style: TextStyle(
+                  color: allVerified ? const Color(0xFF10B981) : AppColors.textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.person_outline, size: 15, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                'Technician: $_technicianDisplayName',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _confirmChecklistAllFixed = !_confirmChecklistAllFixed;
+              });
+            },
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _confirmChecklistAllFixed,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) {
+                    setState(() {
+                      _confirmChecklistAllFixed = v ?? false;
+                    });
+                  },
+                ),
+                Expanded(
+                  child: Text(
+                    'I confirm all issues are fixed and tested',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: canComplete ? () => _updateStatus('completed') : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: AppColors.fieldBackground,
+                disabledForegroundColor: AppColors.textSecondary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: const Text(
+                'Complete repair',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          if (!canComplete) ...[
+            const SizedBox(height: 6),
+            Center(
+              child: Text(
+                'Finish all issue checks and check confirmation before completion.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // --- ACTIONS: EDIT JOB, ADD ISSUE, ADD PHOTOS, STATUS CHANGE ---
+
+  Future<void> _showEditJobDialog() async {
+    final devCtrl = TextEditingController(text: _repair['deviceModel']?.toString() ?? '');
+    final imeiCtrl = TextEditingController(text: _repair['IMEINumber']?.toString() ?? '');
+    final priceCtrl = TextEditingController(
+      text: ((_repair['price'] as num?)?.toDouble() ?? 0).toStringAsFixed(2),
+    );
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Edit Job Details',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: devCtrl,
+              decoration: const InputDecoration(labelText: 'Device Model'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: imeiCtrl,
+              decoration: const InputDecoration(labelText: 'IMEI / Serial'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: priceCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Booked Price (£)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (updated == true) {
+      final id = _repair['_id']?.toString() ?? '';
+      final parsedPrice = double.tryParse(priceCtrl.text.trim()) ?? 0;
+      setState(() {
+        _repair['deviceModel'] = devCtrl.text.trim();
+        _repair['IMEINumber'] = imeiCtrl.text.trim();
+        _repair['price'] = parsedPrice;
+      });
+      // Try updating through backend reassign / update endpoint
+      try {
+        await _api.put(
+          RepairRequestEndpoints.reassign(id),
+          data: {
+            'deviceModel': devCtrl.text.trim(),
+            'IMEINumber': imeiCtrl.text.trim(),
+            'price': parsedPrice,
+          },
+        );
+      } catch (_) {}
+      _showMessage('Job details updated');
+    }
+  }
+
+  Future<void> _showAddIssueDialog() async {
+    final issueCtrl = TextEditingController();
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Add New Issue',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: issueCtrl,
+          autofocus: true,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Describe new issue...',
+            filled: true,
+            fillColor: AppColors.fieldBackground,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (issueCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Add Issue'),
+          ),
+        ],
+      ),
+    );
+
+    if (added == true && issueCtrl.text.trim().isNotEmpty) {
+      final newDesc = [
+        ..._parsedIssues.where((s) => s != 'No issues listed'),
+        issueCtrl.text.trim(),
+      ].join('\n');
+
+      final id = _repair['_id']?.toString() ?? '';
+      setState(() => _repair['description'] = newDesc);
+
+      try {
+        await _api.put(
+          RepairRequestEndpoints.reassign(id),
+          data: {'description': newDesc},
+        );
+      } catch (_) {}
+      _showMessage('New issue added to repair job');
+    }
+  }
+
+  Future<void> _showEditSingleIssueDialog(int index, String currentText) async {
+    final editCtrl = TextEditingController(text: currentText);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Edit Issue',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: editCtrl,
+          autofocus: true,
+          maxLines: 3,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.fieldBackground,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && editCtrl.text.trim().isNotEmpty) {
+      final issues = List<String>.from(_parsedIssues);
+      issues[index] = editCtrl.text.trim();
+      final newDesc = issues.join('\n');
+      final id = _repair['_id']?.toString() ?? '';
+      setState(() => _repair['description'] = newDesc);
+      try {
+        await _api.put(
+          RepairRequestEndpoints.reassign(id),
+          data: {'description': newDesc},
+        );
+      } catch (_) {}
+      _showMessage('Issue updated');
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    final id = _repair['_id']?.toString() ?? '';
+    setState(() => _isUpdating = true);
+
+    try {
+      final formData = FormData();
+      formData.fields.add(const MapEntry('message', 'Attached evidence photo'));
+      formData.fields.add(const MapEntry('cost', '0'));
+      formData.fields.add(const MapEntry('estimatedDays', '0'));
+      formData.fields.add(MapEntry('assignedPerson', _technicianDisplayName));
+      formData.files.add(
+        MapEntry(
+          'images',
+          await MultipartFile.fromFile(
+            picked.path,
+            filename: picked.path.split('/').last,
+          ),
+        ),
+      );
+
+      final res = await _api.put(
+        RepairRequestEndpoints.addNote(id),
+        data: formData,
+      );
+      final data = res.data['data'];
+      if (data is Map) {
+        setState(() => _repair = Map<String, dynamic>.from(data));
+      } else {
+        await _refreshRepair();
+      }
+      _showMessage('Photo attached to job successfully');
+    } catch (_) {
+      _showMessage('Failed to upload photo');
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
+  Future<void> _showAddPhotosDialog() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add Evidence Photos',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                leading: Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: Text('Take Photo with Camera', style: TextStyle(color: AppColors.textPrimary)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                title: Text('Upload from Gallery', style: TextStyle(color: AppColors.textPrimary)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showStatusChangeModal() async {
+    final statuses = [
+      ('order-assigned', 'Order Assigned'),
+      ('diagnosing', 'Diagnosing Device'),
+      ('repairing', 'Repairing Device'),
+      ('waiting-for-parts', 'Waiting for Parts'),
+      ('completed', 'Completed'),
+      ('rejected', 'Rejected'),
+      ('reassigned', 'Reassigned'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Change Repair Status',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...statuses.map(
+                (s) => ListTile(
+                  title: Text(s.$2, style: TextStyle(color: AppColors.textPrimary)),
+                  trailing: _repair['status'] == s.$1
+                      ? Icon(Icons.check_circle, color: AppColors.primary)
+                      : null,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    if (s.$1 == 'waiting-for-parts') {
+                      _showWaitingForPartsDialog();
+                    } else if (s.$1 == 'rejected') {
+                      _showRejectDialog();
+                    } else if (s.$1 == 'reassigned') {
+                      _showReassignDialog();
+                    } else {
+                      _updateStatus(s.$1);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<TimelineStep> _buildTimelineSteps() =>
+      buildRepairTimeline(_repair['status']?.toString() ?? '');
+
+
 
   Widget _buildWaitingForPartsCard() {
     final days = _repair['waitingForPartsDays']?.toString() ?? 'N/A';
@@ -1651,483 +2783,15 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
     );
   }
 
-  Widget _buildDeviceAndInfoCard() {
-    final isDark = AppColors.isDark;
-    final status = _formatStatus(_repair['status']?.toString());
-    final innerCardColor = isDark ? AppColors.fieldBackground : Colors.white;
-    final innerBorderColor = isDark
-        ? AppColors.fieldBorder
-        : const Color(0xFFE4E7EC);
 
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 16,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'DEVICE INFORMATION',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _repair['deviceModel']?.toString() ?? 'Unknown device',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.primary),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.fieldBackground,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              _repair['description']?.toString() ?? 'No description provided',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: innerCardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: innerBorderColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InfoField(
-                  label: 'REQUEST ID',
-                  value: '#${_repair['_id']?.toString() ?? 'N/A'}',
-                ),
-                const SizedBox(height: 12),
-                InfoField(
-                  label: 'SUBMITTED',
-                  value: _formatDateTime(_repair['createdAt']?.toString()),
-                ),
-                const SizedBox(height: 12),
-                InfoField(
-                  label: 'SHOP',
-                  value: _repair['shopName']?.toString() ?? 'Your Shop',
-                ),
-                if ((_repair['IMEINumber']?.toString().trim() ?? '')
-                    .isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  InfoField(
-                    label: 'IMEI / SERIAL',
-                    value: _repair['IMEINumber'].toString(),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                InfoField(label: 'TECHNICIAN', value: _technicianDisplayName),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ReceiptPage(repair: _repair)),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: BorderSide(color: AppColors.primary, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text(
-                'Make a Receipt',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildActions(BuildContext context) {
-    final actions = [
-      _RepairActionSpec(
-        label: 'Order Assigned',
-        tone: _RepairActionTone.orderAssigned,
-        activeStatuses: const {'order-assigned'},
-        onTap: () => _updateStatus('order-assigned'),
-      ),
-      _RepairActionSpec(
-        label: 'Diagnosing Device',
-        tone: _RepairActionTone.diagnosing,
-        activeStatuses: const {'diagnosing', 'inReview'},
-        onTap: () => _updateStatus('diagnosing'),
-      ),
-      _RepairActionSpec(
-        label: 'Repairing Device',
-        tone: _RepairActionTone.repairing,
-        activeStatuses: const {'repairing', 'start-work'},
-        onTap: () => _updateStatus('repairing'),
-      ),
-      _RepairActionSpec(
-        label: 'Waiting for Parts',
-        tone: _RepairActionTone.waiting,
-        activeStatuses: const {'waiting-for-parts'},
-        onTap: _showWaitingForPartsDialog,
-      ),
-      _RepairActionSpec(
-        label: 'Completed',
-        tone: _RepairActionTone.completed,
-        activeStatuses: const {'completed'},
-        onTap: () => _updateStatus('completed'),
-      ),
-      _RepairActionSpec(
-        label: 'Rejected',
-        tone: _RepairActionTone.rejected,
-        activeStatuses: const {'rejected'},
-        onTap: _showRejectDialog,
-      ),
-      _RepairActionSpec(
-        label: 'Reassigned',
-        tone: _RepairActionTone.reassigned,
-        activeStatuses: const {'reassigned'},
-        onTap: _showReassignDialog,
-      ),
-    ];
 
-    return AppCard(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Actions',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final itemWidth = (constraints.maxWidth - 12) / 2;
 
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (var index = 0; index < actions.length; index++)
-                    SizedBox(
-                      // An odd count leaves the last action alone on its row,
-                      // so let it stretch instead of sitting half empty.
-                      width: index == actions.length - 1 && actions.length.isOdd
-                          ? constraints.maxWidth
-                          : itemWidth,
-                      child: _actionBtn(actions[index]),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _actionBtn(_RepairActionSpec action) {
-    final isCurrentStatus = action.activeStatuses.contains(
-      _repair['status']?.toString(),
-    );
-    final visual = _actionVisual(action.tone, isCurrentStatus);
 
-    return GestureDetector(
-      onTap: _isUpdating ? null : action.onTap,
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: visual.gradient,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: isCurrentStatus
-                ? visual.borderColor.withValues(alpha: 0.95)
-                : visual.borderColor.withValues(alpha: 0.4),
-            width: isCurrentStatus ? 2 : 1,
-          ),
-          boxShadow: isCurrentStatus ? visual.shadows : [],
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            action.label,
-            maxLines: 1,
-            style: TextStyle(
-              color: visual.textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
-  _ActionVisual _actionVisual(_RepairActionTone tone, bool isCurrentStatus) {
-    if (AppColors.isDark) {
-      return _darkActionVisual(tone, isCurrentStatus);
-    }
 
-    return _lightActionVisual(tone, isCurrentStatus);
-  }
 
-  _ActionVisual _darkActionVisual(
-    _RepairActionTone tone,
-    bool isCurrentStatus,
-  ) {
-    final (start, end, border, text, glow) = switch (tone) {
-      _RepairActionTone.orderAssigned => (
-        const Color(0xFF32151A),
-        const Color(0xFF291217),
-        const Color(0xFF6E202C),
-        const Color(0xFFFF474F),
-        const Color(0xFFFF474F),
-      ),
-      _RepairActionTone.diagnosing => (
-        const Color(0xFF10302B),
-        const Color(0xFF0C2622),
-        const Color(0xFF0E6650),
-        const Color(0xFF22F0B6),
-        const Color(0xFF22F0B6),
-      ),
-      _RepairActionTone.repairing => (
-        const Color(0xFF392414),
-        const Color(0xFF2B1C11),
-        const Color(0xFF7A4215),
-        const Color(0xFFFFA034),
-        const Color(0xFFFFA034),
-      ),
-      _RepairActionTone.waiting => (
-        const Color(0xFF182A46),
-        const Color(0xFF142137),
-        const Color(0xFF214A8E),
-        const Color(0xFF3D95FF),
-        const Color(0xFF3D95FF),
-      ),
-      _RepairActionTone.completed => (
-        const Color(0xFF1C3421),
-        const Color(0xFF16281A),
-        const Color(0xFF325E36),
-        const Color(0xFF85FF79),
-        const Color(0xFF85FF79),
-      ),
-      _RepairActionTone.rejected => (
-        const Color(0xFF421717),
-        const Color(0xFF2E1010),
-        const Color(0xFF8E2E2E),
-        const Color(0xFFFF7A7A),
-        const Color(0xFFFF7A7A),
-      ),
-      _RepairActionTone.reassigned => (
-        const Color(0xFF1B2350),
-        const Color(0xFF141A3D),
-        const Color(0xFF2E3D8E),
-        const Color(0xFF6B7FFF),
-        const Color(0xFF6B7FFF),
-      ),
-    };
-
-    return _ActionVisual(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [start, end, end.withValues(alpha: 0.98)],
-      ),
-      borderColor: border.withValues(alpha: isCurrentStatus ? 0.95 : 0.7),
-      textColor: text,
-      shadows: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.26),
-          blurRadius: 22,
-          offset: const Offset(0, 14),
-        ),
-        BoxShadow(
-          color: glow.withValues(alpha: isCurrentStatus ? 0.2 : 0.1),
-          blurRadius: isCurrentStatus ? 34 : 24,
-          spreadRadius: isCurrentStatus ? 1.5 : 0,
-        ),
-      ],
-    );
-  }
-
-  _ActionVisual _lightActionVisual(
-    _RepairActionTone tone,
-    bool isCurrentStatus,
-  ) {
-    final (fill, border, glow) = switch (tone) {
-      _RepairActionTone.orderAssigned => (
-        const Color(0xFFFF2B31),
-        const Color(0xFFFF2B31),
-        const Color(0xFFFF5F69),
-      ),
-      _RepairActionTone.diagnosing => (
-        const Color(0xFF10C184),
-        const Color(0xFF10C184),
-        const Color(0xFF46D6A7),
-      ),
-      _RepairActionTone.repairing => (
-        const Color(0xFFFF7A00),
-        const Color(0xFFFF7A00),
-        const Color(0xFFFFB05A),
-      ),
-      _RepairActionTone.waiting => (
-        const Color(0xFF3A7DF2),
-        const Color(0xFF3A7DF2),
-        const Color(0xFF71A4FF),
-      ),
-      _RepairActionTone.completed => (
-        const Color(0xFF1B56EA),
-        const Color(0xFF1B56EA),
-        const Color(0xFF6E9BFF),
-      ),
-      _RepairActionTone.rejected => (
-        const Color(0xFFEF4444),
-        const Color(0xFFEF4444),
-        const Color(0xFFF87171),
-      ),
-      _RepairActionTone.reassigned => (
-        const Color(0xFF2B3A9E),
-        const Color(0xFF2B3A9E),
-        const Color(0xFF6E7FE0),
-      ),
-    };
-
-    return _ActionVisual(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [fill, Color.lerp(fill, Colors.white, 0.06)!],
-      ),
-      borderColor: border.withValues(alpha: isCurrentStatus ? 1 : 0.88),
-      textColor: Colors.white,
-      shadows: [
-        BoxShadow(
-          color: glow.withValues(alpha: isCurrentStatus ? 0.28 : 0.18),
-          blurRadius: isCurrentStatus ? 30 : 22,
-          offset: const Offset(0, 12),
-        ),
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 14,
-          offset: const Offset(0, 8),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCustomerDetails() {
-    final isDark = AppColors.isDark;
-    final innerCardColor = isDark ? AppColors.fieldBackground : Colors.white;
-    final innerBorderColor = isDark
-        ? AppColors.fieldBorder
-        : const Color(0xFFE4E7EC);
-
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 16,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'CUSTOMER DETAILS',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: innerCardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: innerBorderColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InfoField(
-                  label: 'NAME',
-                  value: _repair['firstName']?.toString() ?? '',
-                ),
-                const SizedBox(height: 14),
-                InfoField(
-                  label: 'EMAIL ADDRESS',
-                  value: _repair['email']?.toString() ?? '',
-                ),
-                const SizedBox(height: 14),
-                InfoField(
-                  label: 'PHONE NUMBER',
-                  value: _repair['phoneNumber']?.toString() ?? '',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _formatStatus(String? status) {
     return switch (status) {
@@ -2149,66 +2813,4 @@ class _RepairRequestDetailsPageState extends State<RepairRequestDetailsPage> {
       _ => status,
     };
   }
-
-  String _formatDateTime(String? value) {
-    final parsed = DateTime.tryParse(value ?? '');
-    if (parsed == null) return '';
-    final local = parsed.toLocal();
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
-    final minute = local.minute.toString().padLeft(2, '0');
-    final period = local.hour >= 12 ? 'PM' : 'AM';
-    return '${months[local.month - 1]} ${local.day.toString().padLeft(2, '0')}, ${local.year} · $hour:$minute $period';
-  }
-}
-
-enum _RepairActionTone {
-  orderAssigned,
-  diagnosing,
-  repairing,
-  waiting,
-  completed,
-  rejected,
-  reassigned,
-}
-
-class _RepairActionSpec {
-  final String label;
-  final _RepairActionTone tone;
-  final Set<String> activeStatuses;
-  final VoidCallback onTap;
-
-  const _RepairActionSpec({
-    required this.label,
-    required this.tone,
-    required this.activeStatuses,
-    required this.onTap,
-  });
-}
-
-class _ActionVisual {
-  final LinearGradient gradient;
-  final Color borderColor;
-  final Color textColor;
-  final List<BoxShadow> shadows;
-
-  const _ActionVisual({
-    required this.gradient,
-    required this.borderColor,
-    required this.textColor,
-    required this.shadows,
-  });
 }
