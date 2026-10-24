@@ -65,12 +65,12 @@ class _PrivacyPermissionsPageState extends State<PrivacyPermissionsPage> {
 
   Future<void> _toggleBiometrics(bool enable) async {
     if (enable) {
-      final success = await _biometrics.authenticate(
+      final error = await _biometrics.authenticateWithResult(
         localizedReason:
             'Authenticate to enable ${_biometrics.getBiometricLabel(_biometricType)} for quick sign in',
       );
-      if (!success) {
-        showErrorSnackbar('Authentication was cancelled or failed.');
+      if (error != null) {
+        showErrorSnackbar(error);
         return;
       }
     }

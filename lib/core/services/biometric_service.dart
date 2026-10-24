@@ -128,19 +128,61 @@ class BiometricService {
   }
 
   /// Prompts user with Face ID / Fingerprint prompt
-  Future<bool> authenticate({
+  /// Returns null on success, or an error message string on failure.
+  Future<String?> authenticateWithResult({
     String localizedReason = 'Please authenticate to log in to Imoscan',
   }) async {
     try {
+      final enrolled = await getAvailableBiometrics();
+      if (enrolled.isEmpty) {
+        return 'No biometrics enrolled on this device. Please set up fingerprint or face unlock in your device settings.';
+      }
+
       final authenticated = await _auth.authenticate(
         localizedReason: localizedReason,
         biometricOnly: false,
         persistAcrossBackgrounding: true,
       );
-      return authenticated;
+      if (authenticated) {
+        return null;
+      }
+      return 'Authentication was cancelled.';
+    } on LocalAuthException catch (e) {
+      debugPrint('LocalAuthException: ${e.code} - ${e.description}');
+      switch (e.code) {
+        case LocalAuthExceptionCode.noCredentialsSet:
+        case LocalAuthExceptionCode.noBiometricsEnrolled:
+          return 'No biometrics or lock credentials found. Please set up a screen lock or fingerprint in your device Settings.';
+        case LocalAuthExceptionCode.noBiometricHardware:
+          return 'This device does not have biometric hardware.';
+        case LocalAuthExceptionCode.biometricHardwareTemporarilyUnavailable:
+          return 'Biometric sensor is temporarily unavailable. Please try again.';
+        case LocalAuthExceptionCode.temporaryLockout:
+        case LocalAuthExceptionCode.biometricLockout:
+          return 'Too many failed attempts. Biometrics are temporarily locked.';
+        case LocalAuthExceptionCode.userCanceled:
+          return 'Authentication was cancelled.';
+        default:
+          return e.description ?? 'Biometric authentication failed.';
+      }
     } on PlatformException catch (e) {
+      debugPrint('PlatformException during biometric authentication: $e');
+      if (e.code == 'PasscodeNotSet' || e.code == 'NotEnrolled') {
+        return 'No biometrics enrolled. Please set up fingerprint or face unlock in device Settings.';
+      } else if (e.code == 'NotAvailable') {
+        return 'Biometric authentication is not available on this device.';
+      }
+      return e.message ?? 'Biometric authentication failed.';
+    } catch (e) {
       debugPrint('Biometric authentication error: $e');
-      return false;
+      return e.toString();
     }
+  }
+
+  Future<bool> authenticate({
+    String localizedReason = 'Please authenticate to log in to Imoscan',
+  }) async {
+    final error = await authenticateWithResult(localizedReason: localizedReason);
+    return error == null;
   }
 }

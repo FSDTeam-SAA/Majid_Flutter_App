@@ -57,11 +57,12 @@ class _LoginScreenViewState extends State<LoginScreenView> {
     }
 
     final label = _biometrics.getBiometricLabel(_biometricType);
-    final authenticated = await _biometrics.authenticate(
+    final error = await _biometrics.authenticateWithResult(
       localizedReason: 'Scan your $label to sign in to Imoscan',
     );
 
-    if (!authenticated) {
+    if (error != null) {
+      showErrorSnackbar(error);
       return;
     }
 
