@@ -48,6 +48,17 @@ class RepairCard extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
+                    if (item.price > 0) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'Booked £${item.price.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 StatusBadge(label: item.status),

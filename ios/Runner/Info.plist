@@ -37,6 +37,8 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Imoscan uses Face ID to quickly and securely log you into your account.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Imoscan uses your camera to scan device IMEI barcodes and capture customer identity-document photos for trade-in paperwork. For example, scan a device barcode to fill its IMEI before requesting a device check.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

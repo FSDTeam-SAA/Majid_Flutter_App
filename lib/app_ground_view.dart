@@ -105,30 +105,31 @@ class _AppGroundViewState extends State<AppGroundView> {
                 : Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                staffSession.staffName.value.isEmpty
-                                    ? 'Serving as Owner'
-                                    : 'Serving as ${staffSession.staffName.value}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
+                      if (_selectedIndex == 1)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  staffSession.staffName.value.isEmpty
+                                      ? 'Serving as Owner'
+                                      : 'Serving as ${staffSession.staffName.value}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
-                            ),
-                            TextButton(
-                              onPressed: () => showSwitchStaffSheet(context),
-                              child: const Text('Switch Staff'),
-                            ),
-                          ],
+                              TextButton(
+                                onPressed: () => showSwitchStaffSheet(context),
+                                child: const Text('Switch Staff'),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                       AppBottomNavBar(
                         selectedIndex: _selectedIndex,
                         onTap: _selectTab,

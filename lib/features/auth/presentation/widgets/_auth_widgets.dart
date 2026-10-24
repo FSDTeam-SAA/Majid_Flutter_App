@@ -48,7 +48,7 @@ class ImoscanTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'assets/icons/icon.png',
+      AppColors.isDark ? 'assets/icons/icon_dark.png' : 'assets/icons/icon.png',
       width: width,
       height: height,
       fit: BoxFit.contain,

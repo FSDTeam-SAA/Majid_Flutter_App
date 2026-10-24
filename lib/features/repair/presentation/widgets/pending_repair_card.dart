@@ -92,7 +92,21 @@ class PendingRepairCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  StatusBadge(label: item.status, isUppercase: false),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      StatusBadge(label: item.status, isUppercase: false),
+                      if (item.price > 0)
+                        Text(
+                          'Booked £${item.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),

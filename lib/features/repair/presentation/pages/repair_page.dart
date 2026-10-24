@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/api_service/commerce_events.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 
@@ -267,6 +269,9 @@ class _RepairPageState extends State<RepairPage> {
     String? selectedProblem;
     StaffMember? selectedTechnician;
     Customer? selectedCustomer;
+
+    final bookingPhotos = <File>[];
+    final picker = ImagePicker();
 
     final previousProblems = await _fetchPreviousProblems();
     final customerOptions = await _fetchCustomerOptions();
@@ -554,6 +559,127 @@ class _RepairPageState extends State<RepairPage> {
                               '0.00',
                               keyboard: TextInputType.number,
                             ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'Booking evidence',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (bookingPhotos.isNotEmpty) ...[
+                              SizedBox(
+                                height: 80,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: bookingPhotos.length,
+                                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                                  itemBuilder: (ctx, index) {
+                                    return Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.file(
+                                            bookingPhotos[index],
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 2,
+                                          right: 2,
+                                          child: GestureDetector(
+                                            onTap: () => setSheetState(
+                                              () => bookingPhotos.removeAt(index),
+                                            ),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.6),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              padding: const EdgeInsets.all(3),
+                                              child: const Icon(
+                                                Icons.close,
+                                                size: 14,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final picked = await picker.pickImage(
+                                        source: ImageSource.camera,
+                                        maxWidth: 1200,
+                                        maxHeight: 1200,
+                                        imageQuality: 85,
+                                      );
+                                      if (picked != null) {
+                                        setSheetState(() => bookingPhotos.add(File(picked.path)));
+                                      }
+                                    },
+                                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                                    label: const Text('Take photo'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.textPrimary,
+                                      side: BorderSide(color: AppColors.fieldBorder),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final picked = await picker.pickMultiImage(
+                                        maxWidth: 1200,
+                                        maxHeight: 1200,
+                                        imageQuality: 85,
+                                      );
+                                      if (picked.isNotEmpty) {
+                                        setSheetState(() {
+                                          bookingPhotos.addAll(picked.map((x) => File(x.path)));
+                                        });
+                                      }
+                                    },
+                                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                                    label: const Text('Upload'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.textPrimary,
+                                      side: BorderSide(color: AppColors.fieldBorder),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Attach evidence in the app at booking.',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11.5,
+                              ),
+                            ),
                             SizedBox(height: 18),
                             SizedBox(
                               width: double.infinity,
@@ -576,46 +702,58 @@ class _RepairPageState extends State<RepairPage> {
                                         }
                                         setSheetState(() => isSaving = true);
                                         try {
-                                          await _api.post(
-                                            RepairRequestEndpoints.add,
-                                            data: {
-                                              'deviceModel': deviceCtrl.text
-                                                  .trim(),
-                                              if (imeiCtrl.text
-                                                  .trim()
-                                                  .isNotEmpty)
-                                                'IMEINumber': imeiCtrl.text
-                                                    .trim(),
-                                              'description':
-                                                  [
-                                                        descCtrl.text.trim(),
-                                                        ...additionalIssues.map(
-                                                          (c) => c.text.trim(),
-                                                        ),
-                                                      ]
-                                                      .where(
-                                                        (s) => s.isNotEmpty,
-                                                      )
-                                                      .join('\n'),
-                                              'firstName': firstNameCtrl.text
-                                                  .trim(),
-                                              'email': emailCtrl.text.trim(),
-                                              'phoneNumber': phoneCtrl.text
-                                                  .trim(),
-                                              'price':
-                                                  double.tryParse(
-                                                    priceCtrl.text.trim(),
-                                                  ) ??
-                                                  0,
-                                              if (selectedTechnician != null)
-                                                'technicianId':
-                                                    selectedTechnician!.id,
-                                              if (selectedTechnician != null)
-                                                'technicianName':
-                                                    selectedTechnician!
-                                                        .fullName,
-                                            },
-                                          );
+                                          final descriptionText = [
+                                            descCtrl.text.trim(),
+                                            ...additionalIssues.map(
+                                              (c) => c.text.trim(),
+                                            ),
+                                          ].where((s) => s.isNotEmpty).join('\n');
+
+                                          final parsedPrice = double.tryParse(
+                                            priceCtrl.text.trim(),
+                                          ) ?? 0;
+
+                                          final Map<String, dynamic> bodyMap = {
+                                            'deviceModel': deviceCtrl.text.trim(),
+                                            if (imeiCtrl.text.trim().isNotEmpty)
+                                              'IMEINumber': imeiCtrl.text.trim(),
+                                            'description': descriptionText,
+                                            'firstName': firstNameCtrl.text.trim(),
+                                            'email': emailCtrl.text.trim(),
+                                            'phoneNumber': phoneCtrl.text.trim(),
+                                            'price': parsedPrice,
+                                            if (selectedTechnician != null)
+                                              'technicianId': selectedTechnician!.id,
+                                            if (selectedTechnician != null)
+                                              'technicianName': selectedTechnician!.fullName,
+                                          };
+
+                                          if (bookingPhotos.isNotEmpty) {
+                                            final formData = FormData();
+                                            bodyMap.forEach((k, v) {
+                                              formData.fields.add(MapEntry(k, v.toString()));
+                                            });
+                                            for (final file in bookingPhotos) {
+                                              formData.files.add(
+                                                MapEntry(
+                                                  'images',
+                                                  await MultipartFile.fromFile(
+                                                    file.path,
+                                                    filename: file.path.split('/').last,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                            await _api.post(
+                                              RepairRequestEndpoints.add,
+                                              data: formData,
+                                            );
+                                          } else {
+                                            await _api.post(
+                                              RepairRequestEndpoints.add,
+                                              data: bodyMap,
+                                            );
+                                          }
                                           SoundEffects.playNewOrderBooked();
                                           if (ctx.mounted) {
                                             Navigator.pop(ctx, true);
@@ -1642,35 +1780,6 @@ class _RepairPageState extends State<RepairPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.fieldBorder),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.navigation_outlined,
-                    color: AppColors.primary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Use the bottom navigation bar to switch back to the main menu without closing the app.',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
             RepairStatsRow(
               inProgress: inProgress,
               completed: completed,

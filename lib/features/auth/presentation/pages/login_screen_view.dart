@@ -14,8 +14,93 @@ import 'signup_screen_view.dart';
 import 'forgot_password_screen_view.dart';
 import 'otp_verification_screen_view.dart';
 
-class LoginScreenView extends StatelessWidget {
+import '../../../../core/services/biometric_service.dart';
+
+class LoginScreenView extends StatefulWidget {
   const LoginScreenView({super.key});
+
+  @override
+  State<LoginScreenView> createState() => _LoginScreenViewState();
+}
+
+class _LoginScreenViewState extends State<LoginScreenView> {
+  final BiometricService _biometrics = BiometricService.instance;
+  DeviceBiometricType _biometricType = DeviceBiometricType.none;
+  bool _canUseBiometrics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final type = await _biometrics.getPrimaryBiometricType();
+    final canCheck = await _biometrics.canCheckBiometrics();
+
+    if (mounted) {
+      setState(() {
+        _biometricType = type;
+        _canUseBiometrics = canCheck && type != DeviceBiometricType.none;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin(
+      BuildContext context, AuthController auth) async {
+    final creds = await _biometrics.getSavedCredentials();
+    if (creds == null) {
+      showErrorSnackbar(
+        'Please sign in with your email and password first. Biometric login will then be available on your next visits.',
+      );
+      return;
+    }
+
+    final label = _biometrics.getBiometricLabel(_biometricType);
+    final error = await _biometrics.authenticateWithResult(
+      localizedReason: 'Scan your $label to sign in to Imoscan',
+    );
+
+    if (error != null) {
+      showErrorSnackbar(error);
+      return;
+    }
+
+    final success = await auth.loginWithCredentials(
+      email: creds['email']!,
+      password: creds['password']!,
+    );
+
+    if (success) {
+      if (!context.mounted) return;
+      final cleared = await SignInSecurityFlow.run(context);
+      if (!cleared) {
+        await auth.logout();
+        showErrorSnackbar('Sign-in was not completed');
+        return;
+      }
+      Get.offAll(() => AppGroundView());
+    } else if (auth.isEmailNotVerified.value) {
+      showErrorSnackbar(
+        'Email not verified. Check your inbox for the OTP or register again.',
+      );
+      Get.to(() => OtpVerificationScreenView());
+    } else if (auth.errorMessage.isNotEmpty) {
+      showErrorSnackbar(auth.errorMessage.value);
+    }
+  }
+
+  IconData get _biometricIcon {
+    switch (_biometricType) {
+      case DeviceBiometricType.face:
+        return Icons.face_rounded;
+      case DeviceBiometricType.fingerprint:
+      case DeviceBiometricType.multiple:
+      case DeviceBiometricType.generic:
+      case DeviceBiometricType.none:
+        return Icons.fingerprint_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +119,13 @@ class LoginScreenView extends StatelessWidget {
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Center(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(height: 64),
+                            const SizedBox(height: 56),
                             Text(
                               'Welcome Back to',
                               style: TextStyle(
@@ -53,7 +138,7 @@ class LoginScreenView extends StatelessWidget {
                               index: 1,
                               begin: const Offset(0, 0.04),
                             ),
-                            const SizedBox(height: 40),
+                            const SizedBox(height: 36),
                             AppTextField(
                               hint: 'Enter your email',
                               controller: auth.emailController,
@@ -73,10 +158,6 @@ class LoginScreenView extends StatelessWidget {
                                 onPressed: () async {
                                   final success = await auth.login();
                                   if (success) {
-                                    // A correct password is only the first
-                                    // step: two-factor, new-device approval
-                                    // and the one-off permissions screen all
-                                    // run before the app opens.
                                     if (!context.mounted) return;
                                     final cleared =
                                         await SignInSecurityFlow.run(context);
@@ -99,7 +180,43 @@ class LoginScreenView extends StatelessWidget {
                                 },
                               ).entrance(index: 4),
                             ),
-                            const SizedBox(height: 20),
+                            if (_canUseBiometrics) ...[
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  onPressed: auth.isLoading.value
+                                      ? null
+                                      : () => _handleBiometricLogin(
+                                          context, auth),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: AppColors.primary,
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    foregroundColor: AppColors.primary,
+                                  ),
+                                  icon: Icon(
+                                    _biometricIcon,
+                                    size: 22,
+                                    color: AppColors.primary,
+                                  ),
+                                  label: Text(
+                                    'Sign In with ${_biometrics.getBiometricLabel(_biometricType)}',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ).entrance(index: 5),
+                            ],
+                            const SizedBox(height: 18),
                             Center(
                               child: GestureDetector(
                                 onTap: () =>
@@ -111,16 +228,16 @@ class LoginScreenView extends StatelessWidget {
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                ).entrance(index: 5, enableScale: false),
+                                ).entrance(index: 6, enableScale: false),
                               ),
                             ),
-                            const SizedBox(height: 200),
+                            const SizedBox(height: 80),
                             Center(
                               child: AuthLink(
                                 text: "Don't have an account? ",
                                 linkText: 'Register Now',
                                 onTap: () => Get.to(() => SignupScreenView()),
-                              ).entrance(index: 6, enableScale: false),
+                              ).entrance(index: 7, enableScale: false),
                             ),
                             const SizedBox(height: 24),
                           ],
