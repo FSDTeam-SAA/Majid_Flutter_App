@@ -49,6 +49,13 @@ abstract class ImeiRepository {
     bool generateNew = false,
   });
 
+  /// Checks a group in one request, preserving individual failures so the
+  /// caller can review every device without repeating successful paid checks.
+  Future<List<Map<String, dynamic>>> checkImeis({
+    required List<String> imeis,
+    required int serviceId,
+  });
+
   /// Fetches scan history with pagination metadata (including total count).
   Future<ScanHistoryResult> getHistoryResult({int? page, int? limit});
 

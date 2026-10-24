@@ -11,6 +11,7 @@ class CheckoutAmountCard extends StatelessWidget {
   final bool hasAmount;
   final VoidCallback onClear;
   final VoidCallback onNote;
+  final bool compact;
 
   const CheckoutAmountCard({
     super.key,
@@ -20,13 +21,14 @@ class CheckoutAmountCard extends StatelessWidget {
     required this.hasAmount,
     required this.onClear,
     required this.onNote,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 14),
+      padding: EdgeInsets.fromLTRB(16, compact ? 8 : 12, 12, compact ? 8 : 14),
       decoration: BoxDecoration(
         color: CheckoutTokens.keySurface,
         borderRadius: BorderRadius.circular(18),
@@ -36,7 +38,7 @@ class CheckoutAmountCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 26,
+            height: compact ? 20 : 26,
             child: Row(
               children: [
                 Expanded(
@@ -67,7 +69,7 @@ class CheckoutAmountCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: compact ? 4 : 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -79,7 +81,7 @@ class CheckoutAmountCard extends StatelessWidget {
                     amountText,
                     maxLines: 1,
                     style: CheckoutTokens.text(
-                      size: 48,
+                      size: compact ? 36 : 48,
                       weight: FontWeight.w700,
                       color: hasAmount
                           ? CheckoutTokens.strongText
@@ -91,7 +93,7 @@ class CheckoutAmountCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              _NoteButton(onTap: onNote),
+              _NoteButton(onTap: onNote, compact: compact),
             ],
           ),
         ],
@@ -103,8 +105,9 @@ class CheckoutAmountCard extends StatelessWidget {
 /// Names the manually calculated lines before they reach the review screen.
 class _NoteButton extends StatelessWidget {
   final VoidCallback onTap;
+  final bool compact;
 
-  const _NoteButton({required this.onTap});
+  const _NoteButton({required this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +123,8 @@ class _NoteButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: CheckoutTokens.keyEdge),
           ),
-          child: Column(
+          child: Flex(
+            direction: compact ? Axis.horizontal : Axis.vertical,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
@@ -128,7 +132,7 @@ class _NoteButton extends StatelessWidget {
                 size: 18,
                 color: CheckoutTokens.strongText,
               ),
-              const SizedBox(height: 3),
+              SizedBox(height: compact ? 0 : 3, width: compact ? 5 : 0),
               Text(
                 'Note',
                 style: CheckoutTokens.text(

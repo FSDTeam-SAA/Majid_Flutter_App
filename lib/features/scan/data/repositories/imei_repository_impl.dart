@@ -95,6 +95,49 @@ class ImeiRepositoryImpl implements ImeiRepository {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> checkImeis({
+    required List<String> imeis,
+    required int serviceId,
+  }) async {
+    final Response res;
+    try {
+      res = await _api.post(
+        ImeiEndpoints.checkV2,
+        data: {'imei': imeis, 'serviceId': serviceId},
+      );
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      throw ImeiScanException(
+        body is Map ? body['message']?.toString() ?? '' : '',
+      );
+    }
+    final data = res.data is Map ? res.data['data'] : null;
+    if (data is! List) {
+      throw const ImeiScanException('Invalid bulk check response.');
+    }
+    final byImei = <String, Map<String, dynamic>>{
+      for (final item in data.whereType<Map>())
+        if (item['imei'] != null)
+          item['imei'].toString().toUpperCase(): Map<String, dynamic>.from(
+            item,
+          ),
+    };
+    return [
+      for (final imei in imeis)
+        {
+          ...?byImei[imei],
+          'imei': imei,
+          'serviceId': serviceId,
+          if (!byImei.containsKey(imei)) ...{
+            'ok': false,
+            'message':
+                'No result returned. Check scan history before retrying.',
+          },
+        },
+    ];
+  }
+
+  @override
   Future<ScanHistoryResult> getHistoryResult({int? page, int? limit}) async {
     final params = <String, dynamic>{};
     if (page != null && page > 0) params['page'] = page;

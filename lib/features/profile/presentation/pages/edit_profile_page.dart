@@ -259,7 +259,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     child: Icon(
                       Icons.camera_alt_rounded,
-                      color: Colors.black,
+                      color: Colors.white,
                       size: 18,
                     ),
                   ),
@@ -439,7 +439,11 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Color(0xFF1E2E3A)),
+        border: Border.all(
+          color: AppColors.primary.withValues(
+            alpha: AppColors.isDark ? 0.25 : 0.18,
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

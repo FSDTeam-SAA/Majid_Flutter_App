@@ -48,6 +48,35 @@ class _AppGroundViewState extends State<AppGroundView> {
     setState(() => _selectedIndex = index);
   }
 
+  DateTime? _lastBackPressAt;
+
+  // This is the root route, so a system back here must never pop it: that
+  // leaves an empty navigator (black screen). Back returns to the first tab,
+  // then needs a second press within 2s to leave the app.
+  void _handleRootBack(bool didPop, Object? result) {
+    if (didPop) return;
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = 0);
+      return;
+    }
+    final now = DateTime.now();
+    final last = _lastBackPressAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBackPressAt = now;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeCtrl = Get.find<ProfileThemeController>();
@@ -56,72 +85,76 @@ class _AppGroundViewState extends State<AppGroundView> {
     return Obx(() {
       themeCtrl.selectedTheme.value;
       final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: AppColors.isDark
-              ? Brightness.light
-              : Brightness.dark,
-        ),
-        child: Scaffold(
-          // Docked (not floating) navigation, so pages end above the bar
-          // instead of scrolling underneath it.
-          extendBody: false,
-          backgroundColor: AppColors.background,
-          bottomNavigationBar: isKeyboardOpen
-              ? null
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              staffSession.staffName.value.isEmpty
-                                  ? 'Serving as Owner'
-                                  : 'Serving as ${staffSession.staffName.value}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: _handleRootBack,
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: AppColors.isDark
+                ? Brightness.light
+                : Brightness.dark,
+          ),
+          child: Scaffold(
+            // Docked (not floating) navigation, so pages end above the bar
+            // instead of scrolling underneath it.
+            extendBody: false,
+            backgroundColor: AppColors.background,
+            bottomNavigationBar: isKeyboardOpen
+                ? null
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                staffSession.staffName.value.isEmpty
+                                    ? 'Serving as Owner'
+                                    : 'Serving as ${staffSession.staffName.value}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: () => showSwitchStaffSheet(context),
-                            child: const Text('Switch Staff'),
-                          ),
-                        ],
+                            TextButton(
+                              onPressed: () => showSwitchStaffSheet(context),
+                              child: const Text('Switch Staff'),
+                            ),
+                          ],
+                        ),
                       ),
+                      AppBottomNavBar(
+                        selectedIndex: _selectedIndex,
+                        onTap: _selectTab,
+                      ),
+                    ],
+                  ),
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: IndexedStack(
+                    index: _selectedIndex,
+                    children: List.generate(
+                      5,
+                      (index) =>
+                          _visitedPages.containsKey(index) ||
+                              index == _selectedIndex
+                          ? TickerMode(
+                              enabled: index == _selectedIndex,
+                              child: _page(index),
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                    AppBottomNavBar(
-                      selectedIndex: _selectedIndex,
-                      onTap: _selectTab,
-                    ),
-                  ],
-                ),
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: IndexedStack(
-                  index: _selectedIndex,
-                  children: List.generate(
-                    5,
-                    (index) =>
-                        _visitedPages.containsKey(index) ||
-                            index == _selectedIndex
-                        ? TickerMode(
-                            enabled: index == _selectedIndex,
-                            child: _page(index),
-                          )
-                        : const SizedBox.shrink(),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );

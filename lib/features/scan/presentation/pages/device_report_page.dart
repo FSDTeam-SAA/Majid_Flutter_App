@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_snackbar.dart';
 import '../../../customer/data/repositories/customer_repository_impl.dart';
 import '../../../customer/domain/entities/customer.dart';
 import '../../../invoice/data/repositories/invoice_repository_impl.dart';
+import '../../../invoice/presentation/pages/local_invoice_pdf_page.dart';
 import '../../../consent/presentation/controller/consent_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/smart_invoice_data.dart';
@@ -40,7 +41,6 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
   bool _isGeneratingPdf = false;
   bool _isRegenerating = false;
   bool _isCreatingInvoice = false;
-  final GlobalKey _downloadCertificateButtonKey = GlobalKey();
   final GlobalKey _smartInvoiceButtonKey = GlobalKey();
 
   @override
@@ -128,7 +128,6 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
                       SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          key: _downloadCertificateButtonKey,
                           onPressed: _isGeneratingPdf ? null : _generatePdf,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _kSmartActionsGreen,
@@ -481,16 +480,33 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+        contentTextStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 14,
+          height: 1.5,
+        ),
         title: const Text('Generate a new report?'),
         content: const Text(
           'This runs a fresh check. The selected service charge may apply.',
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.buttonText,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Generate New'),
           ),
@@ -516,6 +532,7 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
   }
 
   Future<void> _generatePdf() async {
+    if (_isGeneratingPdf) return;
     setState(() => _isGeneratingPdf = true);
     try {
       final device = _smartInvoiceDevice;
@@ -528,22 +545,23 @@ class _DeviceReportPageState extends State<DeviceReportPage> {
         riskDescription: _riskDescription,
       );
 
-      SavedDocument? saved;
-      try {
-        saved = await DocumentSaver.save(file);
-      } catch (_) {
-        saved = null;
-      }
+      final saved = await DocumentSaver.save(file);
       if (!mounted) return;
 
-      await Share.shareXFiles([
-        XFile(saved?.file.path ?? file.path),
-      ], sharePositionOrigin: _shareOriginFor(_downloadCertificateButtonKey));
+      final preview = Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => LocalInvoicePdfPage(
+            file: saved.file,
+            title: 'Device Certificate',
+          ),
+        ),
+      );
+      showSuccessSnackbar('PDF certificate saved to ${saved.locationLabel}');
+      await preview;
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
+      debugPrint('Could not save PDF certificate: $e');
+      showErrorSnackbar('Could not save the PDF certificate. Please try again.');
     } finally {
       if (mounted) setState(() => _isGeneratingPdf = false);
     }

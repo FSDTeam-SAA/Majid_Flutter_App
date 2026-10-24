@@ -28,7 +28,11 @@ class _CustomerBalanceCardState extends State<CustomerBalanceCard> {
   }
 
   void _refresh() {
-    if (mounted) setState(() => _balance = _load());
+    if (!mounted) return;
+    final balance = _load();
+    setState(() {
+      _balance = balance;
+    });
   }
 
   @override

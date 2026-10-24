@@ -8,13 +8,11 @@ import '../theme/checkout_tokens.dart';
 class ReadyOrdersCard extends StatelessWidget {
   final List<ReadyOrder> orders;
   final VoidCallback onToggleVisibility;
-  final bool isSheetVisible;
 
   const ReadyOrdersCard({
     super.key,
     required this.orders,
     required this.onToggleVisibility,
-    required this.isSheetVisible,
   });
 
   @override
@@ -90,30 +88,6 @@ class ReadyOrdersCard extends StatelessWidget {
                       ),
                     ),
                 ],
-              ),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onToggleVisibility,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Ink(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: CheckoutTokens.accentSoft,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: CheckoutTokens.accent.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Icon(
-                      isSheetVisible
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 18,
-                      color: CheckoutTokens.accent,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),

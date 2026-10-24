@@ -11,6 +11,7 @@ import '../controller/profile_theme_controller.dart';
 import '../widgets/profile_menu_item.dart';
 import 'business_health_score_page.dart';
 import 'edit_profile_page.dart';
+import 'help_center_page.dart';
 import 'invoice_logo_settings_page.dart';
 import 'invoice_template_settings_page.dart';
 import 'shopkeeper_id_card_page.dart';
@@ -339,9 +340,11 @@ class _ProfilePageViewState extends State<ProfilePageView>
                             Icons.help_outline_rounded,
                             'Help Center',
                             null,
-                            () => _showInfo(
+                            () => Navigator.push(
                               context,
-                              'Help Center is coming soon.',
+                              MaterialPageRoute(
+                                builder: (_) => const HelpCenterPage(),
+                              ),
                             ),
                           ),
                           (

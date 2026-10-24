@@ -33,7 +33,9 @@ import 'inventory_screen.dart';
 import 'stock_categories_page.dart';
 
 class StockPage extends StatefulWidget {
-  const StockPage({super.key});
+  const StockPage({super.key, this.apiClient});
+
+  final ApiClient? apiClient;
 
   @override
   State<StockPage> createState() => _StockPageState();
@@ -63,8 +65,7 @@ class _StockPageState extends State<StockPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final api = ApiClient(baseUrl);
-    _api = api;
+    _api = widget.apiClient ?? ApiClient(baseUrl);
     _stockCtrl = Get.find<StockController>();
     _basket = StockBasketController.instance;
     _profileCtrl = Get.find<ProfileController>();
@@ -334,7 +335,6 @@ class _StockPageState extends State<StockPage> with WidgetsBindingObserver {
               child: ReadyOrdersCard(
                 orders: _readyOrders,
                 onToggleVisibility: _openReadyOrders,
-                isSheetVisible: _isReadyOrdersSheetOpen,
               ),
             ),
             // The Inventory / All products segments were dropped; this is a
@@ -434,30 +434,45 @@ class _StockPageState extends State<StockPage> with WidgetsBindingObserver {
       color: CheckoutTokens.accent,
       backgroundColor: CheckoutTokens.surface,
       onRefresh: _refreshPage,
-      child: ListView(
-        key: const ValueKey('keypad'),
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 14, bottom: 16),
-        children: [
-          CheckoutAmountCard(
-            amountText: _expression.value == null
-                ? '--'
-                : _formatNumber(_typedAmount),
-            expressionText: _expression.display,
-            showExpression: _expression.hasOperation,
-            hasAmount: _hasTypedAmount,
-            onClear: _clearAll,
-            onNote: _openCalculationNote,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          key: const ValueKey('keypad'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(top: 8, bottom: 12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (constraints.maxHeight - 20).clamp(0, double.infinity),
+            ),
+            child: Column(
+              children: [
+                CheckoutAmountCard(
+                  compact: constraints.maxHeight < 420,
+                  amountText: _expression.value == null
+                      ? '--'
+                      : _formatNumber(_typedAmount),
+                  expressionText: _expression.display,
+                  showExpression: _expression.hasOperation,
+                  hasAmount: _hasTypedAmount,
+                  onClear: _clearAll,
+                  onNote: _openCalculationNote,
+                ),
+                SizedBox(height: constraints.maxHeight < 420 ? 4 : 8),
+                CheckoutKeypad(
+                  // Keep all four rows visible above Total Qty where space
+                  // allows. On shorter screens the whole keypad can scroll.
+                  availableHeight:
+                      constraints.maxHeight -
+                      (constraints.maxHeight < 420 ? 106 : 160),
+                  onDigit: _appendDigit,
+                  onDecimal: _appendDecimal,
+                  onOperator: _appendOperator,
+                  onBackspace: _backspace,
+                  activeOperator: _expression.pendingOperator,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          CheckoutKeypad(
-            onDigit: _appendDigit,
-            onDecimal: _appendDecimal,
-            onOperator: _appendOperator,
-            onBackspace: _backspace,
-            activeOperator: _expression.pendingOperator,
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ import '../../../invoice/presentation/utils/invoice_template_builder.dart';
 import '../../../invoice/presentation/utils/verified_invoice_pdf.dart';
 import '../../../invoice/presentation/utils/compact_receipt_pdf.dart';
 import '../../../invoice/presentation/widgets/invoice_delivery_actions.dart';
+import '../../../invoice/presentation/widgets/score_plus_logo.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 
 /// Records a confirmed cash/card payment through the existing invoice API.
@@ -305,8 +306,8 @@ Future<bool> recordCheckoutPayment(
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: const Text('ScorePlus'),
+                leading: const ScorePlusLogo(),
+                title: const Text('Score+'),
                 onTap: () => showScorePlus(
                   ctx,
                   invoiceId: data['_id'].toString(),

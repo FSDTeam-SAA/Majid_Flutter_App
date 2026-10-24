@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
+import '../../../../core/utils/inventory_attribute_label.dart';
 import '../../domain/entities/csv_import_summary.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../../domain/repositories/inventory_repository.dart';
@@ -22,8 +23,8 @@ InventoryItem inventoryItemFromJson(Map<String, dynamic> json) {
     sku: json['sku']?.toString(),
     upc: (json['upc'] ?? json['UPC'] ?? json['barcode'])?.toString(),
     brand: json['brand']?.toString(),
-    color: json['color']?.toString(),
-    storage: json['storage']?.toString(),
+    color: inventoryAttributeLabel(json['color']),
+    storage: inventoryAttributeLabel(json['storage']),
     modelNumber: json['modelNumber']?.toString(),
     imeiNumber: json['imeiNumber']?.toString() ?? '',
     currentState: json['currentState']?.toString() ?? 'good condition',

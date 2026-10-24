@@ -14,6 +14,7 @@ import '../../domain/repositories/imei_repository.dart';
 import '../controller/scan_data.dart';
 import 'all_scan_history_page.dart';
 import 'barcode_scanner_page.dart';
+import 'bulk_scan_page.dart';
 import '../widgets/carrier_dropdown.dart';
 import '../widgets/scan_item_card.dart';
 import '../widgets/scan_search_bar.dart';
@@ -177,6 +178,43 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     }
   }
 
+  Future<void> _openBulkChecking({List<String> identifiers = const []}) async {
+    FocusScope.of(context).unfocus();
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BulkScanPage(
+          repository: _imeiRepository,
+          services: _services.isEmpty ? verificationOptions : _services,
+          selectedService: _selectedService,
+          initialIdentifiers: identifiers,
+          onResults: (results) {
+            if (!mounted) return;
+            setState(() {
+              for (final result in results) {
+                if (result['ok'] != true ||
+                    !_hasValidDeviceData(result['data'])) {
+                  continue;
+                }
+                final imei = result['imei'].toString();
+                final scan = _buildScanItemFromResponse(result, imei);
+                if (scan == null) continue;
+                final existed =
+                    sessionScans.any((s) => s.imei == imei) ||
+                    _recentScans.any((s) => s.imei == imei);
+                sessionScans.removeWhere((s) => s.imei == imei);
+                sessionScans.insert(0, scan);
+                _recentScans.removeWhere((s) => s.imei == imei);
+                _recentScans.insert(0, scan);
+                if (!existed) _totalScansCount++;
+              }
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _uploadImageAndExtractImei() async {
     if (_isExtractingImei || _isScanning) return;
 
@@ -213,9 +251,8 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
           'Number extracted successfully. Tap Scan Now to continue.',
         );
       } else {
-        _showMessage(
-          '${imeiNumbers.length} numbers found. The first one has been filled in.',
-        );
+        if (!mounted) return;
+        await _openBulkChecking(identifiers: imeiNumbers);
       }
     } on ImeiScanException catch (e) {
       _showMessage(e.message);
@@ -378,6 +415,18 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
                       _buildScanNowButton(),
                       SizedBox(height: 12),
                       _buildUploadButton(),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed:
+                            (_isLoading || _isScanning || _isExtractingImei)
+                            ? null
+                            : () => _openBulkChecking(),
+                        icon: const Icon(Icons.playlist_add_check_rounded),
+                        label: const Text('Bulk checking'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                        ),
+                      ),
                       SizedBox(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -433,6 +482,45 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
                           (item) => ScanItemCard(
                             item: item,
                             onTap: () => _openRecentScan(item),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            onPressed: _openAllScans,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: AppColors.isDark ? 0.14 : 0.07,
+                              ),
+                              minimumSize: const Size.fromHeight(52),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.22,
+                                  ),
+                                ),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text('See All'),
+                                SizedBox(width: 10),
+                                Icon(Icons.arrow_forward_rounded, size: 18),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -676,23 +764,28 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppColors.primary),
-              const SizedBox(height: 16),
-              Text(
-                'Loading report...',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              ),
-            ],
+      // Block system back: the dialog is closed below with
+      // Navigator.pop(context), which would otherwise pop the root screen.
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppColors.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading report...',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -760,6 +853,7 @@ class _ScanDevicePageState extends State<ScanDevicePage> {
     String? name;
     for (final key in [
       'marketing_name',
+      'device',
       'model',
       'model_name',
       'model_description',

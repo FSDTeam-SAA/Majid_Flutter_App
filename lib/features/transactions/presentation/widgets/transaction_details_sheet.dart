@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/utils/colors.dart';
 import '../../../invoice/presentation/widgets/invoice_delivery_actions.dart';
+import '../../../invoice/presentation/widgets/score_plus_logo.dart';
 import '../../../invoice/presentation/utils/compact_receipt_pdf.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../domain/entities/transaction_entry.dart';
@@ -35,7 +36,9 @@ class _TransactionDetailsSheet extends StatelessWidget {
 
   const _TransactionDetailsSheet({required this.entry});
 
-  String get _currencySymbol => entry.currencyCode.isEmpty ? Get.find<ProfileController>().currencySymbol : '${entry.currencyCode} ';
+  String get _currencySymbol => entry.currencyCode.isEmpty
+      ? Get.find<ProfileController>().currencySymbol
+      : '${entry.currencyCode} ';
 
   @override
   Widget build(BuildContext context) {
@@ -215,8 +218,8 @@ class _TransactionDetailsSheet extends StatelessWidget {
                         email: entry.customerEmail,
                         phone: entry.customerPhone,
                       ),
-                      icon: const Icon(Icons.star_outline),
-                      label: const Text('ScorePlus'),
+                      icon: const ScorePlusLogo(),
+                      label: const Text('Score+'),
                     ),
                   ),
                 ],

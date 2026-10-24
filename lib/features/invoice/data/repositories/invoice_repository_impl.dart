@@ -6,6 +6,7 @@ import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/commerce_events.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/utils/colors.dart';
+import '../../../../core/utils/inventory_attribute_label.dart';
 import '../../domain/entities/invoice.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../presentation/controller/invoice_data.dart';
@@ -166,8 +167,8 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       price: price,
       color: AppColors.primary,
       category: _categoryFromJson(item),
-      storage: item['storage']?.toString() ?? '',
-      colorName: item['color']?.toString() ?? '',
+      storage: inventoryAttributeLabel(item['storage']) ?? '',
+      colorName: inventoryAttributeLabel(item['color']) ?? '',
       condition: item['currentState']?.toString() ?? '',
     );
   }

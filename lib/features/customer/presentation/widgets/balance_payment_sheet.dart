@@ -84,7 +84,12 @@ class _BalancePaymentSheetState extends State<_BalancePaymentSheet> {
                     'Could not load previous invoices. You can pay today only or retry.',
                   ),
                   TextButton.icon(
-                    onPressed: () => setState(() => _balances = _load()),
+                    onPressed: () {
+                      final balances = _load();
+                      setState(() {
+                        _balances = balances;
+                      });
+                    },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Retry balances'),
                   ),

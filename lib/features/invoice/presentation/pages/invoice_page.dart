@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart' show baseUrl;
 import '../../../../core/utils/colors.dart';
@@ -36,10 +36,12 @@ import '../utils/verified_invoice_pdf.dart';
 import '../utils/compact_receipt_pdf.dart';
 import '../widgets/invoice_customer_picker.dart';
 import '../widgets/invoice_delivery_actions.dart';
+import '../widgets/score_plus_logo.dart';
 import '../widgets/new_item_name_dialog.dart';
 import '../widgets/invoice_input_field.dart';
 import '../widgets/shop_info_card.dart';
 import 'record_payment_page.dart';
+import 'local_invoice_pdf_page.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../auth/presentation/controller/auth_controller.dart';
 import '../../../auth/presentation/pages/login_screen_view.dart';
@@ -691,7 +693,7 @@ class _InvoicePageState extends State<InvoicePage> {
   }
 
   /// Downloads a previously generated invoice from its Cloudinary URL and
-  /// keeps a copy on the device, for the "Download" action in the registry.
+  /// opens the saved copy for the "Download" action in the registry.
   Future<void> _downloadInvoiceFromUrl(invoice_entity.Invoice invoice) async {
     final url = invoice.pdfUrl;
     if (url == null || url.isEmpty) {
@@ -705,7 +707,7 @@ class _InvoicePageState extends State<InvoicePage> {
         options: Options(responseType: ResponseType.bytes),
       );
       final bytes = response.data;
-      if (bytes == null) throw Exception('Empty response');
+      if (bytes == null || bytes.isEmpty) throw Exception('Empty response');
 
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/${invoice.reference}.pdf');
@@ -716,7 +718,16 @@ class _InvoicePageState extends State<InvoicePage> {
         fileName: '${invoice.reference}.pdf',
       );
       if (!mounted) return;
+      final preview = Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => LocalInvoicePdfPage(
+            file: saved.file,
+            title: invoice.classification,
+          ),
+        ),
+      );
       showSuccessSnackbar('Invoice saved to ${saved.locationLabel}');
+      await preview;
     } catch (e) {
       if (!mounted) return;
       showErrorSnackbar('Could not download the invoice');
@@ -1475,6 +1486,11 @@ class _InvoicePageState extends State<InvoicePage> {
         _createInvoiceItems.clear();
         _createInvoiceItems.add(_CreateInvoiceItem());
       });
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => LocalInvoicePdfPage(file: saved?.file ?? pdfFile),
+        ),
+      );
     } on DioException catch (e) {
       if (!mounted) return;
       showErrorSnackbar(
@@ -5256,7 +5272,7 @@ class _InvoicePageState extends State<InvoicePage> {
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -5317,6 +5333,7 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -5334,8 +5351,9 @@ class _InvoicePageState extends State<InvoicePage> {
               const SizedBox(width: 8),
               Expanded(
                 child: _registryActionButton(
-                  label: 'ScorePlus',
+                  label: 'Score+',
                   icon: Icons.star_outline,
+                  leading: const ScorePlusLogo(),
                   onTap: () => showScorePlus(
                     context,
                     invoiceId: inv.id,
@@ -5355,6 +5373,7 @@ class _InvoicePageState extends State<InvoicePage> {
     required String label,
     required IconData icon,
     required VoidCallback? onTap,
+    Widget? leading,
     bool isPrimary = false,
     bool isDanger = false,
   }) {
@@ -5382,11 +5401,12 @@ class _InvoicePageState extends State<InvoicePage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isDisabled ? AppColors.textSecondary : foreground,
-              ),
+              leading ??
+                  Icon(
+                    icon,
+                    size: 15,
+                    color: isDisabled ? AppColors.textSecondary : foreground,
+                  ),
               const SizedBox(width: 5),
               Text(
                 label,
@@ -5698,40 +5718,29 @@ class _PdfViewerPage extends StatefulWidget {
 }
 
 class _PdfViewerPageState extends State<_PdfViewerPage> {
-  late final WebViewController _controller;
-  bool _isLoading = true;
+  late final Future<Uint8List> _pdfBytes = _loadPdf();
   bool _isPreparingShare = false;
 
-  @override
-  void initState() {
-    super.initState();
-    final viewerUrl =
-        'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(widget.url)}';
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            if (mounted) setState(() => _isLoading = false);
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(viewerUrl));
+  Future<Uint8List> _loadPdf() async {
+    final response = await Dio().get<List<int>>(
+      widget.url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = response.data;
+    if (bytes == null || bytes.isEmpty) {
+      throw const FormatException('Empty PDF response');
+    }
+    return Uint8List.fromList(bytes);
   }
 
-  /// Fetches the PDF the viewer is showing and hands it to the OS share
+  /// Hands the PDF bytes the viewer is showing to the OS share
   /// sheet, so it can go straight to WhatsApp, email or Files - not just a
   /// link to it.
   Future<void> _sharePdf() async {
     if (_isPreparingShare) return;
     setState(() => _isPreparingShare = true);
     try {
-      final response = await Dio().get<List<int>>(
-        widget.url,
-        options: Options(responseType: ResponseType.bytes),
-      );
-      final bytes = response.data;
-      if (bytes == null) throw Exception('Empty response');
+      final bytes = await _pdfBytes;
 
       final tempDir = await getTemporaryDirectory();
       final safeName = widget.title.replaceAll(RegExp(r'[^\w\s-]'), '');
@@ -5755,6 +5764,8 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
         appBar: AppBar(
           backgroundColor: AppColors.cardBackground,
           foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          scrolledUnderElevation: 0,
           title: Text(widget.title, style: const TextStyle(fontSize: 16)),
           leading: IconButton(
             icon: const Icon(Icons.close),
@@ -5785,14 +5796,33 @@ class _PdfViewerPageState extends State<_PdfViewerPage> {
             ),
           ],
         ),
-        body: Stack(
-          children: [
-            WebViewWidget(controller: _controller),
-            if (_isLoading)
-              Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
+        body: SafeArea(
+          child: PdfPreview(
+            build: (_) => _pdfBytes,
+            useActions: false,
+            canChangePageFormat: false,
+            canChangeOrientation: false,
+            canDebug: false,
+            dynamicLayout: false,
+            scrollViewDecoration: BoxDecoration(color: AppColors.background),
+            pdfPreviewPageDecoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            onError: (context, error) => Center(
+              child: Text(
+                'Could not display this PDF. Please close and try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
               ),
-          ],
+            ),
+          ),
         ),
       ),
     );

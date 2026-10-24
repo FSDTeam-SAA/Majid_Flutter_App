@@ -13,6 +13,7 @@ class CheckoutKeypad extends StatelessWidget {
 
   /// Operator waiting for its right hand operand, highlighted while pending.
   final String? activeOperator;
+  final double? availableHeight;
 
   const CheckoutKeypad({
     super.key,
@@ -21,6 +22,7 @@ class CheckoutKeypad extends StatelessWidget {
     required this.onOperator,
     required this.onBackspace,
     this.activeOperator,
+    this.availableHeight,
   });
 
   static const _gap = 10.0;
@@ -38,7 +40,11 @@ class CheckoutKeypad extends StatelessWidget {
       builder: (context, constraints) {
         final usable = constraints.maxWidth - _sidePad - _lineWidth - _gap * 3;
         final cell = usable / 4;
-        final keyHeight = (cell / 1.18).clamp(_minKeyHeight, 84.0);
+        final naturalHeight = (cell / 1.18).clamp(_minKeyHeight, 84.0);
+        final fittedHeight = availableHeight == null
+            ? naturalHeight
+            : (availableHeight! - _gap * 3) / 4;
+        final keyHeight = fittedHeight.clamp(_minKeyHeight, naturalHeight);
 
         return Padding(
           padding: const EdgeInsets.only(left: _sidePad),
