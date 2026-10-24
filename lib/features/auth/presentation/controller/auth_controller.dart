@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../../../core/network/api_service/api_client.dart';
 import '../../../../core/network/api_service/api_endpoints.dart';
 import '../../../../core/network/api_service/token_meneger.dart';
+import '../../../../core/services/biometric_service.dart';
 import '../../../home/presentation/controller/home_controller.dart';
 import '../../../profile/presentation/controller/profile_controller.dart';
 import '../../../staff/presentation/controller/staff_controller.dart';
@@ -171,9 +172,11 @@ class AuthController extends GetxController {
     errorMessage.value = '';
     isLoading.value = true;
     try {
+      final email = emailController.text.trim();
+      final password = passwordController.text;
       final response = await _repo.login(
-        email: emailController.text.trim(),
-        password: passwordController.text,
+        email: email,
+        password: password,
       );
 
       await TokenManager.saveToken(
@@ -183,6 +186,13 @@ class AuthController extends GetxController {
       Get.delete<StaffSessionController>(force: true);
       await TokenManager.saveRole(response.user.role);
       user.value = response.user;
+
+      // Save credentials for biometric quick-sign-in
+      await BiometricService.instance.saveCredentialsForBiometric(
+        email: email,
+        password: password,
+      );
+
       _clearFields();
       return true;
     } on DioException catch (e) {
@@ -215,6 +225,50 @@ class AuthController extends GetxController {
               'Could not start email verification. Please sign up again.';
         }
       }
+      return false;
+    } catch (e) {
+      errorMessage.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Logs in with explicitly provided email and password (e.g. from Biometrics)
+  Future<bool> loginWithCredentials({
+    required String email,
+    required String password,
+  }) async {
+    isEmailNotVerified.value = false;
+    errorMessage.value = '';
+    isLoading.value = true;
+    try {
+      final response = await _repo.login(
+        email: email,
+        password: password,
+      );
+
+      await TokenManager.saveToken(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+      Get.delete<StaffSessionController>(force: true);
+      await TokenManager.saveRole(response.user.role);
+      user.value = response.user;
+
+      await BiometricService.instance.saveCredentialsForBiometric(
+        email: email,
+        password: password,
+      );
+
+      _clearFields();
+      return true;
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      final message = responseData is Map
+          ? responseData['message'] ?? 'Biometric login failed'
+          : 'Biometric login failed';
+      errorMessage.value = message;
       return false;
     } catch (e) {
       errorMessage.value = e.toString();

@@ -14,6 +14,8 @@ import '../../domain/app_permission.dart';
 import '../controller/app_permissions_controller.dart';
 import 'delete_account_page.dart';
 import 'download_my_data_page.dart';
+import '../../../../core/services/biometric_service.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 
 /// Profile → Privacy & Permissions.
 ///
@@ -36,6 +38,9 @@ class PrivacyPermissionsPage extends StatefulWidget {
 class _PrivacyPermissionsPageState extends State<PrivacyPermissionsPage> {
   late final AppPermissionsController _permissions;
   late final SecurityController _security;
+  final BiometricService _biometrics = BiometricService.instance;
+  DeviceBiometricType _biometricType = DeviceBiometricType.none;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -44,6 +49,42 @@ class _PrivacyPermissionsPageState extends State<PrivacyPermissionsPage> {
     _security = SecurityController.instance;
     _permissions.refreshStatuses();
     _security.load();
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final type = await _biometrics.getPrimaryBiometricType();
+    final enabled = await _biometrics.isBiometricLoginEnabled();
+    if (mounted) {
+      setState(() {
+        _biometricType = type;
+        _biometricEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleBiometrics(bool enable) async {
+    if (enable) {
+      final success = await _biometrics.authenticate(
+        localizedReason:
+            'Authenticate to enable ${_biometrics.getBiometricLabel(_biometricType)} for quick sign in',
+      );
+      if (!success) {
+        showErrorSnackbar('Authentication was cancelled or failed.');
+        return;
+      }
+    }
+    await _biometrics.setBiometricLoginEnabled(enable);
+    await _loadBiometricState();
+    if (enable) {
+      showSuccessSnackbar(
+        '${_biometrics.getBiometricLabel(_biometricType)} sign-in enabled.',
+      );
+    } else {
+      showSuccessSnackbar(
+        '${_biometrics.getBiometricLabel(_biometricType)} sign-in disabled.',
+      );
+    }
   }
 
   /// Tapping a permission row asks for it in context. If the OS will no
@@ -356,6 +397,25 @@ class _PrivacyPermissionsPageState extends State<PrivacyPermissionsPage> {
                               builder: (_) => const TwoFactorSettingsPage(),
                             ),
                           ),
+                        ),
+                        ProfileMenuItem(
+                          leadingIcon: _biometricType == DeviceBiometricType.face
+                              ? Icons.face_rounded
+                              : Icons.fingerprint_rounded,
+                          label: '${_biometrics.getBiometricLabel(_biometricType)} Sign-in',
+                          value: _biometricType == DeviceBiometricType.none
+                              ? 'Unavailable'
+                              : (_biometricEnabled ? 'Enabled' : 'Disabled'),
+                          valueColor: _biometricEnabled
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          backgroundColor: AppColors.cardBackground,
+                          borderColor: AppColors.fieldBorder,
+                          onTap: _biometricType == DeviceBiometricType.none
+                              ? () => showErrorSnackbar(
+                                    'Biometrics not enrolled or supported on this device.',
+                                  )
+                              : () => _toggleBiometrics(!_biometricEnabled),
                         ),
                         const SizedBox(height: 8),
                         ProfileMenuItem(
